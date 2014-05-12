@@ -96,9 +96,12 @@ def DetectPupil(gray, thresh = -1):
     # Find all nonzero point coordinates
     pnts = np.transpose(np.nonzero(eye_edges))
     
+    # Swap columns - pnts are (row, col) and need to be (x,y)
+    pnts[:,[0,1]] = pnts[:,[1,0]]
+    
     # Display all edge points
-    # cv2.imshow('Edge Points', eye_edges)
-    # cv2.waitKey(0)
+    cv2.imshow('Edge Points', eye_edges)
+    cv2.waitKey(0)
     
     # RANSAC ellipse fitting to edge points
     center, axes, angle = etf.FitEllipse_RANSAC(pnts, eye_gray)
