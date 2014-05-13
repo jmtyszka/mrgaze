@@ -40,20 +40,27 @@ def FitEllipse_RANSAC(pnts, gray):
     # Graphic display flag
     do_graphic = True
     
+    # Maximum normalized error squared for inliers
+    max_norm_err_sq = 4.0
+    
     # Init best ellipse and support
     best_ellipse = ((0,0),(1,1),0)
     best_support = -np.inf    
     
     # Create display window and init overlay image
     if do_graphic:
-        cv2.namedWindow('RANSAC', cv2.WINDOW_AUTOSIZE)
+        cv2.namedWindow('RANSAC', cv2.WINDOW_NORMAL)
         overlay = cv2.cvtColor(gray/2,cv2.COLOR_GRAY2RGB)
     
     # Count pnts (n x 2)
     n_pnts = pnts.shape[0]
     
+    # Break if too few points to fit ellipse (RARE)
+    if n_pnts < 5:
+        return best_ellipse
+    
     # Ransac iterations
-    for itt in range(0,2):
+    for itt in range(0,3):
         
         # Select 5 points at random
         pnts_random5 = np.asarray(random.sample(pnts, 5))
@@ -65,12 +72,12 @@ def FitEllipse_RANSAC(pnts, gray):
         norm_err = EllipseNormError(pnts, ellipse)
         
         # Identify inliers (normalized error < 2.0)
-        inliers = np.array(np.nonzero(norm_err < 2.0))
-        n_inliers = inliers.shape[1]
+        # np.nonzero returns a tuple wrapped array - take first element
+        inliers = np.nonzero(norm_err**2 < max_norm_err_sq)[0]
         
-        print('Found %d inliers' % n_inliers)
+        print('Itt %d Init  : Found %d inliers' % (itt, inliers.size))
         
-        # Exctract inlier points
+        # Extract inlier points
         pnts_inliers = pnts[inliers]
         
         # Fit ellipse to inlier set
@@ -78,7 +85,7 @@ def FitEllipse_RANSAC(pnts, gray):
         
         # Update overlay image and display
         if do_graphic:
-            overlay = OverlayEllipse(overlay, pnts_inliers, ellipse_inliers)
+            OverlayRANSACFit(overlay, pnts, pnts_inliers, ellipse_inliers)
             cv2.imshow('RANSAC', overlay)
             cv2.waitKey(5)
         
@@ -89,7 +96,9 @@ def FitEllipse_RANSAC(pnts, gray):
             norm_err_inliers = EllipseNormError(pnts_inliers, ellipse_inliers)
             
             # Identify inliers
-            inliers = np.nonzero(norm_err_inliers < 2.0)
+            inliers = np.nonzero(norm_err_inliers**2 < max_norm_err_sq)[0]
+            
+            print('Itt %d Ref %d : Found %d inliers' % (itt, refine, inliers.size))
             
             # Update inliers set
             pnts_inliers = pnts_inliers[inliers]
@@ -99,26 +108,37 @@ def FitEllipse_RANSAC(pnts, gray):
 
             # Update overlay image and display
             if do_graphic:
-                overlay = OverlayEllipse(overlay, pnts_inliers, ellipse_inliers)
+                OverlayRANSACFit(overlay, pnts, pnts_inliers, ellipse_inliers)
                 cv2.imshow('RANSAC', overlay)
                 cv2.waitKey(5)
-            
+
         # Calculate support for the refined inliers
         support = EllipseSupport(inliers, norm_err_inliers)
 
         # Count inliers (n x 2)
-        n_inliers    = inliers.shape[0]
-        perc_inliers = n_inliers / n_pnts * 100.0 
-
-        # Report on this iteration
-        print("RANSAC Iteration   : %d" % itt)
-        print("  Support (Best)   : %0.1f %0.1f" % (support, best_support))
-        print("  Inliers          : %d / %d (%0.1f%%)" % (n_inliers, n_pnts, perc_inliers))
+        n_inliers    = inliers.size
+        perc_inliers = (n_inliers * 100.0) / n_pnts 
         
         # Update best ellipse
         if support > best_support:
             best_support = support
             best_ellipse = ellipse_inliers
+            best_pnts = pnts_inliers
+
+        # Report on this iteration
+        print("RANSAC Iteration   : %d" % itt)
+        print("  Support (Best)   : %0.1f %0.1f" % (support, best_support))
+        print("  Inliers          : %d / %d (%0.1f%%)" % (n_inliers, n_pnts, perc_inliers))
+    
+    # RANSAC finished
+    print('RANSAC Complete')    
+    
+    # Final best result
+    if do_graphic:
+        OverlayRANSACFit(overlay, pnts, best_pnts, best_ellipse)
+        cv2.imshow('RANSAC', overlay)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
     
     return best_ellipse
 
@@ -131,7 +151,9 @@ def EllipseError(pnts, ellipse):
     # Calculate error from distance and gradient
     # See Swirski et al 2012
     # TODO : May have to use distance / |grad|^0.45 - see Swirski code
-    err = distance / absgrad   
+
+    # Gradient array has x and y components in rows (see ConicFunctions)
+    err = distance / absgrad
     
     return err
 
@@ -141,20 +163,27 @@ def EllipseNormError(pnts, ellipse):
     # Error normalization factor, alpha
     # Normalizes cost to 1.0 at point 1 pixel out from minor vertex along minor axis
 
-    # Ellipse tuple has form ( ( x0, y0), (a, b), phi_deg) )
-    (x0,y0), (a,b), phi_deg = ellipse
+    # Ellipse tuple has form ( ( x0, y0), (bb, aa), phi_b_deg) )
+    # Where aa and bb are the major and minor axes, and phi_b_deg
+    # is the CW x to minor axis rotation in degrees
+    (x0,y0), (bb,aa), phi_b_deg = ellipse
+    
+    # Semiminor axis
+    b = bb/2
 
-    # Convert phi from deg to rad
-    phi_rad = phi_deg * np.pi / 180.0
+    # Convert phi_b from deg to rad
+    phi_b_rad = phi_b_deg * np.pi / 180.0
     
     # Minor axis vector
-    bx, by = np.sin(phi_rad), np.cos(phi_rad)
+    bx, by = np.cos(phi_b_rad), np.sin(phi_b_rad)
     
-    # Point 1 pixel out from ellipse on minor axis
-    p1 = np.array( (x0 + (b + 1) * bx, y0 + (b + 1) * by) )
+    # Point one pixel out from ellipse on minor axis
+    p1 = np.array( (x0 + (b + 1) * bx, y0 + (b + 1) * by) ).reshape(1,2)
 
     # Error at this point
     err_p1 = EllipseError(p1, ellipse)
+    
+    print('Normalizing error : %0.3f' % err_p1)
     
     # Errors at provided points
     err_pnts = EllipseError(pnts, ellipse)
@@ -162,7 +191,7 @@ def EllipseNormError(pnts, ellipse):
     return err_pnts / err_p1
 
 
-def EllipseSupport(inliers, norm_err_inliers, ):
+def EllipseSupport(inliers, norm_err_inliers):
     
     # Reciprocal RMS error of inlier points
     support = 1.0 / np.sqrt(np.mean(norm_err_inliers[inliers]**2))
@@ -181,14 +210,19 @@ def EllipseSupport(inliers, norm_err_inliers, ):
 #
 def Geometric2Conic(ellipse):
     
-    # Ellipse tuple has form ( ( x0, y0), (a, b), phi_deg) )
-    (x0,y0), (a,b), phi_deg = ellipse
+    # Ellipse tuple has form ( ( x0, y0), (bb, aa), phi_b_deg) )
+    # Where aa and bb are the major and minor axes, and phi_b_deg
+    # is the CW x to minor axis rotation in degrees
+    (x0,y0), (bb,aa), phi_b_deg = ellipse
+    
+    # Semimajor and semiminor axes
+    a, b = aa/2, bb/2
 
-    # Convert phi from deg to rad
-    phi_rad = phi_deg * np.pi / 180.0
+    # Convert phi_b from deg to rad
+    phi_b_rad = phi_b_deg * np.pi / 180.0
     
     # Major axis unit vector
-    ax, ay = np.cos(phi_rad), np.sin(phi_rad)
+    ax, ay = -np.sin(phi_b_rad), np.cos(phi_b_rad)
     
     # Useful intermediates
     a2 = a*a
@@ -214,24 +248,28 @@ def Geometric2Conic(ellipse):
 def Conic2Geometric(conic):
     
     # Extract modified conic parameters    
-    a,b,c,d,f,g = conic[0], conic[1]/2, conic[2], conic[3]/2, conic[4]/2, conic[5]
+    A,B,C,D,E,F = conic[0], conic[1]/2, conic[2], conic[3]/2, conic[4]/2, conic[5]
+    
+    # Usefult intermediates
+    dAC = A-C
+    Z = np.sqrt( 1 + 4*B*B/(dAC*dAC) )
     
     # Center
-    num = b * b - a * c
-    x0 = (c * d - b * f) / num
-    y0 = (a * f - b * d) / num
-    center = np.array((x0, y0))
+    num = B * B - A * C
+    x0 = (C * D - B * E) / num
+    y0 = (A * E - B * D) / num
 
     # Axis lengths
-    up    = 2*(a*f*f+c*d*d+g*b*b-2*b*d*f-a*c*g)
-    down1 = (b*b-a*c)*( (c-a)*np.sqrt(1+4*b*b/((a-c)*(a-c)))-(c+a))
-    down2 = (b*b-a*c)*( (a-c)*np.sqrt(1+4*b*b/((a-c)*(a-c)))-(c+a))
-    axes  = np.array( ( np.sqrt(up/down1), np.sqrt(up/down2) ) )
+    up    = 2 * (A*E*E + C*D*D + F*B*B - 2*B*D*E - A*C*F)
+    down1 = (B*B-A*C) * ( -dAC*Z - (C+A) )
+    down2 = (B*B-A*C) * (  dAC*Z - (C+A) )
+    b, a  = np.sqrt(up/down1), np.sqrt(up/down2)   
     
-    # Rotation angle
-    angle =  0.5 * np.arctan(2 * b / (a - c))    
+    # Minor axis rotation angle in degrees (CW from x axis, origin upper left)
+    phi_b_deg =  0.5 * np.arctan(2 * B / dAC) * 180.0 / np.pi
     
-    return center, axes, angle
+    # Note OpenCV ellipse parameter format
+    return (x0,y0), (b,a), phi_b_deg
     
 #
 # Conic quadratic curve support functions
@@ -241,6 +279,10 @@ def Conic2Geometric(conic):
     
 def ConicFunctions(pnts, ellipse):
     
+    # General 2D quadratic curve (biquadratic)
+    # Q = Ax^2 + Bxy + Cy^2 + Dx + Ey + F
+    # For point on ellipse, Q = 0, with appropriate coefficients 
+    
     # Convert from geometric to conic ellipse parameters
     conic = Geometric2Conic(ellipse)
 
@@ -248,17 +290,17 @@ def ConicFunctions(pnts, ellipse):
     C = np.array(conic)
     
     # Extract vectors of x and y values
-    # x and y are in columns, so transpose pnts
-    x, y = pnts.T
+    x, y = pnts[:,0], pnts[:,1]
     
     # Construct polynomial array (6 x n)
     X = np.array( ( x*x, x*y, y*y, x, y, np.ones_like(x) ) )
     
-    # Calculate vector of distances (1 x n)
+    # Calculate Q/distance for all points (1 x n)
     distance = C.dot(X)
     
     # Quadratic curve gradient at (x,y)
-    # (Gx, Gy) = (2Ax + By + D, Bx + 2Cy + E)
+    # Analytical grad of Q = Ax^2 + Bxy + Cy^2 + Dx + Ey + F
+    # (dQ/dx, dQ/dy) = (2Ax + By + D, Bx + 2Cy + E)
     
     # Construct conic gradient coefficients vector (2 x 3)
     Cg = np.array( ( (2*C[0], C[1], C[3]), (C[1], 2*C[2], C[4]) ) )    
@@ -279,15 +321,18 @@ def ConicFunctions(pnts, ellipse):
 # Graphics functions
 #
 
-def OverlayEllipse(overlay, pnts, ellipse):
+def OverlayRANSACFit(img, all_pnts, inlier_pnts, ellipse):
+
+    # NOTE : all points are (x,y) pairs, but arrays are (row, col)
+    # so swap coordinate ordering for correct positioning in array
 
     # Overlay all pnts in red
-    for p in pnts:
-        overlay[p[0],p[1]] = [0,0,255]
+    for col,row in all_pnts:
+        img[row,col] = [0,0,255]
     
     # Overlay inliers in green
+    for col,row in inlier_pnts:
+        img[row,col] = [0,255,0]
  
     # Overlay inlier fitted ellipse in yellow
-    cv2.ellipse(overlay, ellipse, (0,255,0), 1)
-    
-    return overlay
+    cv2.ellipse(img, ellipse, (0,255,255), 1)

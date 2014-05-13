@@ -27,7 +27,6 @@
 # Copyright 2014 California Institute of Technology.
 
 import sys
-
 import pyET_Pupilometry as etp
 import pyET_MediaIO as etm
 
@@ -37,7 +36,8 @@ def main():
     if len(sys.argv) > 1:
         test_frame_image = sys.argv[1]
     else:
-        test_frame_image = 'Example_GazeMotion_Cal.png'
+        # test_frame_image = 'RealPupil.png'
+        test_frame_image = 'IdealPupil.png'
 
     # Load single frame
     frame = etm.LoadImage(test_frame_image, 16)

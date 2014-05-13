@@ -54,9 +54,12 @@ def VideoPupilometry(v_file, rot = 0):
     
     # Set up LBP cascade classifier
     cascade = cv2.CascadeClassifier('Cascade/cascade.xml')
+
+    # Init frame count
+    frame_count = 0
     
     # Read first interlaced frame from stream
-    ret,frame = vin_stream.read()
+    keep_going, frame = vin_stream.read()
     frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
     
     # Apply rotation (if any)
@@ -81,9 +84,8 @@ def VideoPupilometry(v_file, rot = 0):
     if not vout_stream.isOpened():
         print('Output video not opened')
         raise    
-    
-    
-    while ret:
+
+    while keep_going:
         
         # Rotate frame
         frame = RotateFrame(frame, rot)
@@ -104,20 +106,18 @@ def VideoPupilometry(v_file, rot = 0):
             # Overlay ROI bounds on frame
             cv2.rectangle(frd, (x0, y0), (x1, y1), (0,255,0), 1)
             
-            # Extract pupil ROI
-            roi = frd[y0:x0,x0:x1]
+            # Extract pupil ROI (note row,col indexing)
+            # roi = frd[y0:y1,x0:x1]
             
             # Run pupil fitting within ROI
-            center, axes, angle, thresh = FitPupil(roi)
-            
-            print center
+            # center, axes, angle, thresh = FitPupil(roi)
             
         else:
             
-            print('Blink')
+            print('Blink at %d' % frame_count)
 
         cv2.imshow('frameWindow', frd)
-        key = cv2.waitKey(int(1/fps*100))
+        key = cv2.waitKey(5)
         
         # Write output video frame
         vout_stream.write(frd)
@@ -126,7 +126,11 @@ def VideoPupilometry(v_file, rot = 0):
         if key > 0:
             break
         
-        ret,frame = vin_stream.read()
+        # Read next frame
+        keep_going, frame = vin_stream.read()
+        
+        # Increment frame counter
+        frame_count = frame_count + 1
     
     # Clean up
     print('Cleaning up')

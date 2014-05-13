@@ -26,17 +26,20 @@
 #
 # Copyright 2014 California Institute of Technology.
 
-import sys
+import numpy as np
 import cv2
 
 def LoadImage(image_file, border = 0):
+
+    # Initialize frame
+    frame = np.array([])
 
     # load test frame image
     try:
         frame = cv2.imread(image_file)
     except:
-        print('Problem opening %s to read - exiting' % image_file)
-        sys.exit(1)
+        print('Problem opening %s to read' % image_file)
+        return frame
         
     # Convert to grayscale image
     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)

@@ -31,14 +31,14 @@ import pyET_Pupilometry as p
 def main():
     
     # JARON
-    # v_file = '/Volumes/Data/jmt/Eye_Tracking/Groups/Jaron/02txw/02txw_cal2_choice1_Cal.mov'   
-    # v_file = '/Volumes/Data/jmt/Eye_Tracking/Groups/Jaron/13axg/13axg_cal4_choice5_Cal.mov'
-    # v_file = '/Volumes/Data/jmt/Eye_Tracking/Groups/Jaron/02txw/02txw_cal2_choice1_Gaze.mov' 
-    # v_file = '/Volumes/Data/jmt/Eye_Tracking/Groups/Jaron/03axs/03axs_cal1_choice1_Cal.mov'
+    # v_file = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron/02txw/02txw_cal2_choice1_Cal.mov'   
+    # v_file = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron/13axg/13axg_cal4_choice5_Cal.mov'
+    v_file = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron/02txw/02txw_cal2_choice1_Gaze.mov' 
+    # v_file = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron/03axs/03axs_cal1_choice1_Cal.mov'
 
     # LAURA
     # v_file = '/Volumes/Data/laura/ET_Sandbox/RA0077_Gaze3/RA0077_Gaze3_JedRecorded_Cal.mpg'
-    v_file = '/Volumes/Data/laura/ET_Sandbox/RA0546_Gaze1/RA0546_Gaze1_JedLive_Cal.mpg'
+    # v_file = '/Volumes/Data/laura/ET_Sandbox/RA0546_Gaze1/RA0546_Gaze1_JedLive_Cal.mpg'
     
     p.VideoPupilometry(v_file, rot = 0)
 
