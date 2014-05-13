@@ -80,7 +80,7 @@ def FitEllipse_RANSAC(pnts, gray):
         if do_graphic:
             overlay = OverlayEllipse(overlay, pnts_inliers, ellipse_inliers)
             cv2.imshow('RANSAC', overlay)
-            cv2.waitKey()
+            cv2.waitKey(5)
         
         # Refine inliers iteratively
         for refine in range(0,2):
@@ -101,7 +101,7 @@ def FitEllipse_RANSAC(pnts, gray):
             if do_graphic:
                 overlay = OverlayEllipse(overlay, pnts_inliers, ellipse_inliers)
                 cv2.imshow('RANSAC', overlay)
-                cv2.waitKey()
+                cv2.waitKey(5)
             
         # Calculate support for the refined inliers
         support = EllipseSupport(inliers, norm_err_inliers)

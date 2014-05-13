@@ -33,78 +33,136 @@ import numpy as np
 from skimage import exposure
 import pyET_FitEllipse as etf
     
-def RunPupilometry(v_file):
+def VideoPupilometry(v_file, rot = 0):
     
-    func_name = 'RunPupilometry'    
-    
+    # Input video
+    print('Opening input video stream')
     try:
         vin_stream = cv2.VideoCapture(v_file)
     except:
-        print('%s : problem opening %s' % (func_name, v_file))
         sys.exit(1)
         
     if not vin_stream.isOpened():
-        print('%s : video stream not open' % func_name)
         sys.exit(1)
-
-    nFrames = int(vin_stream.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT))
-    print('%s : %d frames detected' % (func_name, nFrames))
-
+    
     fps = vin_stream.get(cv2.cv.CV_CAP_PROP_FPS)
-    print('%s : %0.1f frames per second' % (func_name, fps))    
+
+    # Output video properties (where different from input)
+    fourcc = cv2.cv.CV_FOURCC('m','p','4','v')
+    
+    print('Input video FPS     : %0.1f' % fps)
+    
+    # Set up LBP cascade classifier
+    cascade = cv2.CascadeClassifier('Cascade/cascade.xml')
     
     # Read first interlaced frame from stream
     ret,frame = vin_stream.read()
+    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+    
+    # Apply rotation (if any)
+    frame = RotateFrame(frame, rot)
+
+    # Find rotated frame size
+    nx, ny = frame.shape[1], frame.shape[0]
+    
+    # Downsample by 4
+    nxd, nyd = int(nx/4), int(ny/4)
+    
+    print('Output video size   : %d x %d' % (nxd, nyd))
+    
+    # Output video
+    print('Opening output video stream')
+    try:
+        vout_stream = cv2.VideoWriter('tracking.mov', fourcc, 30, (nxd, nyd), True)
+    except:
+        print('Problem creating output video stream')
+        raise
+        
+    if not vout_stream.isOpened():
+        print('Output video not opened')
+        raise    
+    
     
     while ret:
-        cv2.imshow('frameWindow', frame)
-        cv2.waitKey(int(1/fps*1000))
-        ret,frame = vin_stream.read()
         
-    # Close stream
+        # Rotate frame
+        frame = RotateFrame(frame, rot)
+        
+        # Downsample frame
+        frd = cv2.resize(frame, (nxd,nyd))
+        
+        # Find pupils in frame
+        rects = cascade.detectMultiScale(frd, minNeighbors = 32)
+        
+        if len(rects) > 0:
+            
+            # Take first detected pupil ROI
+            # TODO : adaptively adjust minNeighbors to return one pupil
+            x, y, w, h = rects[0,:]
+            x0, x1, y0, y1 = x, x+w, y, y+h
+        
+            # Overlay ROI bounds on frame
+            cv2.rectangle(frd, (x0, y0), (x1, y1), (0,255,0), 1)
+            
+            # Extract pupil ROI
+            roi = frd[y0:x0,x0:x1]
+            
+            # Run pupil fitting within ROI
+            center, axes, angle, thresh = FitPupil(roi)
+            
+            print center
+            
+        else:
+            
+            print('Blink')
+
+        cv2.imshow('frameWindow', frd)
+        key = cv2.waitKey(int(1/fps*100))
+        
+        # Write output video frame
+        vout_stream.write(frd)
+        
+        # Break on keypress
+        if key > 0:
+            break
+        
+        ret,frame = vin_stream.read()
+    
+    # Clean up
+    print('Cleaning up')
+    cv2.destroyAllWindows()
     vin_stream.release()
+    vout_stream.release()
 
 #   
 # Find and fit pupil boundary ala Swirski
 #
-def DetectPupil(gray, thresh = -1):
+def FitPupil(roi, thresh = -1):
 
-    # Downsample image
-    h,w = gray.shape
-    gray = cv2.resize(gray, (w/2, h/2))
-    
     # Intensity rescale to emphasize pupil
     # - assumes pupil is one of the darkest regions
     # - assumes pupil area is < 15% of frame
-    pA, pB = np.percentile(gray, (1, 15))
-    gray = exposure.rescale_intensity(gray, in_range  = (pA, pB))
+    pA, pB = np.percentile(roi, (1, 15))
+    roi = exposure.rescale_intensity(roi, in_range  = (pA, pB))
     
-    # Crop to eye area
-    # TODO : Add LBP classifier detection of pupil-iris region
-    eye_gray = gray
-
     # Segment pupil in grayscale image and update threshold
-    eye_bw, thresh = SegmentPupil(eye_gray, thresh)
+    roi_bw, thresh = SegmentPupil(roi, thresh)
     
     # Remove small features
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5,5))
-    eye_bw = cv2.morphologyEx(eye_bw, cv2.MORPH_OPEN, kernel)
+    roi_bw = cv2.morphologyEx(roi_bw, cv2.MORPH_OPEN, kernel)
     
     # Identify edge pixels using Canny filter
-    eye_edges = cv2.Canny(eye_bw, 0, 1)
+    roi_edges = cv2.Canny(roi_bw, 0, 1)
     
     # Find all nonzero point coordinates
-    pnts = np.transpose(np.nonzero(eye_edges))
+    pnts = np.transpose(np.nonzero(roi_edges))
     
     # Swap columns - pnts are (row, col) and need to be (x,y)
     pnts[:,[0,1]] = pnts[:,[1,0]]
     
-    # Display all edge points
-    cv2.imshow('Edge Points', eye_edges)
-    cv2.waitKey(0)
-    
     # RANSAC ellipse fitting to edge points
-    center, axes, angle = etf.FitEllipse_RANSAC(pnts, eye_gray)
+    center, axes, angle = etf.FitEllipse_RANSAC(pnts, roi)
     
     return center, axes, angle, thresh
 
@@ -139,4 +197,26 @@ def DisplayPupilEllipse(frame, center, axes, angle):
 def RobustIntensity(gray, perc_range = (5, 95)):
     
     pA, pB = np.percentile(gray, perc_range)
+
+#
+# Rotate frame by multiples of 90 degrees
+#
+def RotateFrame(img, rot):
+    
+    if rot == 270: # Rotate CCW 90
+        img = cv2.transpose(img)
+        img = cv2.flip(img, flipCode = 0)
+
+    elif rot == 90: # Rotate CW 90
+        img = cv2.transpose(img)
+        img = cv2.flip(img, flipCode = 1)
+        
+    elif rot == 180: # Rotate by 180
+        img = cv2.flip(img, flipCode = 0)
+        img = cv2.flip(img, flipCode = 1)
+    
+    else: # Do nothing
+        pass
+        
+    return img
     
