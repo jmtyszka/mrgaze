@@ -39,8 +39,8 @@ import cv2
 def FitEllipse_RANSAC(pnts, roi):
     
     # Output flags
-    do_graphic = True
-    verbose    = True
+    do_graphic = False
+    verbose    = False
     
     # Maximum normalized error squared for inliers
     max_norm_err_sq = 4.0
@@ -65,7 +65,7 @@ def FitEllipse_RANSAC(pnts, roi):
     dIdy = cv2.Sobel(roi, cv2.CV_32F, 0, 1)
     
     # Ransac iterations
-    for itt in range(0,10):
+    for itt in range(0,5):
         
         # Select 5 points at random
         sample_pnts = np.asarray(random.sample(pnts, 5))
@@ -78,60 +78,64 @@ def FitEllipse_RANSAC(pnts, roi):
         
         # Skip this iteration if one or more dot products are <= 0
         # implying that the ellipse is unlikely to bound the pupil
-        if not all(grad_dot > 0):
-            if verbose: print 'Break Gradient Dot'
-            break
+        if all(grad_dot > 0):
 
-        # Refine inliers iteratively
-        for refine in range(0,2):
+            # Refine inliers iteratively
+            for refine in range(0,3):
             
-            # Calculate normalized errors for all points
-            norm_err = EllipseNormError(pnts, ellipse)
+                # Calculate normalized errors for all points
+                norm_err = EllipseNormError(pnts, ellipse)
             
-            # Identify inliers
-            inliers = np.nonzero(norm_err**2 < max_norm_err_sq)[0]
+                # Identify inliers
+                inliers = np.nonzero(norm_err**2 < max_norm_err_sq)[0]
             
-            # Update inliers set
-            inlier_pnts = pnts[inliers]            
+                # Update inliers set
+                inlier_pnts = pnts[inliers]            
             
-            # Protect ellipse fitting from too few points
-            if inliers.size < 5:
-                if verbose: print('Break < 5 Inliers (During Refine)')
-                break
+                # Protect ellipse fitting from too few points
+                if inliers.size < 5:
+                    if verbose: print('Break < 5 Inliers (During Refine)')
+                    break
             
-            # Fit ellipse to refined inlier set
-            ellipse = cv2.fitEllipse(inlier_pnts)
+                # Fit ellipse to refined inlier set
+                ellipse = cv2.fitEllipse(inlier_pnts)
 
-            # Update overlay image and display
-            if do_graphic:
-                overlay = cv2.cvtColor(roi/2,cv2.COLOR_GRAY2RGB)
-                OverlayRANSACFit(overlay, pnts, inlier_pnts, ellipse)
-                cv2.imshow('RANSAC', overlay)
-                cv2.waitKey(5)
-
-        # Count inliers (n x 2)
-        n_inliers    = inliers.size
-        perc_inliers = (n_inliers * 100.0) / n_pnts
-        
-        # Protect support calculation from lack of inliers
-        if n_inliers < 5:
-            if verbose: print('Break < 5 Inliers (After Refine)')
-            break
-        
-        # Calculate support for the refined inliers
-        support = EllipseSupport(inlier_pnts, ellipse, dIdx, dIdy)
-        
-        # Update best ellipse
-        if support > best_support:
-            best_support = support
-            best_ellipse = ellipse
+                # Update overlay image and display
+                if do_graphic:
+                    overlay = cv2.cvtColor(roi/2,cv2.COLOR_GRAY2RGB)
+                    OverlayRANSACFit(overlay, pnts, inlier_pnts, ellipse)
+                    cv2.imshow('RANSAC', overlay)
+                    cv2.waitKey(5)
             
+            # End refinement            
+            
+            # Count inliers (n x 2)
+            n_inliers    = inliers.size
+            perc_inliers = (n_inliers * 100.0) / n_pnts
+               
+            # Calculate support for the refined inliers
+            support = EllipseSupport(inlier_pnts, ellipse, dIdx, dIdy)
+        
+            # Update best ellipse
+            if support > best_support:
+                best_support = support
+                best_ellipse = ellipse
+        
+        else:
+            
+            # Ellipse gradients did not match image gradients
+            support = 0
+            perc_inliers = 0
+        
         # Report on RANSAC progress
         if verbose: print('RANSAC %d : %0.1f (%0.1f)' % (itt, support, best_support))
 
         if perc_inliers > 95.0:
             if verbose: print('Break Max Perc Inliers')
             break
+    
+    if EllipseArea(best_ellipse) < 100:
+        print('Tiny ellipse')
     
     return best_ellipse
 
@@ -225,7 +229,7 @@ def Geometric2Conic(ellipse):
     # Ellipse tuple has form ( ( x0, y0), (bb, aa), phi_b_deg) )
     # Where aa and bb are the major and minor axes, and phi_b_deg
     # is the CW x to minor axis rotation in degrees
-    (x0,y0), (bb,aa), phi_b_deg = ellipse
+    (x0,y0), (bb, aa), phi_b_deg = ellipse
     
     # Semimajor and semiminor axes
     a, b = aa/2, bb/2
@@ -235,12 +239,13 @@ def Geometric2Conic(ellipse):
     
     # Major axis unit vector
     ax, ay = -np.sin(phi_b_rad), np.cos(phi_b_rad)
-    
+
     # Useful intermediates
     tiny = np.finfo(float).tiny
     a2 = a*a + tiny
     b2 = b*b + tiny
     
+    # Conic parameters    
     A = ax*ax / a2 + ay*ay / b2;
     B = 2*ax*ay / a2 - 2*ax*ay / b2;
     C = ay*ay / a2 + ax*ax / b2;
@@ -249,8 +254,8 @@ def Geometric2Conic(ellipse):
     F = (2*ax*ay*x0*y0 + ax*ax*x0*x0 + ay*ay*y0*y0) / a2 + (-2*ax*ay*x0*y0 + ay*ay*x0*x0 + ax*ax*y0*y0) / b2 - 1;
 
     # Compose conic parameter array
-    conic = np.array((A,B,C,D,E,F))
-
+    conic = np.array((A,B,C,D,E,F))      
+ 
     return conic
 
 
@@ -281,8 +286,8 @@ def Conic2Geometric(conic):
     # Minor axis rotation angle in degrees (CW from x axis, origin upper left)
     phi_b_deg =  0.5 * np.arctan(2 * B / dAC) * 180.0 / np.pi
     
-    # Note OpenCV ellipse parameter format
-    return (x0,y0), (b,a), phi_b_deg
+    # Note OpenCV ellipse parameter format (full axes)
+    return (x0,y0), (2*b, 2*a), phi_b_deg
     
 #
 # Conic quadratic curve support functions
@@ -329,6 +334,14 @@ def ConicFunctions(pnts, ellipse):
     normgrad = grad / absgrad
     
     return distance, grad, absgrad, normgrad
+
+def EllipseArea(ellipse):
+    
+    # Unpack ellipse tuple
+    (x0,y0), (b,a), phi_b_deg = ellipse
+
+    # Ellipse area
+    return np.pi * a * b
 
 #
 # Graphics functions

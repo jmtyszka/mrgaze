@@ -27,6 +27,7 @@
 #
 # Copyright 2014 California Institute of Technology.
 
+import os
 import sys
 import time
 import cv2
@@ -38,12 +39,13 @@ def VideoPupilometry(v_file, rot = 0):
     
     # Output flags
     do_graphic = True
-    verbose    = True    
+    verbose    = False    
     
     # Resampling scalefactor
     sf = 4;
     
-    # Input video
+    #%% Input video
+    
     print('Opening input video stream')
     try:
         vin_stream = cv2.VideoCapture(v_file)
@@ -54,12 +56,8 @@ def VideoPupilometry(v_file, rot = 0):
         sys.exit(1)
     
     fps = vin_stream.get(cv2.cv.CV_CAP_PROP_FPS)
-
-    # Output video properties (where different from input)
-    fourcc = cv2.cv.CV_FOURCC('m','p','4','v')
     
-    if verbose:
-        print('Input video FPS     : %0.1f' % fps)
+    if verbose: print('Input video FPS     : %0.1f' % fps)
     
     # Set up LBP cascade classifier
     cascade = cv2.CascadeClassifier('Cascade/cascade.xml')
@@ -73,18 +71,21 @@ def VideoPupilometry(v_file, rot = 0):
     # Read first interlaced frame from stream
     keep_going, frame = vin_stream.read()
      
-    # Apply rotation (if any)
+    # Apply rotation and get new size
     frame_rot = RotateFrame(frame, rot)
-
-    # Find rotated frame size
     nx, ny = frame_rot.shape[1], frame_rot.shape[0]
     
-    # Downsample by 4
+    #%% Output video
+    
+    # Downsample original NTSC video by 4 in both axes
     nxd, nyd = int(nx / sf), int(ny / sf)
     
-    print('Output video size   : %d x %d' % (nxd, nyd))
+    if verbose: print('Output video size   : %d x %d' % (nxd, nyd))    
     
-    # Output video
+    # Output video codec (MP4V - poor quality compression)
+    # TODO : Find a better multiplatform codec
+    fourcc = cv2.cv.CV_FOURCC('m','p','4','v')
+    
     try:
         vout_stream = cv2.VideoWriter('tracking.mov', fourcc, 30, (nxd, nyd), True)
     except:
@@ -93,10 +94,24 @@ def VideoPupilometry(v_file, rot = 0):
         
     if not vout_stream.isOpened():
         print('Output video not opened')
-        raise    
+        raise 
+        
+    #%% Output pupilometry data
+    
+    # Modify video file name to get pupilometry text file
+    fstub, fext = os.path.splitext(v_file)
+    pout_name   = fstub + '_pupils.txt'
+    
+    # Open pupilometry text file to write
+    try:
+        pout_stream = open(pout_name, 'w')
+    except:
+        print('Problem opening pupilometry file : %s' % pout_name)
+        return False
 
     while keep_going:
         
+        # Convert current frame to single channel gray
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
         
         # Rotate frame
@@ -106,14 +121,14 @@ def VideoPupilometry(v_file, rot = 0):
         frd = cv2.resize(frame, (nxd, nyd))
         
         # Find pupils in frame
-        pupils = cascade.detectMultiScale(frd, minNeighbors = 32)
+        pupils = cascade.detectMultiScale(frd, minNeighbors = 40)
         
         # Count detected pupil candidates
         n_pupils = len(pupils)
 
         # TODO : adaptively adjust minNeighbors to return one pupil
         
-        if n_pupils == 1:
+        if n_pupils > 0:
             
             # Take first detected pupil ROI
             x, y, w, h = pupils[0,:]
@@ -128,6 +143,9 @@ def VideoPupilometry(v_file, rot = 0):
             # Add ROI offset
             el = (el_roi[0][0]+x0, el_roi[0][1]+y0), el_roi[1], el_roi[2]
             
+            # Write data line to pupils file
+            WritePupilometry(pout_stream, frame_count, el)
+            
             # Display fitted pupil
             if do_graphic:
 
@@ -140,15 +158,13 @@ def VideoPupilometry(v_file, rot = 0):
                 # Overlay fitted ellipse on frame
                 cv2.ellipse(frd_rgb, el, (128,255,255), 1)
                 
-            if do_graphic:
                 cv2.imshow('frameWindow', frd_rgb)
                 if cv2.waitKey(1) > 0:
                     break
             
         else:
             
-            if verbose:
-                print('Blink at %d' % frame_count)
+            if verbose: print('*** Blink *** : %d' % frame_count)
         
         # Write output video frame
         vout_stream.write(frd)
@@ -169,6 +185,10 @@ def VideoPupilometry(v_file, rot = 0):
     cv2.destroyAllWindows()
     vin_stream.release()
     vout_stream.release()
+    pout_stream.close()
+
+    # Clean exit
+    return True
 
 #   
 # Find and fit pupil boundary ala Swirski
@@ -256,4 +276,17 @@ def RotateFrame(img, rot):
         pass
         
     return img
+
+#
+# Write pupilometry data line to file
+#
+def WritePupilometry(pupil_out, t, ellipse):
     
+    # Unpack ellipse tuple
+    (x0, y0), (bb, aa), phi_b_deg = ellipse
+    
+    # Pupil area
+    area = etf.EllipseArea(ellipse)
+    
+    # Write pupilometry line to file
+    pupil_out.write('%d,%0.1f,%0.1f,%0.1f,%0.1f,%0.1f,%0.1f,\n' % (t, area, x0, y0, bb, aa, phi_b_deg))
