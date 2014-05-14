@@ -9,6 +9,7 @@
 # AUTHOR : Mike Tyszka
 # PLACE  : Caltech
 # DATES  : 2014-05-07 JMT From scratch
+# REFS   : Based on the robust pupil tracker developed in Swirski et al, 2012
 #
 # This file is part of pyET.
 #
@@ -35,22 +36,22 @@ import cv2
 # RANSACE Ellipse Fitting Functions
 #---------------------------------------------
 
-def FitEllipse_RANSAC(pnts, gray):
+def FitEllipse_RANSAC(pnts, roi):
     
-    # Graphic display flag
+    # Output flags
     do_graphic = True
+    verbose    = True
     
     # Maximum normalized error squared for inliers
     max_norm_err_sq = 4.0
     
     # Init best ellipse and support
     best_ellipse = ((0,0),(1,1),0)
-    best_support = -np.inf    
+    best_support = -np.inf
     
     # Create display window and init overlay image
     if do_graphic:
-        cv2.namedWindow('RANSAC', cv2.WINDOW_NORMAL)
-        overlay = cv2.cvtColor(gray/2,cv2.COLOR_GRAY2RGB)
+        cv2.namedWindow('RANSAC', cv2.WINDOW_AUTOSIZE)
     
     # Count pnts (n x 2)
     n_pnts = pnts.shape[0]
@@ -59,86 +60,78 @@ def FitEllipse_RANSAC(pnts, gray):
     if n_pnts < 5:
         return best_ellipse
     
+    # Precalculate roi intensity gradients
+    dIdx = cv2.Sobel(roi, cv2.CV_32F, 1, 0)
+    dIdy = cv2.Sobel(roi, cv2.CV_32F, 0, 1)
+    
     # Ransac iterations
-    for itt in range(0,3):
+    for itt in range(0,10):
         
         # Select 5 points at random
-        pnts_random5 = np.asarray(random.sample(pnts, 5))
+        sample_pnts = np.asarray(random.sample(pnts, 5))
 
         # Fit ellipse to points        
-        ellipse = cv2.fitEllipse(pnts_random5)
+        ellipse = cv2.fitEllipse(sample_pnts)
+        
+        # Dot product of ellipse and image gradients
+        grad_dot = EllipseImageGradDot(sample_pnts, ellipse, dIdx, dIdy)
+        
+        # Skip this iteration if one or more dot products are <= 0
+        # implying that the ellipse is unlikely to bound the pupil
+        if not all(grad_dot > 0):
+            if verbose: print 'Break Gradient Dot'
+            break
 
-        # Calculate normalized errors for all points
-        norm_err = EllipseNormError(pnts, ellipse)
-        
-        # Identify inliers (normalized error < 2.0)
-        # np.nonzero returns a tuple wrapped array - take first element
-        inliers = np.nonzero(norm_err**2 < max_norm_err_sq)[0]
-        
-        print('Itt %d Init  : Found %d inliers' % (itt, inliers.size))
-        
-        # Extract inlier points
-        pnts_inliers = pnts[inliers]
-        
-        # Fit ellipse to inlier set
-        ellipse_inliers = cv2.fitEllipse(pnts_inliers)
-        
-        # Update overlay image and display
-        if do_graphic:
-            OverlayRANSACFit(overlay, pnts, pnts_inliers, ellipse_inliers)
-            cv2.imshow('RANSAC', overlay)
-            cv2.waitKey(5)
-        
         # Refine inliers iteratively
         for refine in range(0,2):
             
-            # Recalculate normalized errors for the inliers
-            norm_err_inliers = EllipseNormError(pnts_inliers, ellipse_inliers)
+            # Calculate normalized errors for all points
+            norm_err = EllipseNormError(pnts, ellipse)
             
             # Identify inliers
-            inliers = np.nonzero(norm_err_inliers**2 < max_norm_err_sq)[0]
-            
-            print('Itt %d Ref %d : Found %d inliers' % (itt, refine, inliers.size))
+            inliers = np.nonzero(norm_err**2 < max_norm_err_sq)[0]
             
             # Update inliers set
-            pnts_inliers = pnts_inliers[inliers]
+            inlier_pnts = pnts[inliers]            
+            
+            # Protect ellipse fitting from too few points
+            if inliers.size < 5:
+                if verbose: print('Break < 5 Inliers (During Refine)')
+                break
             
             # Fit ellipse to refined inlier set
-            ellipse_inliers = cv2.fitEllipse(pnts_inliers)
+            ellipse = cv2.fitEllipse(inlier_pnts)
 
             # Update overlay image and display
             if do_graphic:
-                OverlayRANSACFit(overlay, pnts, pnts_inliers, ellipse_inliers)
+                overlay = cv2.cvtColor(roi/2,cv2.COLOR_GRAY2RGB)
+                OverlayRANSACFit(overlay, pnts, inlier_pnts, ellipse)
                 cv2.imshow('RANSAC', overlay)
                 cv2.waitKey(5)
 
-        # Calculate support for the refined inliers
-        support = EllipseSupport(inliers, norm_err_inliers)
-
         # Count inliers (n x 2)
         n_inliers    = inliers.size
-        perc_inliers = (n_inliers * 100.0) / n_pnts 
+        perc_inliers = (n_inliers * 100.0) / n_pnts
+        
+        # Protect support calculation from lack of inliers
+        if n_inliers < 5:
+            if verbose: print('Break < 5 Inliers (After Refine)')
+            break
+        
+        # Calculate support for the refined inliers
+        support = EllipseSupport(inlier_pnts, ellipse, dIdx, dIdy)
         
         # Update best ellipse
         if support > best_support:
             best_support = support
-            best_ellipse = ellipse_inliers
-            best_pnts = pnts_inliers
+            best_ellipse = ellipse
+            
+        # Report on RANSAC progress
+        if verbose: print('RANSAC %d : %0.1f (%0.1f)' % (itt, support, best_support))
 
-        # Report on this iteration
-        print("RANSAC Iteration   : %d" % itt)
-        print("  Support (Best)   : %0.1f %0.1f" % (support, best_support))
-        print("  Inliers          : %d / %d (%0.1f%%)" % (n_inliers, n_pnts, perc_inliers))
-    
-    # RANSAC finished
-    print('RANSAC Complete')    
-    
-    # Final best result
-    if do_graphic:
-        OverlayRANSACFit(overlay, pnts, best_pnts, best_ellipse)
-        cv2.imshow('RANSAC', overlay)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        if perc_inliers > 95.0:
+            if verbose: print('Break Max Perc Inliers')
+            break
     
     return best_ellipse
 
@@ -183,20 +176,39 @@ def EllipseNormError(pnts, ellipse):
     # Error at this point
     err_p1 = EllipseError(p1, ellipse)
     
-    print('Normalizing error : %0.3f' % err_p1)
-    
     # Errors at provided points
     err_pnts = EllipseError(pnts, ellipse)
     
     return err_pnts / err_p1
 
 
-def EllipseSupport(inliers, norm_err_inliers):
+def EllipseSupport(pnts, ellipse, dIdx, dIdy):
     
-    # Reciprocal RMS error of inlier points
-    support = 1.0 / np.sqrt(np.mean(norm_err_inliers[inliers]**2))
+    if pnts.size < 5:
+        return -np.inf
     
-    return support
+    # Return sum of (grad Q . grad image) over point set
+    return EllipseImageGradDot(pnts, ellipse, dIdx, dIdy).sum()
+
+
+def EllipseImageGradDot(pnts, ellipse, dIdx, dIdy):
+    
+    # Calculate normalized grad Q at inlier pnts
+    distance, grad, absgrad, normgrad = ConicFunctions(pnts, ellipse)
+    
+    # Extract vectors of x and y values
+    x, y = pnts[:,0], pnts[:,1]
+    
+    # Extract image gradient at inlier points
+    dIdx_pnts = dIdx[y,x]
+    dIdy_pnts = dIdy[y,x]
+    
+    # Construct intensity gradient array (2 x N)
+    gradI = np.array( (dIdx_pnts, dIdy_pnts) )
+    
+    # Calculate the sum of the column-wise dot product of normgrad and gradI
+    # http://stackoverflow.com/questions/6229519/numpy-column-wise-dot-product
+    return np.einsum('ij,ij->j', normgrad, gradI)
     
     
 #---------------------------------------------
@@ -225,8 +237,9 @@ def Geometric2Conic(ellipse):
     ax, ay = -np.sin(phi_b_rad), np.cos(phi_b_rad)
     
     # Useful intermediates
-    a2 = a*a
-    b2 = b*b
+    tiny = np.finfo(float).tiny
+    a2 = a*a + tiny
+    b2 = b*b + tiny
     
     A = ax*ax / a2 + ay*ay / b2;
     B = 2*ax*ay / a2 - 2*ax*ay / b2;

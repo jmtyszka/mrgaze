@@ -28,12 +28,20 @@
 # Copyright 2014 California Institute of Technology.
 
 import sys
+import time
 import cv2
 import numpy as np
 from skimage import exposure
 import pyET_FitEllipse as etf
     
 def VideoPupilometry(v_file, rot = 0):
+    
+    # Output flags
+    do_graphic = True
+    verbose    = True    
+    
+    # Resampling scalefactor
+    sf = 4;
     
     # Input video
     print('Opening input video stream')
@@ -50,7 +58,8 @@ def VideoPupilometry(v_file, rot = 0):
     # Output video properties (where different from input)
     fourcc = cv2.cv.CV_FOURCC('m','p','4','v')
     
-    print('Input video FPS     : %0.1f' % fps)
+    if verbose:
+        print('Input video FPS     : %0.1f' % fps)
     
     # Set up LBP cascade classifier
     cascade = cv2.CascadeClassifier('Cascade/cascade.xml')
@@ -58,23 +67,24 @@ def VideoPupilometry(v_file, rot = 0):
     # Init frame count
     frame_count = 0
     
+    # Init timer (for processing FPS)
+    t0 = time.time()
+    
     # Read first interlaced frame from stream
     keep_going, frame = vin_stream.read()
-    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
-    
+     
     # Apply rotation (if any)
-    frame = RotateFrame(frame, rot)
+    frame_rot = RotateFrame(frame, rot)
 
     # Find rotated frame size
-    nx, ny = frame.shape[1], frame.shape[0]
+    nx, ny = frame_rot.shape[1], frame_rot.shape[0]
     
     # Downsample by 4
-    nxd, nyd = int(nx/4), int(ny/4)
+    nxd, nyd = int(nx / sf), int(ny / sf)
     
     print('Output video size   : %d x %d' % (nxd, nyd))
     
     # Output video
-    print('Opening output video stream')
     try:
         vout_stream = cv2.VideoWriter('tracking.mov', fourcc, 30, (nxd, nyd), True)
     except:
@@ -87,53 +97,75 @@ def VideoPupilometry(v_file, rot = 0):
 
     while keep_going:
         
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+        
         # Rotate frame
         frame = RotateFrame(frame, rot)
         
         # Downsample frame
-        frd = cv2.resize(frame, (nxd,nyd))
+        frd = cv2.resize(frame, (nxd, nyd))
         
         # Find pupils in frame
-        rects = cascade.detectMultiScale(frd, minNeighbors = 32)
+        pupils = cascade.detectMultiScale(frd, minNeighbors = 32)
         
-        if len(rects) > 0:
+        # Count detected pupil candidates
+        n_pupils = len(pupils)
+
+        # TODO : adaptively adjust minNeighbors to return one pupil
+        
+        if n_pupils == 1:
             
             # Take first detected pupil ROI
-            # TODO : adaptively adjust minNeighbors to return one pupil
-            x, y, w, h = rects[0,:]
+            x, y, w, h = pupils[0,:]
             x0, x1, y0, y1 = x, x+w, y, y+h
-        
-            # Overlay ROI bounds on frame
-            cv2.rectangle(frd, (x0, y0), (x1, y1), (0,255,0), 1)
             
-            # Extract pupil ROI (note row,col indexing)
-            # roi = frd[y0:y1,x0:x1]
+            # Extract pupil ROI (note row,col indexing of image array)
+            roi = frd[y0:y1,x0:x1]
             
             # Run pupil fitting within ROI
-            # center, axes, angle, thresh = FitPupil(roi)
+            el_roi, thresh = FitPupil(roi)
+            
+            # Add ROI offset
+            el = (el_roi[0][0]+x0, el_roi[0][1]+y0), el_roi[1], el_roi[2]
+            
+            # Display fitted pupil
+            if do_graphic:
+
+                # RGB version of downsampled frame
+                frd_rgb = cv2.cvtColor(frd, cv2.COLOR_GRAY2RGB)
+
+                # Overlay ROI bounds on downsampled frame
+                cv2.rectangle(frd_rgb, (x0, y0), (x1, y1), (0,255,0), 1)
+                    
+                # Overlay fitted ellipse on frame
+                cv2.ellipse(frd_rgb, el, (128,255,255), 1)
+                
+            if do_graphic:
+                cv2.imshow('frameWindow', frd_rgb)
+                if cv2.waitKey(1) > 0:
+                    break
             
         else:
             
-            print('Blink at %d' % frame_count)
-
-        cv2.imshow('frameWindow', frd)
-        key = cv2.waitKey(5)
+            if verbose:
+                print('Blink at %d' % frame_count)
         
         # Write output video frame
         vout_stream.write(frd)
-        
-        # Break on keypress
-        if key > 0:
-            break
-        
+
         # Read next frame
         keep_going, frame = vin_stream.read()
         
         # Increment frame counter
         frame_count = frame_count + 1
+        
+        # Report processing FPS
+        if verbose:
+            pfps = frame_count / (time.time() - t0)  
+            print('Processing FPS : %0.1f' % pfps)
     
     # Clean up
-    print('Cleaning up')
+    if verbose: print('Cleaning up')
     cv2.destroyAllWindows()
     vin_stream.release()
     vout_stream.release()
@@ -145,8 +177,8 @@ def FitPupil(roi, thresh = -1):
 
     # Intensity rescale to emphasize pupil
     # - assumes pupil is one of the darkest regions
-    # - assumes pupil area is < 15% of frame
-    pA, pB = np.percentile(roi, (1, 15))
+    # - assumes pupil area is < 50% of frame
+    pA, pB = np.percentile(roi, (1, 50))
     roi = exposure.rescale_intensity(roi, in_range  = (pA, pB))
     
     # Segment pupil in grayscale image and update threshold
@@ -166,28 +198,29 @@ def FitPupil(roi, thresh = -1):
     pnts[:,[0,1]] = pnts[:,[1,0]]
     
     # RANSAC ellipse fitting to edge points
-    center, axes, angle = etf.FitEllipse_RANSAC(pnts, roi)
+    ellipse = etf.FitEllipse_RANSAC(pnts, roi)
     
-    return center, axes, angle, thresh
+    return ellipse, thresh
 
-def SegmentPupil(gray, thresh = -1):
+
+def SegmentPupil(roi, thresh = -1):
         
     # Follow up with Ostu thresholding
-    thresh, pupil_bw = cv2.threshold(gray, 128, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
+    thresh, pupil_bw = cv2.threshold(roi, 128, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
 
     return pupil_bw, thresh
         
 #
 # Overlay fitted pupil ellipse on original frame
 #    
-def DisplayPupilEllipse(frame, center, axes, angle):
+def DisplayPupilEllipse(frame, ellipse):
 
     # Ellipse color and line thickness
-    color = (255,255,255)
+    color = (0,255,0)
     thickness = 1    
     
     # Overlay ellipse
-    cv2.ellipse(frame, center, axes, angle, 0, 360, color, thickness)
+    cv2.ellipse(frame, ellipse, color, thickness)
     
     # Display frame
     cv2.imshow('frameWindow', frame)
