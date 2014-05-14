@@ -28,6 +28,7 @@
 
 import numpy as np
 import cv2
+import ConfigParser as cfg
 
 def LoadImage(image_file, border = 0):
 
@@ -77,3 +78,12 @@ def TrimBorder(frame, border = 0):
     else:
         
         return frame
+
+#
+# Load setup file for complete ET pipeline
+#
+def LoadSetup(config_file):
+    
+    config = ConfigParser
+    
+    # Check for

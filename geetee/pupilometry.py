@@ -46,7 +46,7 @@ def VideoPupilometry(v_file, rot = 0):
     
     #%% Input video
     
-    print('Opening input video stream')
+    if verbose: print('Opening input video stream')
     try:
         vin_stream = cv2.VideoCapture(v_file)
     except:
@@ -167,7 +167,7 @@ def VideoPupilometry(v_file, rot = 0):
             if verbose: print('*** Blink *** : %d' % frame_count)
         
         # Write output video frame
-        vout_stream.write(frd)
+        vout_stream.write(frd_rgb)
 
         # Read next frame
         keep_going, frame = vin_stream.read()

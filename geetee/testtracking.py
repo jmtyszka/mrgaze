@@ -26,29 +26,22 @@
 #
 # Copyright 2014 California Institute of Technology.
 
-import sys
-import pyET_Pupilometry as etp
-import pyET_MediaIO as etm
+import pyET_Pupilometry as p
 
 def main():
     
-    # Test frame image passed as command line arg
-    if len(sys.argv) > 1:
-        test_frame_image = sys.argv[1]
-    else:
-        # test_frame_image = 'RealPupil.png'
-        test_frame_image = 'IdealPupil.png'
+    # JARON
+    v_file = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron/02txw/02txw_cal2_choice1_Cal.mov'   
+    # v_file = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron/02txw/02txw_cal2_choice1_Gaze.mov' 
+    # v_file = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron/13axg/13axg_cal4_choice5_Cal.mov'
+    # v_file = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron/03axs/03axs_cal1_choice1_Cal.mov'
 
-    # Load single frame
-    frame = etm.LoadImage(test_frame_image, 16)
-        
-    # Run pupilometry on single test frame
-    center, axes, angle, thresh = etp.FitPupil(frame)
+    # LAURA
+    # v_file = '/Volumes/Data/laura/ET_Sandbox/RA0077_Gaze3/RA0077_Gaze3_JedRecorded_Cal.mpg'
+    # v_file = '/Volumes/Data/laura/ET_Sandbox/RA0546_Gaze1/RA0546_Gaze1_JedLive_Cal.mpg'
     
-    # Display fitted pupil ellipse over original image
-    # et.DisplayPupilEllipse(frame, center, axes, angle)
-    
-    
+    p.VideoPupilometry(v_file, rot = 0)
+
 # This is the standard boilerplate that calls the main() function.
 if __name__ == '__main__':
     main()

@@ -28,36 +28,46 @@
 # Copyright 2014 California Institute of Technology.
 
 import sys
-import os
-import string
-import numpy as np
-import scipy as sp
-import cv2
 
-import pyET_Pupilometry as et
+import pyET_Pupilometry as p
 
 def main():
     
-    # Get calibration and gaze video filenames from command line
-    if len(sys.argv) >= 3:
-        cal_video = sys.argv[1]
-        gaze_video = sys.argv[2]
+    # Get data directory
+    if len(sys.argv) > 0:
+        data_dir = sys.argv[1]
     else:
-        print('USAGE : pyET.py <Calibration Video> <Gaze Video>')
-        sys.exit(1)
+        data_dir = os.path
     
-    print('  Calibration video : ' + cal_video)
-    print('  Gaze video        : ' + gaze_video)
-
-    # Analyze calibration video
-    et.RunPupilometry(cal_video)
-
-    # Analyze gaze video
-    et.RunPupilometry(gaze_video)
-
-    # Clean up and exit
-    sys.exit(0)   
+    # Load configuration from file
+    # If no config file exists or there's a problem with the existing file
+    # it'll be overwritten
+    config = LoadConfig(cfg_file)
     
+    # Create output directory tree
+    
+    # Start gaze estimation workflow
+    for subject in config.subjectList:
+        
+        # Calibration and gaze video filenames
+        cal_video = os.path.join(config.dataDir,subject + '_Cal' + 
+
+        # Calibration pupilometry
+        ok = p.RunPupilometry(cal_video)
+        if not ok: break
+
+        # Gaze pupilometry
+        # et.RunPupilometry(gaze_video)
+
+        # Autocalibration
+
+        # Apply calibration to calibration and gaze videos
+
+        # Create report
+
+    # Clean exit
+    
+    sys.exit(0) 
     
 # This is the standard boilerplate that calls the main() function.
 if __name__ == '__main__':

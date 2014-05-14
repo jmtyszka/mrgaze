@@ -134,9 +134,6 @@ def FitEllipse_RANSAC(pnts, roi):
             if verbose: print('Break Max Perc Inliers')
             break
     
-    if EllipseArea(best_ellipse) < 100:
-        print('Tiny ellipse')
-    
     return best_ellipse
 
 
@@ -241,6 +238,9 @@ def Geometric2Conic(ellipse):
     ax, ay = -np.sin(phi_b_rad), np.cos(phi_b_rad)
 
     # Useful intermediates
+
+    
+
     tiny = np.finfo(float).tiny
     a2 = a*a + tiny
     b2 = b*b + tiny
