@@ -335,14 +335,6 @@ def ConicFunctions(pnts, ellipse):
     
     return distance, grad, absgrad, normgrad
 
-def EllipseArea(ellipse):
-    
-    # Unpack ellipse tuple
-    (x0,y0), (b,a), phi_b_deg = ellipse
-
-    # Ellipse area
-    return np.pi * a * b
-
 #
 # Graphics functions
 #

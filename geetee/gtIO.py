@@ -26,9 +26,10 @@
 #
 # Copyright 2014 California Institute of Technology.
 
-import numpy as np
+import os
 import cv2
-import ConfigParser as cfg
+import numpy as np
+import ConfigParser
 
 def LoadImage(image_file, border = 0):
 
@@ -82,8 +83,43 @@ def TrimBorder(frame, border = 0):
 #
 # Load setup file for complete ET pipeline
 #
-def LoadSetup(config_file):
+def LoadConfig(root_dir):
     
-    config = ConfigParser
+    # Config filename
+    cfg_file = os.path.join(root_dir,'geetee.cfg')    
     
-    # Check for
+    # Create a new parser
+    config = ConfigParser.ConfigParser()
+
+    if os.path.isfile(cfg_file):
+        
+        # Load existing config file
+        config.read(cfg_file)
+        
+    else:
+
+        # Write a new default config file
+        config = InitConfig(config)
+        with open(cfg_file,'wb') as cfg_stream:
+            config.write(cfg_stream)
+            cfg_stream.close()
+       
+    return config
+   
+
+def InitConfig(config):
+    
+    # Add video defaults
+    config.add_section('VIDEO')
+    config.set('VIDEO','InputExtension','.mov')
+    config.set('VIDEO','OutputExtension','.mov')
+    
+    config.add_section('RANSAC')
+    config.set('RANSAC','MaxIterations','5')
+    config.set('RANSAC','MaxRefinements','3')
+    config.set('RANSAC','MaxInlierPerc','95')
+    
+    config.add_section('LBP')
+    config.set('LBP','Strictness','40')
+    
+    return config

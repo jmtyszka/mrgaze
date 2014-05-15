@@ -27,26 +27,44 @@
 # Copyright 2014 California Institute of Technology.
 
 import sys
-import pyET_Pupilometry as p
-import pyET_IO as io
+import cv2
+import gtIO
+import gtPupilometry as p
 
 def main():
     
     # Test frame image passed as command line arg
     if len(sys.argv) > 1:
-        test_frame_image = sys.argv[1]
+        test_img = sys.argv[1]
     else:
         # test_frame_image = 'RealPupil.png'
-        test_frame_image = 'IdealPupil.png'
+        test_img = '../Data/BiasedPupil.png'
+
+    # Resampling scalefactor
+    sf = 4;
+    
+    # Set up LBP cascade classifier
+    cascade = cv2.CascadeClassifier('Cascade/cascade.xml')
+    
+    if cascade.empty():
+        print('LBP cascade is empty - check Cascade directory exists')
+        sys.exit(1)
 
     # Load single frame
-    frame = io.LoadImage(test_frame_image, 16)
+    frame = gtIO.LoadImage(test_img)
+    
+    # Downsample original NTSC video by 4 in both axes
+    nx, ny = frame.shape[1], frame.shape[0]
+    nxd, nyd = int(nx / sf), int(ny / sf)
+
+    # Downsample frame
+    frd = cv2.resize(frame, (nxd, nyd))
         
-    # Run pupilometry on single test frame
-    center, axes, angle, thresh = p.FitPupil(frame)
+    # Call pupilometry engine
+    el, roi_rect, blink = p.PupilometryEngine(frd, cascade)
     
     # Display fitted pupil ellipse over original image
-    # et.DisplayPupilEllipse(frame, center, axes, angle)
+    p.DisplayPupilEllipse(frd, el)
     
     
 # This is the standard boilerplate that calls the main() function.

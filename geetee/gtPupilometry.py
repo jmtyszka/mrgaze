@@ -33,7 +33,7 @@ import time
 import cv2
 import numpy as np
 from skimage import exposure
-import pyET_FitEllipse as etf
+import gtFitEllipse as fe
     
 def VideoPupilometry(v_file, rot = 0):
     
@@ -43,6 +43,13 @@ def VideoPupilometry(v_file, rot = 0):
     
     # Resampling scalefactor
     sf = 4;
+    
+    #%% Set up LBP cascade classifier
+    cascade = cv2.CascadeClassifier('Cascade/cascade.xml')
+    
+    if cascade.empty():
+        print('LBP cascade is empty - check Cascade directory exists')
+        sys.exit(1)
     
     #%% Input video
     
@@ -55,18 +62,8 @@ def VideoPupilometry(v_file, rot = 0):
     if not vin_stream.isOpened():
         sys.exit(1)
     
+    # Get FPS from video file
     fps = vin_stream.get(cv2.cv.CV_CAP_PROP_FPS)
-    
-    if verbose: print('Input video FPS     : %0.1f' % fps)
-    
-    # Set up LBP cascade classifier
-    cascade = cv2.CascadeClassifier('Cascade/cascade.xml')
-
-    # Init frame count
-    frame_count = 0
-    
-    # Init timer (for processing FPS)
-    t0 = time.time()
     
     # Read first interlaced frame from stream
     keep_going, frame = vin_stream.read()
@@ -74,11 +71,11 @@ def VideoPupilometry(v_file, rot = 0):
     # Apply rotation and get new size
     frame_rot = RotateFrame(frame, rot)
     nx, ny = frame_rot.shape[1], frame_rot.shape[0]
-    
-    #%% Output video
-    
+        
     # Downsample original NTSC video by 4 in both axes
     nxd, nyd = int(nx / sf), int(ny / sf)
+    
+    #%% Output video
     
     if verbose: print('Output video size   : %d x %d' % (nxd, nyd))    
     
@@ -109,7 +106,18 @@ def VideoPupilometry(v_file, rot = 0):
         print('Problem opening pupilometry file : %s' % pout_name)
         return False
 
+    #%% Main Video Frame Loop
+
+    # Init frame counter
+    fc = 0
+    
+    # Init processing timer
+    t0 = time.time()
+
     while keep_going:
+        
+        # Current video time in seconds
+        t = fc / fps
         
         # Convert current frame to single channel gray
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
@@ -120,64 +128,40 @@ def VideoPupilometry(v_file, rot = 0):
         # Downsample frame
         frd = cv2.resize(frame, (nxd, nyd))
         
-        # Find pupils in frame
-        pupils = cascade.detectMultiScale(frd, minNeighbors = 40)
+        # RGB version of downsampled frame for output video
+        frd_rgb = cv2.cvtColor(frd, cv2.COLOR_GRAY2RGB)
         
-        # Count detected pupil candidates
-        n_pupils = len(pupils)
-
-        # TODO : adaptively adjust minNeighbors to return one pupil
-        
-        if n_pupils > 0:
-            
-            # Take first detected pupil ROI
-            x, y, w, h = pupils[0,:]
-            x0, x1, y0, y1 = x, x+w, y, y+h
-            
-            # Extract pupil ROI (note row,col indexing of image array)
-            roi = frd[y0:y1,x0:x1]
-            
-            # Run pupil fitting within ROI
-            el_roi, thresh = FitPupil(roi)
-            
-            # Add ROI offset
-            el = (el_roi[0][0]+x0, el_roi[0][1]+y0), el_roi[1], el_roi[2]
-            
-            # Write data line to pupils file
-            WritePupilometry(pout_stream, frame_count, el)
-            
-            # Display fitted pupil
-            if do_graphic:
-
-                # RGB version of downsampled frame
-                frd_rgb = cv2.cvtColor(frd, cv2.COLOR_GRAY2RGB)
-
-                # Overlay ROI bounds on downsampled frame
-                cv2.rectangle(frd_rgb, (x0, y0), (x1, y1), (0,255,0), 1)
-                    
-                # Overlay fitted ellipse on frame
-                cv2.ellipse(frd_rgb, el, (128,255,255), 1)
+        # -------------------------------------
+        # Pass this frame to pupilometry engine
+        # -------------------------------------
+        ellipse, roi_rect, blink = PupilometryEngine(frd, cascade)
                 
-                cv2.imshow('frameWindow', frd_rgb)
-                if cv2.waitKey(1) > 0:
-                    break
+        # Write data line to pupils file
+        WritePupilometry(pout_stream, t, ellipse, blink)
             
-        else:
-            
-            if verbose: print('*** Blink *** : %d' % frame_count)
+        if do_graphic:
+
+            # Overlay ROI and pupil ellipse on RGB frame
+            p1, p2 = roi_rect                      
+            cv2.rectangle(frd_rgb, p1, p2, (0,255,0), 1)
+            cv2.ellipse(frd_rgb, ellipse, (128,255,255), 1)
+            cv2.imshow('frameWindow', frd_rgb)
+
+            if cv2.waitKey(1) > 0:
+                break
         
         # Write output video frame
         vout_stream.write(frd_rgb)
 
-        # Read next frame
+        # Read next frame (if available)
         keep_going, frame = vin_stream.read()
         
         # Increment frame counter
-        frame_count = frame_count + 1
+        fc = fc + 1
         
         # Report processing FPS
         if verbose:
-            pfps = frame_count / (time.time() - t0)  
+            pfps = fc / (time.time() - t0)  
             print('Processing FPS : %0.1f' % pfps)
     
     # Clean up
@@ -190,10 +174,51 @@ def VideoPupilometry(v_file, rot = 0):
     # Clean exit
     return True
 
+#
+# Pupil find and fit engine
+#
+def PupilometryEngine(img, cascade):
+    
+    # Find pupils in frame
+    pupils = cascade.detectMultiScale(img, minNeighbors = 40)
+        
+    # Count detected pupil candidates
+    n_pupils = len(pupils)
+
+    # TODO : adaptively adjust minNeighbors to return one pupil
+        
+    if n_pupils > 0:
+        
+        # Unset blink flag
+        blink = False
+            
+        # Take first detected pupil ROI
+        x, y, w, h = pupils[0,:]
+        x0, x1, y0, y1 = x, x+w, y, y+h
+        roi_rect = (x0,y0),(x1,y1)
+            
+        # Extract pupil ROI (note row,col indexing of image array)
+        roi = img[y0:y1,x0:x1]
+            
+        # Run pupil fitting within ROI
+        el_roi, thresh = FitPupil(roi)
+            
+        # Add ROI offset
+        el = (el_roi[0][0]+x0, el_roi[0][1]+y0), el_roi[1], el_roi[2]
+            
+    else:
+            
+        # Set blink flag
+        blink = True            
+
+    return el, roi_rect, blink            
+
 #   
 # Find and fit pupil boundary ala Swirski
 #
 def FitPupil(roi, thresh = -1):
+    
+    DEBUG = True
 
     # Intensity rescale to emphasize pupil
     # - assumes pupil is one of the darkest regions
@@ -201,8 +226,8 @@ def FitPupil(roi, thresh = -1):
     pA, pB = np.percentile(roi, (1, 50))
     roi = exposure.rescale_intensity(roi, in_range  = (pA, pB))
     
-    # Segment pupil in grayscale image and update threshold
-    roi_bw, thresh = SegmentPupil(roi, thresh)
+    # Segment pupil in contrast stretched roi and update threshold
+    thresh, roi_bw = cv2.threshold(roi, 128, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
     
     # Remove small features
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5,5))
@@ -218,17 +243,18 @@ def FitPupil(roi, thresh = -1):
     pnts[:,[0,1]] = pnts[:,[1,0]]
     
     # RANSAC ellipse fitting to edge points
-    ellipse = etf.FitEllipse_RANSAC(pnts, roi)
+    ellipse = fe.FitEllipse_RANSAC(pnts, roi)
+    
+    if DEBUG:
+        
+        # Horizontal concatenate images
+        montage = np.hstack((roi, roi_bw, roi_edges))
+        cv2.imshow('ROI', montage)
+        if cv2.waitKey(5) > 0:
+            sys.exit(0)        
     
     return ellipse, thresh
 
-
-def SegmentPupil(roi, thresh = -1):
-        
-    # Follow up with Ostu thresholding
-    thresh, pupil_bw = cv2.threshold(roi, 128, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
-
-    return pupil_bw, thresh
         
 #
 # Overlay fitted pupil ellipse on original frame
@@ -237,13 +263,16 @@ def DisplayPupilEllipse(frame, ellipse):
 
     # Ellipse color and line thickness
     color = (0,255,0)
-    thickness = 1    
+    thickness = 1
+    
+    # Convert frame to RGB color
+    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
     
     # Overlay ellipse
-    cv2.ellipse(frame, ellipse, color, thickness)
+    cv2.ellipse(frame_rgb, ellipse, color, thickness)
     
     # Display frame
-    cv2.imshow('frameWindow', frame)
+    cv2.imshow('PupilFit', frame_rgb)
     
     # Wait for key press
     cv2.waitKey()
@@ -280,13 +309,24 @@ def RotateFrame(img, rot):
 #
 # Write pupilometry data line to file
 #
-def WritePupilometry(pupil_out, t, ellipse):
+def WritePupilometry(pupil_out, t, ellipse, blink):
     
     # Unpack ellipse tuple
     (x0, y0), (bb, aa), phi_b_deg = ellipse
     
-    # Pupil area
-    area = etf.EllipseArea(ellipse)
+    # Pupil area corrected for viewing angle
+    area = PupilArea(ellipse)
     
     # Write pupilometry line to file
-    pupil_out.write('%d,%0.1f,%0.1f,%0.1f,%0.1f,%0.1f,%0.1f,\n' % (t, area, x0, y0, bb, aa, phi_b_deg))
+    pupil_out.write('%0.3f,%0.1f,%0.1f,%0.1f,%d,\n' % (t, area, x0, y0, blink))
+    
+#
+# Pupil area corrected for viewing angle
+#
+def PupilArea(ellipse):
+    
+    # Unpack ellipse tuple
+    (x0,y0), (b,a), phi_b_deg = ellipse
+
+    # Ellipse area assuming semi major axis is actual pupil radius
+    return np.pi * a**2

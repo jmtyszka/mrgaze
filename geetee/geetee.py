@@ -27,46 +27,51 @@
 #
 # Copyright 2014 California Institute of Technology.
 
+import os
 import sys
-
-import pyET_Pupilometry as p
+import gtPupilometry as p
+import gtIO
 
 def main():
     
     # Get data directory
-    if len(sys.argv) > 0:
-        data_dir = sys.argv[1]
+    if len(sys.argv) > 1:
+        root_dir = sys.argv[1]
     else:
-        data_dir = os.path
+        # data_dir = os.getcwd()
+        root_dir = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron'
     
     # Load configuration from file
-    # If no config file exists or there's a problem with the existing file
-    # it'll be overwritten
-    config = LoadConfig(cfg_file)
+    # If no config file exists, write a default one
+    print ('Loading configuration from geetee.cfg')
+    config = gtIO.LoadConfig(root_dir)
     
-    # Create output directory tree
-    
-    # Start gaze estimation workflow
-    for subject in config.subjectList:
+    videos_root = os.path.join(root_dir,'videos')
+    results_root = os.path.join(root_dir,'results')    
         
-        # Calibration and gaze video filenames
-        cal_video = os.path.join(config.dataDir,subject + '_Cal' + 
+    # Loop over all subject subdirectories of the data directory
+    for subj in os.walk(videos_root).next()[1]:
+        
+        video_subj_dir = os.path.join(videos_root, subj)        
+        
+        if os.path.isdir(video_subj_dir):
+            
+            print('')
+            print('Analysing Subject/Session %s' % subj)
+            
+            print('  Calibration Pupilometry')
+            
+            cal_video  = os.path.join(video_subj_dir, 'cal.mov')
+            # print cal_video
+            p.VideoPupilometry(cal_video)
+            
+            print('  Gaze Pupilometry')
 
-        # Calibration pupilometry
-        ok = p.RunPupilometry(cal_video)
-        if not ok: break
-
-        # Gaze pupilometry
-        # et.RunPupilometry(gaze_video)
-
-        # Autocalibration
-
-        # Apply calibration to calibration and gaze videos
-
-        # Create report
+            gaze_video = os.path.join(video_subj_dir, 'gaze.mov')
+            # print gaze_video
+            #p.VideoPupilometry(gaze_video)
 
     # Clean exit
-    
     sys.exit(0) 
     
 # This is the standard boilerplate that calls the main() function.
