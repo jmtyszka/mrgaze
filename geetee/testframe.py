@@ -3,7 +3,7 @@
 # Single frame pyET test
 # - finds pupil
 #
-# USAGE : pyET_TestFrame.py <Test Frame Image>
+# USAGE : testframe.py <Test Frame Image>
 #
 # AUTHOR : Mike Tyszka
 # PLACE  : Caltech

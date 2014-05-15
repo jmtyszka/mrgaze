@@ -31,10 +31,11 @@ import os
 import sys
 import time
 import cv2
+import scipy as sp
 import numpy as np
-from skimage import exposure
 import gtFitEllipse as fe
-    
+from skimage import exposure
+
 def VideoPupilometry(v_file, rot = 0):
     
     # Output flags
@@ -44,15 +45,16 @@ def VideoPupilometry(v_file, rot = 0):
     # Resampling scalefactor
     sf = 4;
     
-    #%% Set up LBP cascade classifier
+    # Set up LBP cascade classifier
     cascade = cv2.CascadeClassifier('Cascade/cascade.xml')
     
     if cascade.empty():
         print('LBP cascade is empty - check Cascade directory exists')
         sys.exit(1)
     
-    #%% Input video
-    
+    #
+    # Input video
+    #
     if verbose: print('Opening input video stream')
     try:
         vin_stream = cv2.VideoCapture(v_file)
@@ -75,8 +77,9 @@ def VideoPupilometry(v_file, rot = 0):
     # Downsample original NTSC video by 4 in both axes
     nxd, nyd = int(nx / sf), int(ny / sf)
     
-    #%% Output video
-    
+    #
+    # Output video
+    #
     if verbose: print('Output video size   : %d x %d' % (nxd, nyd))    
     
     # Output video codec (MP4V - poor quality compression)
@@ -92,12 +95,14 @@ def VideoPupilometry(v_file, rot = 0):
     if not vout_stream.isOpened():
         print('Output video not opened')
         raise 
-        
-    #%% Output pupilometry data
-    
+
+    # 
+    # Output pupilometry data
+    #
+
     # Modify video file name to get pupilometry text file
     fstub, fext = os.path.splitext(v_file)
-    pout_name   = fstub + '_pupils.txt'
+    pout_name   = fstub + '_pupils.csv'
     
     # Open pupilometry text file to write
     try:
@@ -106,7 +111,9 @@ def VideoPupilometry(v_file, rot = 0):
         print('Problem opening pupilometry file : %s' % pout_name)
         return False
 
-    #%% Main Video Frame Loop
+    #
+    # Main Video Frame Loop
+    #
 
     # Init frame counter
     fc = 0
@@ -139,7 +146,7 @@ def VideoPupilometry(v_file, rot = 0):
         # Write data line to pupils file
         WritePupilometry(pout_stream, t, ellipse, blink)
             
-        if do_graphic:
+        if do_graphic and not blink:
 
             # Overlay ROI and pupil ellipse on RGB frame
             p1, p2 = roi_rect                      
@@ -198,10 +205,13 @@ def PupilometryEngine(img, cascade):
         roi_rect = (x0,y0),(x1,y1)
             
         # Extract pupil ROI (note row,col indexing of image array)
-        roi = img[y0:y1,x0:x1]
+        pupil_roi = img[y0:y1,x0:x1]
+        
+        # Segment pupil intelligently
+        pupil_bw = SegmentPupil(pupil_roi)
             
-        # Run pupil fitting within ROI
-        el_roi, thresh = FitPupil(roi)
+        # Fit ellipse to pupil boundary
+        el_roi = FitPupil(pupil_bw, pupil_roi)
             
         # Add ROI offset
         el = (el_roi[0][0]+x0, el_roi[0][1]+y0), el_roi[1], el_roi[2]
@@ -209,34 +219,52 @@ def PupilometryEngine(img, cascade):
     else:
             
         # Set blink flag
-        blink = True            
+        blink = True
+        el = ((np.nan, np.nan), (np.nan, np.nan), np.nan)
+        roi_rect = (np.nan, np.nan), (np.nan, np.nan)
 
     return el, roi_rect, blink            
 
 #   
-# Find and fit pupil boundary ala Swirski
+# Segment pupil region
+# Use relative area and circularity to score candidate regions
 #
-def FitPupil(roi, thresh = -1):
-    
-    DEBUG = True
+def SegmentPupil(roi):
 
     # Intensity rescale to emphasize pupil
     # - assumes pupil is one of the darkest regions
-    # - assumes pupil area is < 50% of frame
-    pA, pB = np.percentile(roi, (1, 50))
+    # - assumes pupil occupies between 5% and 50% of frame area
+    pA, pB = np.percentile(roi, (5, 50))
     roi = exposure.rescale_intensity(roi, in_range  = (pA, pB))
-    
+        
     # Segment pupil in contrast stretched roi and update threshold
-    thresh, roi_bw = cv2.threshold(roi, 128, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
+    thresh, blobs = cv2.threshold(roi, 128, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
+        
+    # Morphological opening (circle 5 pixels diameter)
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(5,5))
+    blobs = cv2.morphologyEx(blobs, cv2.MORPH_OPEN, kernel)
+        
+    # Label connected components - one should be the pupil
+    labels, n_labels = sp.ndimage.label(blobs)
     
-    # Remove small features
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5,5))
-    roi_bw = cv2.morphologyEx(roi_bw, cv2.MORPH_OPEN, kernel)
+    # Measure blob areas
+    areas = sp.ndimage.sum(blobs, labels, range(n_labels+1))
+        
+    # Find maximum area blob
+    pupil_label = np.where(areas == areas.max())[0][0]
     
+    # Extract blob with largest area
+    pupil_bw = np.uint8(labels == pupil_label)
+        
+    return pupil_bw
+
+
+def FitPupil(bw, roi):
+     
     # Identify edge pixels using Canny filter
-    roi_edges = cv2.Canny(roi_bw, 0, 1)
+    roi_edges = cv2.Canny(bw, 0, 1)
     
-    # Find all nonzero point coordinates
+    # Find all edge point coordinates
     pnts = np.transpose(np.nonzero(roi_edges))
     
     # Swap columns - pnts are (row, col) and need to be (x,y)
@@ -245,15 +273,7 @@ def FitPupil(roi, thresh = -1):
     # RANSAC ellipse fitting to edge points
     ellipse = fe.FitEllipse_RANSAC(pnts, roi)
     
-    if DEBUG:
-        
-        # Horizontal concatenate images
-        montage = np.hstack((roi, roi_bw, roi_edges))
-        cv2.imshow('ROI', montage)
-        if cv2.waitKey(5) > 0:
-            sys.exit(0)        
-    
-    return ellipse, thresh
+    return ellipse
 
         
 #

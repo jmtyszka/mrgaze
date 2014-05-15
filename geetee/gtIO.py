@@ -123,3 +123,10 @@ def InitConfig(config):
     config.set('LBP','Strictness','40')
     
     return config
+    
+#
+# Pupilometry CSV IO
+#
+def ReadPupilometry(pupils_csv):
+    
+    return np.genfromtxt(pupils_csv, delimiter = ',', unpack = True)

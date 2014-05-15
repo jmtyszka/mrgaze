@@ -42,6 +42,16 @@ def FitEllipse_RANSAC(pnts, roi):
     do_graphic = False
     verbose    = False
     
+    #
+    # RANSAC parameters
+    #
+    
+    # Maximum number of main iterations (random samples of 5 points)
+    max_itts = 5
+    
+    # Maximum number of refinements
+    max_refines = 3
+    
     # Maximum normalized error squared for inliers
     max_norm_err_sq = 4.0
     
@@ -65,7 +75,7 @@ def FitEllipse_RANSAC(pnts, roi):
     dIdy = cv2.Sobel(roi, cv2.CV_32F, 0, 1)
     
     # Ransac iterations
-    for itt in range(0,5):
+    for itt in range(0,max_itts):
         
         # Select 5 points at random
         sample_pnts = np.asarray(random.sample(pnts, 5))
@@ -81,7 +91,7 @@ def FitEllipse_RANSAC(pnts, roi):
         if all(grad_dot > 0):
 
             # Refine inliers iteratively
-            for refine in range(0,3):
+            for refine in range(0,max_refines):
             
                 # Calculate normalized errors for all points
                 norm_err = EllipseNormError(pnts, ellipse)
@@ -99,23 +109,27 @@ def FitEllipse_RANSAC(pnts, roi):
             
                 # Fit ellipse to refined inlier set
                 ellipse = cv2.fitEllipse(inlier_pnts)
-
-                # Update overlay image and display
-                if do_graphic:
-                    overlay = cv2.cvtColor(roi/2,cv2.COLOR_GRAY2RGB)
-                    OverlayRANSACFit(overlay, pnts, inlier_pnts, ellipse)
-                    cv2.imshow('RANSAC', overlay)
-                    cv2.waitKey(5)
             
             # End refinement            
             
             # Count inliers (n x 2)
             n_inliers    = inliers.size
             perc_inliers = (n_inliers * 100.0) / n_pnts
-               
+
             # Calculate support for the refined inliers
             support = EllipseSupport(inlier_pnts, ellipse, dIdx, dIdy)
-        
+
+            # Report on RANSAC progress
+            if verbose:
+                print('RANSAC %d,%d : %0.3f (%0.1f)' % (itt, refine, support, best_support))
+
+            # Update overlay image and display
+            if do_graphic:
+                overlay = cv2.cvtColor(roi/2,cv2.COLOR_GRAY2RGB)
+                OverlayRANSACFit(overlay, pnts, inlier_pnts, ellipse)
+                cv2.imshow('RANSAC', overlay)
+                cv2.waitKey(5)        
+
             # Update best ellipse
             if support > best_support:
                 best_support = support
@@ -126,9 +140,6 @@ def FitEllipse_RANSAC(pnts, roi):
             # Ellipse gradients did not match image gradients
             support = 0
             perc_inliers = 0
-        
-        # Report on RANSAC progress
-        if verbose: print('RANSAC %d : %0.1f (%0.1f)' % (itt, support, best_support))
 
         if perc_inliers > 95.0:
             if verbose: print('Break Max Perc Inliers')
