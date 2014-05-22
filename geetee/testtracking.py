@@ -31,7 +31,11 @@ import gtPupilometry as p
 def main():
     
     # JARON
-    v_file = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron/videos/26mxk_cal2_choice1/cal.mov'   
+    # v_file = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron/videos/26mxk_cal2_choice1/cal.mov'   
+    # v_file = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron/videos/02txw_cal2_choice1/cal.mov'   
+    
+    # LAURA
+    v_file = '/Volumes/Data/laura/ET_Sandbox/RA0546_Gaze1/RA0546_Gaze1_JedLive_Cal.mpg'    
     
     p.VideoPupilometry(v_file, rot = 0)
 

@@ -55,8 +55,10 @@ def FitEllipse_RANSAC(pnts, roi):
     # Maximum normalized error squared for inliers
     max_norm_err_sq = 4.0
     
-    # Init best ellipse and support
-    best_ellipse = ((0,0),(1,1),0)
+    # Tiny circle init
+    best_ellipse = ((0,0),(1e-6,1e-6),0)
+
+    # High support is better, so init with -Infinity
     best_support = -np.inf
     
     # Create display window and init overlay image
@@ -249,21 +251,26 @@ def Geometric2Conic(ellipse):
     ax, ay = -np.sin(phi_b_rad), np.cos(phi_b_rad)
 
     # Useful intermediates
+    a2 = a*a
+    b2 = b*b
 
-    
+    #
+    # Conic parameters
+    #
+    if a2 > 0 and b2 > 0:    
 
-    tiny = np.finfo(float).tiny
-    a2 = a*a + tiny
-    b2 = b*b + tiny
-    
-    # Conic parameters    
-    A = ax*ax / a2 + ay*ay / b2;
-    B = 2*ax*ay / a2 - 2*ax*ay / b2;
-    C = ay*ay / a2 + ax*ax / b2;
-    D = (-2*ax*ay*y0 - 2*ax*ax*x0) / a2 + (2*ax*ay*y0 - 2*ay*ay*x0) / b2;
-    E = (-2*ax*ay*x0 - 2*ay*ay*y0) / a2 + (2*ax*ay*x0 - 2*ax*ax*y0) / b2;
-    F = (2*ax*ay*x0*y0 + ax*ax*x0*x0 + ay*ay*y0*y0) / a2 + (-2*ax*ay*x0*y0 + ay*ay*x0*x0 + ax*ax*y0*y0) / b2 - 1;
+        A = ax*ax / a2 + ay*ay / b2;
+        B = 2*ax*ay / a2 - 2*ax*ay / b2;
+        C = ay*ay / a2 + ax*ax / b2;
+        D = (-2*ax*ay*y0 - 2*ax*ax*x0) / a2 + (2*ax*ay*y0 - 2*ay*ay*x0) / b2;
+        E = (-2*ax*ay*x0 - 2*ay*ay*y0) / a2 + (2*ax*ay*x0 - 2*ax*ax*y0) / b2;
+        F = (2*ax*ay*x0*y0 + ax*ax*x0*x0 + ay*ay*y0*y0) / a2 + (-2*ax*ay*x0*y0 + ay*ay*x0*x0 + ax*ax*y0*y0) / b2 - 1;
 
+    else:
+        
+        # Tiny dummy circle - response to a2 or b2 == 0 overflow warnings
+        A,B,C,D,E,F = (1,0,1,0,0,-1e-6)
+        
     # Compose conic parameter array
     conic = np.array((A,B,C,D,E,F))      
  

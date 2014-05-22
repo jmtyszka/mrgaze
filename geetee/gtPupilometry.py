@@ -31,7 +31,7 @@ import os
 import sys
 import time
 import cv2
-import scipy as sp
+import scipy.ndimage as spi
 import numpy as np
 import gtFitEllipse as fe
 from skimage import exposure
@@ -245,10 +245,10 @@ def SegmentPupil(roi):
     blobs = cv2.morphologyEx(blobs, cv2.MORPH_OPEN, kernel)
         
     # Label connected components - one should be the pupil
-    labels, n_labels = sp.ndimage.label(blobs)
+    labels, n_labels = spi.measurements.label(blobs)
     
     # Measure blob areas
-    areas = sp.ndimage.sum(blobs, labels, range(n_labels+1))
+    areas = spi.sum(blobs, labels, range(n_labels+1))
         
     # Find maximum area blob
     pupil_label = np.where(areas == areas.max())[0][0]

@@ -26,22 +26,26 @@
 # Copyright 2014 California Institute of Technology.
 
 import numpy as np
-import gtIO
 import gtCalibrate as cal
-from matplotlib import pyplot as plt
 
 def main():
     
-    cal_pupils_csv = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron/videos/26mxk_cal2_choice1/cal_pupils.csv'
+    # Setup target coordinates
+    # C, TL, TR, BL, BR, TC, LC, RC, BC
+    targets = np.array( ((0.5,0.5),(0.1,0.9),(0.9,0.9),
+                         (0.1,0.1),(0.1,0.9),(0.5,0.9),
+                         (0.1,0.5),(0.9,0.5),(0.5,0.1)) )
     
-    # Read pupilometry values from file
-    t,area,x,y,blink,dummy =  gtIO.ReadPupilometry(cal_pupils_csv)
+    # Subject/Session directory
+    subjsess_dir = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron/videos/02txw_cal2_choice1'
+    # subjsess_dir = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron/videos/26mxk_cal2_choice1'
+    
+    # LAURA
+    # subjsess_dir = '/Volumes/Data/laura/ET_Sandbox/RA0546_Gaze1_JedLive'        
+    
+    # Autocalibrate using calibration video pupilometry results
+    C = cal.AutoCalibrate(subjsess_dir, targets)    
 
-    # Generate heatmap
-    hmap, xedges, yedges = cal.HeatMap(x, y)
-    
-    plt.imshow(hmap, interpolation='nearest', origin='low',extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]])
-    plt.show()
     
 # This is the standard boilerplate that calls the main() function.
 if __name__ == '__main__':
