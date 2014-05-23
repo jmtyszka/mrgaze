@@ -8,20 +8,20 @@
 # PLACE  : Caltech
 # DATES  : 2014-05-15 JMT From scratch
 #
-# This file is part of pyET.
+# This file is part of geetee.
 #
-#    pyET is free software: you can redistribute it and/or modify
+#    geetee is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or
 #    (at your option) any later version.
 #
-#    pyET is distributed in the hope that it will be useful,
+#    geetee is distributed in the hope that it will be useful,
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#   along with pyET.  If not, see <http://www.gnu.org/licenses/>.
+#   along with geetee.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright 2014 California Institute of Technology.
 
@@ -32,9 +32,9 @@ def main():
     
     # Setup target coordinates
     # C, TL, TR, BL, BR, TC, LC, RC, BC
-    targets = np.array( ((0.5,0.5),(0.1,0.9),(0.9,0.9),
-                         (0.1,0.1),(0.1,0.9),(0.5,0.9),
-                         (0.1,0.5),(0.9,0.5),(0.5,0.1)) )
+    # 2 x 9 array
+    targets = np.array( ((0.5, 0.1, 0.9, 0.1, 0.1, 0.5, 0.1, 0.9, 0.5),
+                         (0.5, 0.9, 0.9, 0.1, 0.9, 0.9, 0.5, 0.5, 0.1)) )
     
     # Subject/Session directory
     subjsess_dir = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron/videos/02txw_cal2_choice1'
@@ -44,7 +44,7 @@ def main():
     # subjsess_dir = '/Volumes/Data/laura/ET_Sandbox/RA0546_Gaze1_JedLive'        
     
     # Autocalibrate using calibration video pupilometry results
-    C = cal.AutoCalibrate(subjsess_dir, targets)    
+    C = cal.AutoCalibrate(subjsess_dir, targets)
 
     
 # This is the standard boilerplate that calls the main() function.

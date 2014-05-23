@@ -4,26 +4,26 @@
 # - takes calibration and gaze video filenames as input
 # - controls calibration and gaze estimation workflow
 #
-# USAGE : pyET.py <Calibration Video> <Gaze Video>
+# USAGE : geetee.py <Calibration Video> <Gaze Video>
 #
 # AUTHOR : Mike Tyszka
 # PLACE  : Caltech
 # DATES  : 2014-05-07 JMT From scratch
 #
-# This file is part of pyET.
+# This file is part of geetee.
 #
-#    pyET is free software: you can redistribute it and/or modify
+#    geetee is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or
 #    (at your option) any later version.
 #
-#    pyET is distributed in the hope that it will be useful,
+#    geetee is distributed in the hope that it will be useful,
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#   along with pyET.  If not, see <http://www.gnu.org/licenses/>.
+#   along with geetee.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright 2014 California Institute of Technology.
 
