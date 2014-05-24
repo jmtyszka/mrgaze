@@ -59,7 +59,7 @@ def TrimBorder(frame, border = 0):
     if border > 0:
         
         # Get image dimension
-        nx, ny = frame.shape
+        nx, ny = frame.shape[1], frame.shape[0]
         
         # Set bounding box
         x0 = border
@@ -74,7 +74,7 @@ def TrimBorder(frame, border = 0):
         y1 = y1 if y1 < ny else ny-1
         
         # Crop and return
-        return frame[x0:x1, y0:y1]
+        return frame[y0:y1, x0:x1]
         
     else:
         
