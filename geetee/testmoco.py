@@ -29,9 +29,11 @@ import gtMoCo
 
 def main():
     
-    cal_file = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron/videos/26mxk_cal2_choice1/cal.mov'
+    # Large shift between cal and gaze videos
+    cal_file = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron/videos/04axa_cal1_choice1/cal.mov'
+    gaze_file = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron/videos/04axa_cal1_choice1/gaze.mov'
 
-    gtMoCo.MotionCorrect(cal_file, cal_file)    
+    gtMoCo.MotionCorrect(cal_file, gaze_file)
     
     
 # This is the standard boilerplate that calls the main() function.

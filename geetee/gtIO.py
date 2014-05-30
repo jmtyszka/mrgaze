@@ -52,7 +52,41 @@ def LoadImage(image_file, border = 0):
     return frame
 
 #
-# Trim border (typically introduced by video conversion)
+# Load a single frame from a video stream
+# - convert to float32 grayscale
+# - trim border (optional)
+# - downsample (optional)
+#
+def LoadVideoFrame(v_in, scale = 1, border = 0):
+
+    status, fr = v_in.read()
+    
+    if status:
+        
+        # Convert to grayscale
+        fr = cv2.cvtColor(fr, cv2.COLOR_RGB2GRAY)
+        
+        # Trim border first
+        fr_trim = TrimBorder(fr, border)
+        
+        # Get trimmed frame size
+        nx, ny = fr_trim.shape[1], fr_trim.shape[0]
+        
+        # Calculate downsampled matrix
+        nxd, nyd = int(nx/float(scale)), int(ny/float(scale))
+        
+        # Downsample
+        frame = cv2.resize(fr_trim, (nxd, nyd))
+        
+    else:
+        
+        frame = np.zeros((480, 720))
+
+    return status, frame
+
+#
+# Trim border of video frame (typically introduced by video conversion)
+# - Assumes single channel grayscale image
 #
 def TrimBorder(frame, border = 0):
     
