@@ -1,4 +1,4 @@
-#!/opt/local/Library/Frameworks/Python.framework/Versions/2.7/Resources/Python.app/Contents/MacOS/Python
+#!/opt/local/bin/python
 #
 # Main python eyetracking wrapper
 # - takes calibration and gaze video filenames as input
