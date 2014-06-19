@@ -32,27 +32,19 @@ import gtIO
 
 def main():
     
-    # Graphic output
-    do_graphics = True
+    # Canny limits
+    canny_min = 100
+    canny_max = 200
     
     # Border and scaling
     scale = 4
     border = 16
-    
-    # params for Shi-Tomasi corner detection
-    feature_params = dict(maxCorners = 100,
-                          qualityLevel = 0.01,
-                          minDistance = 20,
-                          blockSize = 20)
 
-    # Parameters for lucas-Kanade optical flow
-    lk_params = dict(winSize  = (20,20),
-                     maxLevel = 4,
-                     criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03))
+    # Morph operation kernel    
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(9,9))
     
     # Cal-Gaze video pair
-    # Final frame of calibration file is motion correction template
-    # cal_file = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron/videos/04axa_cal1_choice1/cal.mov'
+    # gaze_file = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron/videos/04axa_cal1_choice1/cal.mov'
     gaze_file = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron/videos/04axa_cal1_choice1/gaze.mov'
     
     # Open gaze video stream
@@ -64,47 +56,33 @@ def main():
     if not gaze_stream.isOpened():
         sys.exit(1)
 
-    # Load initial frame and find corners
+    # Load initial frame
     keep_going, I_old = gtIO.LoadVideoFrame(gaze_stream, scale, border)
     
     if keep_going:
-        p_old = cv2.goodFeaturesToTrack(I_old, mask = None, **feature_params)
+            
+            # Edge detection
+            I_old = cv2.morphologyEx(I_old, cv2.MORPH_OPEN, kernel)
+            I_old = cv2.Canny(I_old, canny_min, canny_max)
+            
+    else:
+        
+        sys.exit(0)
         
     while keep_going:
             
         keep_going, I_new = gtIO.LoadVideoFrame(gaze_stream, scale, border)
-        
+    
         if keep_going:
 
-            # Calculate sparse optical flow around detected features
-            # from previous frame
-            p_new, st, err = cv2.calcOpticalFlowPyrLK(I_old, I_new, p_old, None, **lk_params)
+            # Edge detection
+            I_new = cv2.morphologyEx(I_new, cv2.MORPH_OPEN, kernel)
+            I_new = cv2.Canny(I_new, canny_min, canny_max)        
 
-            good_idx = [st == 1]
-
-            # Select good points
-            p_new_good = p_new[good_idx]
-            p_old_good = p_old[good_idx]
-
-            # Mean displacement over all features
-            dx, dy = np.mean(p_new_good - p_old_good, axis = 0)
-            
-            print('%6.1f, %6.1f' % (dx, dy))
-
-            # Now update the previous frame and previous points
-            I_old = I_new.copy()
-            p_old = p_new_good.reshape(-1,1,2)
-            
-            if do_graphics:
+            img = cv2.cvtColor(I_new, cv2.COLOR_GRAY2RGB)
                 
-                img = cv2.cvtColor(I_old, cv2.COLOR_GRAY2RGB)
-                
-                for new in p_new_good:
-                    x0,y0 = new.astype(int)
-                    cv2.circle(img, (x0,y0), 1, (0,255,0))
-
-                cv2.imshow('Corners', img)
-                cv2.waitKey(5)
+            cv2.imshow('Corners', img)
+            cv2.waitKey(5)
                 
     # Close gaze video stream
     gaze_stream.release()
