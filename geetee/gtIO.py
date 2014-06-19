@@ -3,26 +3,26 @@
 # Load a single video frame from an image file
 # - optional border trim border argument
 #
-# USAGE : pyET_TestFrame.py <Test Frame Image>
+# USAGE : geetee_TestFrame.py <Test Frame Image>
 #
 # AUTHOR : Mike Tyszka
 # PLACE  : Caltech
 # DATES  : 2014-05-07 JMT From scratch
 #
-# This file is part of pyET.
+# This file is part of geetee.
 #
-#    pyET is free software: you can redistribute it and/or modify
+#    geetee is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or
 #    (at your option) any later version.
 #
-#    pyET is distributed in the hope that it will be useful,
+#    geetee is distributed in the hope that it will be useful,
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#   along with pyET.  If not, see <http://www.gnu.org/licenses/>.
+#   along with geetee.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright 2014 California Institute of Technology.
 
@@ -52,14 +52,48 @@ def LoadImage(image_file, border = 0):
     return frame
 
 #
-# Trim border (typically introduced by video conversion)
+# Load a single frame from a video stream
+# - convert to float32 grayscale
+# - trim border (optional)
+# - downsample (optional)
+#
+def LoadVideoFrame(v_in, scale = 1, border = 0):
+
+    status, fr = v_in.read()
+    
+    if status:
+        
+        # Convert to grayscale
+        fr = cv2.cvtColor(fr, cv2.COLOR_RGB2GRAY)
+        
+        # Trim border first
+        fr_trim = TrimBorder(fr, border)
+        
+        # Get trimmed frame size
+        nx, ny = fr_trim.shape[1], fr_trim.shape[0]
+        
+        # Calculate downsampled matrix
+        nxd, nyd = int(nx/float(scale)), int(ny/float(scale))
+        
+        # Downsample
+        frame = cv2.resize(fr_trim, (nxd, nyd))
+        
+    else:
+        
+        frame = np.zeros((480, 720))
+
+    return status, frame
+
+#
+# Trim border of video frame (typically introduced by video conversion)
+# - Assumes single channel grayscale image
 #
 def TrimBorder(frame, border = 0):
     
     if border > 0:
         
         # Get image dimension
-        nx, ny = frame.shape
+        nx, ny = frame.shape[1], frame.shape[0]
         
         # Set bounding box
         x0 = border
@@ -74,7 +108,7 @@ def TrimBorder(frame, border = 0):
         y1 = y1 if y1 < ny else ny-1
         
         # Crop and return
-        return frame[x0:x1, y0:y1]
+        return frame[y0:y1, x0:x1]
         
     else:
         
@@ -111,16 +145,20 @@ def InitConfig(config):
     
     # Add video defaults
     config.add_section('VIDEO')
-    config.set('VIDEO','InputExtension','.mov')
-    config.set('VIDEO','OutputExtension','.mov')
+    config.set('VIDEO','inputextension','.mov')
+    config.set('VIDEO','outputextension','.mov')
     
     config.add_section('RANSAC')
-    config.set('RANSAC','MaxIterations','5')
-    config.set('RANSAC','MaxRefinements','3')
-    config.set('RANSAC','MaxInlierPerc','95')
+    config.set('RANSAC','maxiterations','5')
+    config.set('RANSAC','maxrefinements','3')
+    config.set('RANSAC','maxinlierperc','95')
     
     config.add_section('LBP')
-    config.set('LBP','Strictness','40')
+    config.set('LBP','strictness','40')
+    
+    config.add_section('CALIBRATION')
+    config.set('CALIBRATION','targetx','0.5, 0.1, 0.9, 0.1, 0.1, 0.5, 0.1, 0.9, 0.5')
+    config.set('CALIBRATION','targety','0.5, 0.9, 0.9, 0.1, 0.9, 0.9, 0.5, 0.5, 0.1')
     
     return config
     
@@ -130,3 +168,23 @@ def InitConfig(config):
 def ReadPupilometry(pupils_csv):
     
     return np.genfromtxt(pupils_csv, delimiter = ',', unpack = True)
+    
+#
+# Safe mkdir - from http://code.activestate.com/recipes/82465-a-friendly-mkdir/
+#
+def _mkdir(newdir):
+    """works the way a good mkdir should :)
+        - already exists, silently complete
+        - regular file in the way, raise an exception
+        - parent directory(ies) does not exist, make them as well
+    """
+    if os.path.isdir(newdir):
+        pass
+    elif os.path.isfile(newdir):
+        raise OSError("a file with same name as desired dir ('%s') already exists." % newdir)
+    else:
+        head, tail = os.path.split(newdir)
+        if head and not os.path.isdir(head):
+            _mkdir(head)
+        if tail:
+            os.mkdir(newdir)

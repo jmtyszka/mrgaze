@@ -7,20 +7,20 @@
 # PLACE  : Caltech
 # DATES  : 2014-05-15 JMT From scratch
 #
-# This file is part of pyET.
+# This file is part of geetee.
 #
-#    pyET is free software: you can redistribute it and/or modify
+#    geetee is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or
 #    (at your option) any later version.
 #
-#    pyET is distributed in the hope that it will be useful,
+#    geetee is distributed in the hope that it will be useful,
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#   along with pyET.  If not, see <http://www.gnu.org/licenses/>.
+#   along with geetee.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright 2014 California Institute of Technology.
 
@@ -226,7 +226,8 @@ def SortFixations(fixations_space, fixations_time):
         print('Fewer temporal fixations than spatial fixations : %d < %d'
         % (n_fix_time, n_fix_space))
     
-    fix_order = np.zeros((n_fix_space), dtype=int)    
+    # Init fixation ordering and sorted fixation arrays
+    fixations = np.zeros((n_fix_space, 2))
     
     # Loop over spatial fixations
     for i, fix in enumerate(fixations_space):
@@ -235,11 +236,11 @@ def SortFixations(fixations_space, fixations_time):
         dy = fix[1] - fixations_time[:,1]
         dr = np.sqrt(dx**2 + dy**2)
         
-        # Find index of nearest temporal fixation to current spatial fixation
-        fix_order[i] = np.argmin(dr)
+        # Find index of temporal fixation closest to current spatial fixation
+        temp_idx = np.argmin(dr)        
         
-    # Reorder spatial fixations
-    fixations = fixations_space[fix_order,:]
+        # Place spatial fixation in correct position
+        fixations[temp_idx,:] = fix
     
     return fixations
 
@@ -247,8 +248,8 @@ def SortFixations(fixations_space, fixations_time):
 # Permute fixation point order vs targets to determine
 # best biquadratic mapping from video (x,y) to gaze (x',y') space.
 #
-# x' = C[0][0]xx + C[0][1]xy + C[0][2]yy + C[0][3]x + C[0][4]y + C[0][5]
-# y' = C[1][0]xx + C[1][1]xy + C[1][2]yy + C[1][3]x + C[1][4]y + C[1][5]
+# fixations : 9 x 2 array (n >= 6)
+# R0        : fixation target coordinates in gaze space (9 x 2)
 #
 def CalibrationModel(fixations, targets):
     
@@ -287,18 +288,16 @@ def CalibrationModel(fixations, targets):
     # Moore-Penrose pseudoinverse of R
     Rinv = np.linalg.pinv(R)
     
-    print np.isclose(R, (R.dot(Rinv)).dot(R)).all()
-
-    # Array of target coordinates in gaze space corresponding to
-    # video space fixations    
-    R0 = np.array(((0.9, 0.5, 0.1, 0.9, 0.5, 0.1, 0.9, 0.5, 0.1),
-                   (0.9, 0.9, 0.9, 0.5, 0.5, 0.5, 0.1, 0.1, 0.1)))
-
-    # Solve C.R = R0 for C ie C = R0.Rinv
+    # R0 is the target coordinate array
+    R0 = targets
+    
+    # Solve C.R = R0 by postmultiplying R0 by Rinv
+    # C.R.Rinv = C = R0.Rinv
     C = R0.dot(Rinv)
     
-    # Check solution
-    print np.allclose(C.dot(R), R0)
+    print C.dot(R)
+    print R0
+    print R0 - C.dot(R)
 
     return C
      

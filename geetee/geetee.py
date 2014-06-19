@@ -4,33 +4,35 @@
 # - takes calibration and gaze video filenames as input
 # - controls calibration and gaze estimation workflow
 #
-# USAGE : pyET.py <Calibration Video> <Gaze Video>
+# USAGE : geetee.py <Calibration Video> <Gaze Video>
 #
 # AUTHOR : Mike Tyszka
 # PLACE  : Caltech
 # DATES  : 2014-05-07 JMT From scratch
 #
-# This file is part of pyET.
+# This file is part of geetee.
 #
-#    pyET is free software: you can redistribute it and/or modify
+#    geetee is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or
 #    (at your option) any later version.
 #
-#    pyET is distributed in the hope that it will be useful,
+#    geetee is distributed in the hope that it will be useful,
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#   along with pyET.  If not, see <http://www.gnu.org/licenses/>.
+#   along with geetee.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright 2014 California Institute of Technology.
 
 import os
 import sys
-import gtPupilometry as p
 import gtIO
+import gtPupilometry as p
+import gtCalibrate as cal
+import gtReport as report
 
 def main():
     
@@ -46,30 +48,55 @@ def main():
     print ('Loading configuration from geetee.cfg')
     config = gtIO.LoadConfig(root_dir)
     
+    # Video and results root directories
     videos_root = os.path.join(root_dir,'videos')
-    results_root = os.path.join(root_dir,'results')    
+    results_root = os.path.join(root_dir,'results')
+    
+    # Check directories exist
+    if not os.path.isdir(videos_root):
+        print('Video root directory does not exist - exiting')
+        sys.exit(1)
+    
+    # Safely create results directory
+    gtIO._mkdir(results_root)
         
     # Loop over all subject subdirectories of the data directory
-    for subj in os.walk(videos_root).next()[1]:
+    for subjsess in os.walk(videos_root).next()[1]:
         
-        video_subj_dir = os.path.join(videos_root, subj)        
+        # Video and results directory names for this subject/session
+        subjsess_video_dir = os.path.join(videos_root, subjsess)
+        subjsess_results_dir = os.path.join(results_root, subjsess)
         
-        if os.path.isdir(video_subj_dir):
+        if os.path.isdir(subjsess_video_dir):
             
             print('')
-            print('Analysing Subject/Session %s' % subj)
+            print('Analysing Subject/Session %s' % subjsess)
             
             print('  Calibration Pupilometry')
+
+            # Create results subj/sess dir
+            gtIO._mkdir(subjsess_results_dir)
             
-            cal_video  = os.path.join(video_subj_dir, 'cal.mov')
-            # print cal_video
-            p.VideoPupilometry(cal_video)
+            cal_video  = os.path.join(subjsess_video_dir, 'cal.mov')
+            p.VideoPupilometry(cal_video, config)
             
             print('  Gaze Pupilometry')
 
-            gaze_video = os.path.join(video_subj_dir, 'gaze.mov')
-            # print gaze_video
-            #p.VideoPupilometry(gaze_video)
+            gaze_video = os.path.join(subjsess_video_dir, 'gaze.mov')
+            p.VideoPupilometry(gaze_video, config)
+            
+            print('  Create calibration model')
+            C = cal.AutoCalibrate(subjsess_video_dir, config)
+
+            print('  Calibrate pupilometry')
+            cal.ApplyCalibration(subjsess_video_dir, C)
+            
+            print('  Write report')
+            report.WriteReport(subjsess_results_dir)
+
+        else:
+            
+            print('%s does not exist - skipping' % subjsess_video_dir)
 
     # Clean exit
     sys.exit(0) 

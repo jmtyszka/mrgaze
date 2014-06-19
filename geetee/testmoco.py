@@ -1,8 +1,8 @@
 #!/opt/local/bin/python
 #
-# Calibration test from pupilometry results
+# Test head motion correction
 #
-# USAGE : testcal.py
+# USAGE : testmoco.py
 #
 # AUTHOR : Mike Tyszka
 # PLACE  : Caltech
@@ -25,27 +25,16 @@
 #
 # Copyright 2014 California Institute of Technology.
 
-import numpy as np
-import gtCalibrate as cal
+import gtMoCo
 
 def main():
     
-    # Setup target coordinates
-    # C, TL, TR, BL, BR, TC, LC, RC, BC
-    # 2 x 9 array
-    targets = np.array( ((0.5, 0.1, 0.9, 0.1, 0.1, 0.5, 0.1, 0.9, 0.5),
-                         (0.5, 0.9, 0.9, 0.1, 0.9, 0.9, 0.5, 0.5, 0.1)) )
-    
-    # Subject/Session directory
-    subjsess_dir = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron/videos/02txw_cal2_choice1'
-    # subjsess_dir = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron/videos/26mxk_cal2_choice1'
-    
-    # LAURA
-    # subjsess_dir = '/Volumes/Data/laura/ET_Sandbox/RA0546_Gaze1_JedLive'        
-    
-    # Autocalibrate using calibration video pupilometry results
-    C = cal.AutoCalibrate(subjsess_dir, targets)
+    # Large shift between cal and gaze videos
+    cal_file = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron/videos/04axa_cal1_choice1/cal.mov'
+    gaze_file = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron/videos/04axa_cal1_choice1/gaze.mov'
 
+    gtMoCo.MotionCorrect(cal_file, gaze_file)
+    
     
 # This is the standard boilerplate that calls the main() function.
 if __name__ == '__main__':
