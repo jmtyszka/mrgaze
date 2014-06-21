@@ -64,7 +64,7 @@ def main():
     el, roi_rect, blink = p.PupilometryEngine(frd, cascade)
     
     # Display fitted pupil ellipse over original image
-    p.DisplayPupilEllipse(frd, el)
+    p.DisplayPupilEllipse(frd, el, roi_rect)
     
     
 # This is the standard boilerplate that calls the main() function.

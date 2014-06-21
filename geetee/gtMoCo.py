@@ -42,9 +42,9 @@ def MotionCorrect(cal_video, gaze_video):
     print('Creating phase correlation template')
     template = CreateTemplate(cal_video, scale, border)
 
-    # Cross correlate
+    # Phase correlate
     print('Phase correlating video')
-    dx_t, dy_t = PhaseCorrelate(gaze_video, template, scale, border)
+    dx_t, dy_t = PhaseCorrelate(cal_video, template, scale, border)
     
     # Optional: generate motion corrected video
     # print('Motion correcting video')
@@ -58,6 +58,9 @@ def MotionCorrect(cal_video, gaze_video):
 #
 def CreateTemplate(v_in_file, scale = 1, border = 0):
     
+    # Template creation method
+    method = 'last_frame'    
+    
     # Open video
     try:
         v_in = cv2.VideoCapture(v_in_file)
@@ -66,42 +69,55 @@ def CreateTemplate(v_in_file, scale = 1, border = 0):
         
     if not v_in.isOpened():
         sys.exit(1)
-
-    # Frame counter
-    fc = 0
-            
-    # Init continuation flag
-    keep_going = True
         
-    while keep_going:
+    # Get number of frames
+    n_frames = int(v_in.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT))
+    
+    if method == 'average':
+
+        # Frame counter
+        fc = 0
+                
+        # Init continuation flag
+        keep_going = True
             
+        while keep_going:
+                
+            keep_going, I = gtIO.LoadVideoFrame(v_in, scale, border)
+            
+            if keep_going:
+            
+                # Caste to float32
+                I = np.float32(I)
+                
+                # Add current downsampled frame to running total
+                if fc < 1:
+                    Is  = I
+                else:
+                    Is += I
+    
+                # Increment frame counter
+                fc += 1
+                                
+        # Close video stream
+        v_in.release()
+    
+        # Calculate temporal mean
+        Im = Is / float(fc)
+        
+    elif method == 'last_frame':
+        
+        v_in.set(cv2.cv.CV_CAP_PROP_POS_FRAMES, n_frames-2)
         keep_going, I = gtIO.LoadVideoFrame(v_in, scale, border)
-        
-        if keep_going:
-        
-            # Caste to float32
-            I = np.float32(I)
+        Im = np.float32(I)
+    
+    # Sobel edges in video scanline direction (x)
+    xedge = SobelX(Im)
+    
+    # Rescale image to [0,255] 32F
+    imax, imin = np.amax(xedge), np.amin(xedge)
+    template = ((xedge - imin) / (imax - imin) * 255).astype(np.float32)
             
-            # Add current downsampled frame to running total
-            if fc < 1:
-                Is  = I
-                Iss = I*I
-            else:
-                Is += I
-                Iss += I*I
-
-            # Increment frame counter
-            fc += 1
-                            
-    # Close video stream
-    v_in.release()
-
-    # Calculate temporal mean
-    template = Is / float(fc)
-    
-    # Calculate temporal SD for use as a weighting function
-    # Isd   = Iss / float(fc) - Imean * Imean
-    
     # Save template to input video directory
     fstub, fext = os.path.splitext(v_in_file)
     out_file = fstub + 'moco_template.png'
@@ -143,12 +159,12 @@ def PhaseCorrelate(v_file, template, scale = 1, border = 0):
         keep_going, I = gtIO.LoadVideoFrame(v_in, scale, border)
         
         if keep_going:
-
-            # Cast frame to float32
-            I = np.float32(I)
+            
+            # Horizontal Sobel edges
+            xedge = SobelX(I)
             
             # Cross correlate with template
-            dx, dy = cv2.phaseCorrelate(template, I)
+            dx, dy = cv2.phaseCorrelate(template, xedge)
             
             # Rescale to original pixel size
             dx_t[fc], dy_t[fc] = dx * scale, dy * scale
@@ -160,9 +176,10 @@ def PhaseCorrelate(v_file, template, scale = 1, border = 0):
             I_moco = cv2.warpAffine(I, M, (I.shape[1], I.shape[0]), flags=cv2.INTER_LINEAR + cv2.WARP_INVERSE_MAP)
             
             # Display original and corrected frame
-            im = np.hstack((np.uint8(I), np.uint8(I_moco), np.uint8(template)))
+            im = np.hstack((np.uint8(template), np.uint8(xedge), np.uint8(I_moco)))
             cv2.imshow('MOCO', im)
-            cv2.waitKey(5)
+            if cv2.waitKey(5) > 0:
+                break
             
             # Increment frame counter
             fc += 1
@@ -171,3 +188,21 @@ def PhaseCorrelate(v_file, template, scale = 1, border = 0):
     v_in.release()
 
     return dx_t, dy_t
+    
+
+def SobelX(img):
+    
+    # Sobel kernel size
+    k = 5
+    
+    # Sobel edges in video scanline direction (x)
+    xedge = cv2.Sobel(img, cv2.CV_32F, 1, 0, ksize=k)
+
+    # Force positive   
+    xedge = np.abs(xedge)
+    
+    # Rescale image to [0,255] 32F
+    imax, imin = np.amax(xedge), np.amin(xedge)
+    xedge = ((xedge - imin) / (imax - imin) * 255).astype(np.float32)
+
+    return xedge

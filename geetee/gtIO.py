@@ -80,6 +80,8 @@ def LoadVideoFrame(v_in, scale = 1, border = 0):
         
     else:
         
+        print('LoadVideoFrame : Problem loading frame')
+        
         frame = np.zeros((480, 720))
 
     return status, frame

@@ -104,7 +104,8 @@ def main():
                     cv2.circle(img, (x0,y0), 1, (0,255,0))
 
                 cv2.imshow('Corners', img)
-                cv2.waitKey(5)
+                if cv2.waitKey(5) > 0:
+                    break
                 
     # Close gaze video stream
     gaze_stream.release()

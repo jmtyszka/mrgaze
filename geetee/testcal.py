@@ -26,7 +26,7 @@
 # Copyright 2014 California Institute of Technology.
 
 import numpy as np
-import gtCalibrate as cal
+import calibrate as cal
 
 def main():
     
@@ -45,7 +45,8 @@ def main():
     
     # Autocalibrate using calibration video pupilometry results
     C = cal.AutoCalibrate(subjsess_dir, targets)
-
+    
+    print C
     
 # This is the standard boilerplate that calls the main() function.
 if __name__ == '__main__':

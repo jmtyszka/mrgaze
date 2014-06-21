@@ -33,8 +33,9 @@ import time
 import cv2
 import scipy.ndimage as spi
 import numpy as np
-import gtFitEllipse as fe
 from skimage import exposure
+
+import gtFitEllipse as fe
 
 def VideoPupilometry(v_file, rot = 0):
     
@@ -279,17 +280,19 @@ def FitPupil(bw, roi):
 #
 # Overlay fitted pupil ellipse on original frame
 #    
-def DisplayPupilEllipse(frame, ellipse):
+def DisplayPupilEllipse(frame, ellipse, roi_rect):
 
     # Ellipse color and line thickness
-    color = (0,255,0)
     thickness = 1
     
     # Convert frame to RGB color
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
     
     # Overlay ellipse
-    cv2.ellipse(frame_rgb, ellipse, color, thickness)
+    cv2.ellipse(frame_rgb, ellipse, (0,255,0), thickness)
+    
+    # Overlay ROI rectangle
+    cv2.rectangle(frame_rgb, roi_rect[0], roi_rect[1], (255,255,0), thickness)
     
     # Display frame
     cv2.imshow('PupilFit', frame_rgb)

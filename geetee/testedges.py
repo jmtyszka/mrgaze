@@ -32,17 +32,13 @@ import gtIO
 
 def main():
     
-    # Canny limits
-    canny_min = 100
-    canny_max = 200
-    
     # Border and scaling
     scale = 4
     border = 16
-
-    # Morph operation kernel    
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(9,9))
     
+    # Sobel edge detection kernel size
+    k = 7
+
     # Cal-Gaze video pair
     # gaze_file = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron/videos/04axa_cal1_choice1/cal.mov'
     gaze_file = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron/videos/04axa_cal1_choice1/gaze.mov'
@@ -56,36 +52,30 @@ def main():
     if not gaze_stream.isOpened():
         sys.exit(1)
 
-    # Load initial frame
-    keep_going, I_old = gtIO.LoadVideoFrame(gaze_stream, scale, border)
-    
-    if keep_going:
-            
-            # Edge detection
-            I_old = cv2.morphologyEx(I_old, cv2.MORPH_OPEN, kernel)
-            I_old = cv2.Canny(I_old, canny_min, canny_max)
-            
-    else:
-        
-        sys.exit(0)
-        
+    keep_going = True
+
     while keep_going:
             
         keep_going, I_new = gtIO.LoadVideoFrame(gaze_stream, scale, border)
     
         if keep_going:
 
-            # Edge detection
-            I_new = cv2.morphologyEx(I_new, cv2.MORPH_OPEN, kernel)
-            I_new = cv2.Canny(I_new, canny_min, canny_max)        
-
-            img = cv2.cvtColor(I_new, cv2.COLOR_GRAY2RGB)
-                
-            cv2.imshow('Corners', img)
-            cv2.waitKey(5)
+            # Sobel edge detect (both directions)
+            xedge = cv2.Sobel(I_new, cv2.CV_32F, 1, 0, ksize=k)
+            
+            # Rescale image to [0,255] unsigned bytes
+            imax, imin = np.amax(xedge), np.amin(xedge)
+            xedge = ((xedge - imin) / (imax - imin) * 255).astype(np.uint8)
+                        
+            
+            cv2.imshow('Edges', xedge)
+            if cv2.waitKey(5) > 0:
+                break
                 
     # Close gaze video stream
     gaze_stream.release()
+    
+    print('Done')
     
 # This is the standard boilerplate that calls the main() function.
 if __name__ == '__main__':
