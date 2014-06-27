@@ -33,11 +33,12 @@ def main():
     # JARON
     # v_file = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron/videos/26mxk_cal2_choice1/cal.mov'   
     # v_file = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron/videos/02txw_cal2_choice1/cal.mov'   
+    v_file = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron/videos/02txw_cal2_choice1/gaze.mov'   
     
     # LAURA
-    v_file = '/Volumes/Data/laura/ET_Sandbox/RA0546_Gaze1_JedLive/RA0546_Gaze1_JedLive_Gaze.mpg'    
+    # v_file = '/Volumes/Data/laura/ET_Sandbox/RA0546_Gaze1_JedLive/RA0546_Gaze1_JedLive_Gaze.mpg'
     
-    p.VideoPupilometry(v_file, rot = 0)
+    p.VideoPupilometry(v_file, rotate=0)
 
 # This is the standard boilerplate that calls the main() function.
 if __name__ == '__main__':

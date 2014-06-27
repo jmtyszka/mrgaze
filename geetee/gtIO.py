@@ -30,35 +30,29 @@ import os
 import cv2
 import numpy as np
 import ConfigParser
+import gtMRClean as clean
+import gtPupilometry as p
 
-def LoadImage(image_file, border = 0):
 
-    # Initialize frame
-    frame = np.array([])
-
-    # load test frame image
-    try:
-        frame = cv2.imread(image_file)
-    except:
-        print('Problem opening %s to read' % image_file)
-        return frame
-        
-    # Convert to grayscale image
-    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+def LoadVideoFrame(v_in, scale=1.0, border=0, rotate=0, mrclean=False):
+    """
+    Load and preprocess a single frame from a video stream
     
-    # Trim border (if requested)
-    frame = TrimBorder(frame, border)
+    Parameters
+    ----------
+    v_in : opencv video stream
+        video input stream
+    scale : float
+        downsampling scale factor [1.0]
+    border : int
+        pixel border width to strip
+    rotate : int
+        rotation in
+    """
     
-    return frame
-
-#
-# Load a single frame from a video stream
-# - convert to float32 grayscale
-# - trim border (optional)
-# - downsample (optional)
-#
-def LoadVideoFrame(v_in, scale = 1, border = 0):
-
+    # Init artifact flag for this frame
+    artifact = False    
+    
     status, fr = v_in.read()
     
     if status:
@@ -69,6 +63,10 @@ def LoadVideoFrame(v_in, scale = 1, border = 0):
         # Trim border first
         fr_trim = TrimBorder(fr, border)
         
+        # Apply optional MR artifact suppression
+        if mrclean:
+            fr_trim, artifact = clean.MRClean(fr_trim)
+        
         # Get trimmed frame size
         nx, ny = fr_trim.shape[1], fr_trim.shape[0]
         
@@ -77,20 +75,35 @@ def LoadVideoFrame(v_in, scale = 1, border = 0):
         
         # Downsample
         frame = cv2.resize(fr_trim, (nxd, nyd))
+
+        # Robust rescale to 5th, 95th percentile
+        # frame = p.RobustRescale(frame, (1,99))
         
     else:
         
         print('LoadVideoFrame : Problem loading frame')
         
         frame = np.zeros((480, 720))
+        
+    return status, frame, artifact
 
-    return status, frame
 
-#
-# Trim border of video frame (typically introduced by video conversion)
-# - Assumes single channel grayscale image
-#
 def TrimBorder(frame, border = 0):
+    """
+    Trim video frame border introduced by frame capture
+    
+    Parameters
+    ----------
+    frame : numpy uint8 array
+        video frame
+    border : integer
+        border width in pixels to strip [0]
+        
+    Returns
+    -------
+    frame : numpy unit8 array
+        video frame without border
+    """
     
     if border > 0:
         
@@ -115,6 +128,47 @@ def TrimBorder(frame, border = 0):
     else:
         
         return frame
+
+
+def LoadImage(image_file, border=0):
+    """
+    Load an image from a file and strip the border.
+
+    Parameters
+    ----------
+    image_file : string
+        File name of image
+    border : integer
+        Pixel width of border to strip [0].
+        
+
+    Returns
+    -------
+    frame : 2D numpy array
+        Grayscale image array.
+
+    Examples
+    --------
+    >>> img = LoadImage('test.png', 5)
+    """
+
+    # Initialize frame
+    frame = np.array([])
+
+    # load test frame image
+    try:
+        frame = cv2.imread(image_file)
+    except:
+        print('Problem opening %s to read' % image_file)
+        return frame
+        
+    # Convert to grayscale image
+    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    
+    # Trim border (if requested)
+    frame = TrimBorder(frame, border)
+    
+    return frame
 
 #
 # Load setup file for complete ET pipeline
