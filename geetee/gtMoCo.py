@@ -108,7 +108,7 @@ def CreateTemplate(v_in_file, scale = 1, border = 0):
     elif method == 'last_frame':
         
         v_in.set(cv2.cv.CV_CAP_PROP_POS_FRAMES, n_frames-2)
-        keep_going, I = gtIO.LoadVideoFrame(v_in, scale, border)
+        keep_going, I, artifact = gtIO.LoadVideoFrame(v_in, scale, border)
         Im = np.float32(I)
     
     # Sobel edges in video scanline direction (x)
@@ -156,7 +156,7 @@ def PhaseCorrelate(v_file, template, scale = 1, border = 0):
     while keep_going:
             
         # Downsample current frame
-        keep_going, I = gtIO.LoadVideoFrame(v_in, scale, border)
+        keep_going, I, artifact = gtIO.LoadVideoFrame(v_in, scale, border)
         
         if keep_going:
             

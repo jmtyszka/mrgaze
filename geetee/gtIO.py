@@ -48,6 +48,15 @@ def LoadVideoFrame(v_in, scale=1.0, border=0, rotate=0, mrclean=False):
         pixel border width to strip
     rotate : int
         rotation in
+        
+    Returns
+    ----
+    status : boolean
+        Completion status.
+    fr : numpy uint8 array
+        Preprocessed video frame.
+    artifacts : boolean
+        Artifact presence in frame.
     """
     
     # Init artifact flag for this frame
@@ -61,31 +70,28 @@ def LoadVideoFrame(v_in, scale=1.0, border=0, rotate=0, mrclean=False):
         fr = cv2.cvtColor(fr, cv2.COLOR_RGB2GRAY)
         
         # Trim border first
-        fr_trim = TrimBorder(fr, border)
+        fr = TrimBorder(fr, border)
         
         # Apply optional MR artifact suppression
         if mrclean:
-            fr_trim, artifact = clean.MRClean(fr_trim)
-        
+            fr, artifact = clean.MRClean(fr)
+
         # Get trimmed frame size
-        nx, ny = fr_trim.shape[1], fr_trim.shape[0]
+        nx, ny = fr.shape[1], fr.shape[0]
         
         # Calculate downsampled matrix
         nxd, nyd = int(nx/float(scale)), int(ny/float(scale))
         
         # Downsample
-        frame = cv2.resize(fr_trim, (nxd, nyd))
+        fr = cv2.resize(fr, (nxd, nyd))
+        
+        # Gaussian blur
+        fr = cv2.GaussianBlur(fr, (3,3), 1.0)
 
         # Robust rescale to 5th, 95th percentile
-        # frame = p.RobustRescale(frame, (1,99))
+        fr = p.RobustRescale(fr, (1,99))
         
-    else:
-        
-        print('LoadVideoFrame : Problem loading frame')
-        
-        frame = np.zeros((480, 720))
-        
-    return status, frame, artifact
+    return status, fr, artifact
 
 
 def TrimBorder(frame, border = 0):
@@ -162,8 +168,9 @@ def LoadImage(image_file, border=0):
         print('Problem opening %s to read' % image_file)
         return frame
         
-    # Convert to grayscale image
-    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    # Convert to grayscale image if necessary
+    if frame.shape[2] == 3:
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     
     # Trim border (if requested)
     frame = TrimBorder(frame, border)

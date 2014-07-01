@@ -45,7 +45,7 @@ from scipy.signal import medfilt
 from scipy.ndimage.morphology import binary_dilation
 import matplotlib.pyplot as plt
 
-def MRClean(frame):
+def MRClean(frame, verbose=False):
     """
     Attempt to repair scan lines corrupted by MRI RF or gradient pulses. 
     
@@ -53,6 +53,8 @@ def MRClean(frame):
     ----------
     frame : numpy integer array
         Original corrupted, interlaced video frame
+    verbose : boolean
+        Verbose output flag [False]
 
     Returns
     -------
@@ -65,109 +67,182 @@ def MRClean(frame):
 
     """
     
-    # Verbose output flag
-    verbose = False
-    
-    # Init returned frame
+    # Init repaired frame
     frame_clean = frame.copy()
     
     # Init artifact flag
     artifact = False
     
     # Split frame into even and odd lines
-    fr_even = frame[0::2,:].astype(float)
-    fr_odd  = frame[1::2,:].astype(float)
+    fr_even = frame[0::2,:]
+    fr_odd  = frame[1::2,:]
     
     # Odd - even difference
-    fr_diff = fr_odd - fr_even
+    fr_diff = fr_odd.astype(float) - fr_even.astype(float)
     
-    # Row median and IQR
-    med = np.median(fr_diff, axis=1)
+    # Absolute row median of frame difference
+    med = np.abs(np.median(fr_diff, axis=1))
 
-    # Robust background SD assuming zero median
-    # Artifacts are assumed to occupy a minority of pixels
-    fr_sd = np.median(np.abs(med)) * 1.48
-    
-    # Only repair frame if difference sd > 0
-    if fr_sd > 0:
-
-        # Z-scores for row medians
-        z = med / fr_sd
-    
-        # Find all rows with |z| > z_crit
-        bad_rows = np.abs(z) > 2.0
+    # Find scanlines with median row difference > 3.0
+    bad_rows = med > 3.0
         
-        # Median smooth the bad rows mask then dilate by 3 lines
-        # bad_rows = medfilt(bad_rows)
-        # bad_rows = binary_dilation(bad_rows, structure=np.ones((7,)))
-        
-        if bad_rows.sum() > 0:
-            
-            artifact = True
+    # Median smooth the bad rows mask then dilate by 3 lines (kernel 2*3+1 = 7)
+    bad_rows = medfilt(bad_rows)
+    bad_rows = binary_dilation(bad_rows, structure=np.ones((7,)))
     
-            # Artifacts generally have low variance within a scan line
-            # Find which rows have lower SD in odd frame
-            sd_even = np.std(fr_even, axis=1)
-            sd_odd  = np.std(fr_odd,  axis=1)
-            odd_low_sd = sd_odd < sd_even
-            
-            # Mask for row swaps from even to odd and vise versa
-            even_to_odd = odd_low_sd & bad_rows
-            odd_to_even = ~odd_low_sd & bad_rows
-            
-            even_to_odd = medfilt(even_to_odd,13).astype(bool)
-            odd_to_even = medfilt(odd_to_even,13).astype(bool)
-        
-            # Repair
-            fr_odd_clean = fr_odd.copy()
-            fr_even_clean = fr_even.copy()
-            fr_odd_clean[even_to_odd,:] = fr_even[even_to_odd,:]
-            fr_even_clean[odd_to_even,:] = fr_odd[odd_to_even,:]
-        
-            # Reinterleave
-            frame_clean[0::2,:] = fr_even_clean
-            frame_clean[1::2,:] = fr_odd_clean
-            
-            # Display results
-            if verbose:
-
-                ny = bad_rows.shape[0]
-                y = np.arange(0,ny)           
-            
-                plt.figure(1)
-                plt.set_cmap('jet')
-            
-                plt.subplot(331)
-                plt.imshow(fr_odd)
+    # Cast bad rows to integers
+    bad_rows = bad_rows.astype(int)
     
-                plt.subplot(332)
-                plt.imshow(fr_even)
-
-                plt.subplot(333)
-                plt.imshow(fr_diff)
-            
-                plt.subplot(334)
-                plt.plot(y, z)
-                plt.ylabel('z score')
-
-                plt.subplot(335)
-                plt.plot(y, bad_rows)
-                plt.axis([0,250,-0.25,1.25])
-
-                plt.subplot(336)
-                plt.imshow(frame)
-
-                plt.subplot(337)
-                plt.plot(y, sd_odd, y, sd_even)
-
-                plt.subplot(338)
-                plt.plot(y, even_to_odd, y, odd_to_even + 1.5)
-                plt.axis([0,250,-0.25,2.75])
-                plt.legend(('even to odd', 'odd to even'))
-
-                plt.subplot(339)
-                plt.imshow(frame_clean)
-
-                plt.show()
+    if bad_rows.sum() > 0:
+        
+        # Set artifact present flag
+        artifact = True
+        
+        # Zero pad bad_rows by 1 at start and end
+        bad_rows_pad = np.append(0, np.append(bad_rows, 0))
     
+        # Find bad row block start and end indices by forward differencing
+        # Add leading and trailing zeros to avoid unterminated blocks
+        # Remember this later when determining correct row indices
+        dbad = np.diff(bad_rows_pad)
+        
+        # Bad row block start and end indices
+        # bad_on indicates row indices immediately prior to block starts
+        # bad_off indicates row indices immediate after block ends
+        bad_on = (np.where(dbad > 0))[0] - 1
+        bad_off = (np.where(dbad < 0))[0]
+        
+        if bad_on.size != bad_off.size:
+            print('Block start and end arrays differ in size - returning')
+            return frame_clean, artifact
+        
+        # Init cleaned half frames
+        fr_odd_clean = fr_odd.copy()
+        fr_even_clean = fr_even.copy()
+        
+        # Recurse over each bad row block
+        for i, r0 in enumerate(bad_on):
+            
+            r1 = bad_off[i]
+            
+            fr_odd_clean = InpaintRows(fr_odd_clean, r0, r1)
+            fr_even_clean = InpaintRows(fr_even_clean, r0, r1)
+            
+        # Reinterlace cleaned frame
+        frame_clean[0::2,:] = fr_odd_clean
+        frame_clean[1::2,:] = fr_even_clean
+            
+        # Display results
+        if verbose:
+    
+            ny = bad_rows.shape[0]
+            y = np.arange(0,ny)           
+                
+            plt.figure(1)
+            plt.set_cmap('jet')
+                
+            plt.subplot(321)
+            plt.imshow(fr_odd)
+            plt.title('Odd')
+            
+            plt.subplot(322)
+            plt.imshow(fr_even)
+            plt.title('Even')
+            
+            plt.subplot(323)
+            plt.imshow(fr_odd_clean)
+            plt.title('Odd Repaired')
+            
+            plt.subplot(324)
+            plt.imshow(fr_even_clean)
+            plt.title('Even Repaired')
+            
+            plt.subplot(325)
+            plt.imshow(fr_diff)
+            plt.title('Odd - Even')
+            
+            plt.subplot(326)
+            plt.plot(y, med / np.max(med), y, bad_rows)
+            plt.title('Bad Row Mask')
+            
+            plt.show()
+
     return frame_clean, artifact
+
+
+def InpaintRows(src, r0, r1):
+    """
+    Repair bad row blocks by vertical linear interpolation
+    
+    Parameters
+    ----
+    src : 2D numpy uint8 array
+        Original image to be repaired
+    r0 : integer
+        Row index immediately before start of corrupted rows
+    r1 : integer
+        Row index immediately after end of corrupted rows
+        
+    Returns
+    ----
+    dest : 2D numpy uint8 array
+        Repaired image
+        
+    Example:
+    ----
+    >>> img_repaired = InpaintRows(img, 5, 25)
+    """
+
+    # Init repaired image
+    dest = src.copy()
+    
+    # Protect against overrange rows
+    nr = src.shape[0]
+    r0 = clamp(r0, 0, nr-1)
+    r1 = clamp(r1, 0, nr-1)
+    
+    # Extract start and end row values
+    I0 = (src[r0, :].astype(float)).reshape(1,-1)
+    I1 = (src[r1, :].astype(float)).reshape(1,-1)
+
+    # Create row vector for interpolation
+    # These rows define the bad row block
+    ri = np.arange(1, r1 - r0).reshape(-1,1)
+    dr = r1-r0
+    
+    # Intensity difference between good rows bounding the bad row block
+    dI = I1 - I0
+    
+    # Linear interpolation over bad row block
+    Ii = ri.dot(dI / dr) + I0
+    
+    # Replace bad row block with interpolated values
+    dest[(r0+1):r1,:] = np.round(Ii).astype(int)
+    
+    return dest
+
+
+def clamp(x, x_min, x_max):
+    """
+    Clamp value to range
+    
+    Arguments
+    ----
+    x : scalar
+        Value to be clamped
+    x_min : scalar
+        Minimum allowable value
+    x_max : scalar
+        Maximum allowable value
+        
+    Returns
+    ----
+    x clamped to range [x_min, x_max]
+
+    Example
+    ----
+    >>> clamp(11, 0, 10)
+    >>> 10    
+    """
+    
+    return np.max((x_min, np.min((x, x_max))))

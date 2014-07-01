@@ -39,14 +39,16 @@ import gtFitEllipse as fe
 import gtIO as io
 
 
-def VideoPupilometry(v_file, rotate=0):
+def VideoPupilometry(vin_file, config, rotate=0, verbose=False, graphics=False):
     """
     Perform pupil boundary ellipse fitting on entire video
     
     Arguments
     ----
-    v_file : string
+    vin_file : string
         Video file name. Any format supported by ffmpeg.
+    config : 
+        Analysis configuration parameters
     rotate : integer
         Rotation to be applied to video (0, 90, 180 or 270 degrees)
     
@@ -55,10 +57,6 @@ def VideoPupilometry(v_file, rotate=0):
     status : boolean
         Completion status (True = successful)
     """
-    
-    # Output flags
-    do_graphic = True
-    verbose    = True    
     
     # Downsampling scale factor
     scale = 4
@@ -73,20 +71,22 @@ def VideoPupilometry(v_file, rotate=0):
     cascade = cv2.CascadeClassifier('Cascade/cascade.xml')
     
     if cascade.empty():
-        print('LBP cascade is empty - check Cascade directory exists')
-        sys.exit(1)
+        print('LBP cascade is empty - geetee installation problem')
+        return False
     
     #
     # Input video
     #
     if verbose: print('Opening input video stream')
     try:
-        vin_stream = cv2.VideoCapture(v_file)
+        vin_stream = cv2.VideoCapture(vin_file)
     except:
-        sys.exit(1)
+        print('* Problem openeing input video stream - skipping pupilometry')        
+        return False
         
     if not vin_stream.isOpened():
-        sys.exit(1)
+        print('* Video input stream not opened - skipping pupilometry')
+        return False
     
     # Get FPS from video file
     fps = vin_stream.get(cv2.cv.CV_CAP_PROP_FPS)
@@ -100,35 +100,39 @@ def VideoPupilometry(v_file, rotate=0):
     #
     # Output video
     #
-    if verbose: print('Output video size   : %d x %d' % (nx, ny))    
-    
+        
     # Output video codec (MP4V - poor quality compression)
     # TODO : Find a better multiplatform codec
     fourcc = cv2.cv.CV_FOURCC('m','p','4','v')
     
+    # File stubs for outputs
+    fstub, fext = os.path.splitext(vin_file)
+    
+    # Output video filename
+    vout_file = fstub + '_pupils.mov'
+    
     try:
-        vout_stream = cv2.VideoWriter('tracking.mov', fourcc, 30, (nx, ny), True)
+        vout_stream = cv2.VideoWriter(vout_file, fourcc, 30, (nx, ny), True)
     except:
-        print('Problem creating output video stream')
-        raise
+        print('* Problem creating output video stream - skipping pupilometry')
+        return False
         
     if not vout_stream.isOpened():
-        print('Output video not opened')
-        raise 
+        print('* Output video not opened - skipping pupilometry')
+        return False 
 
     # 
     # Output pupilometry data
     #
 
-    # Modify video file name to get pupilometry text file
-    fstub, fext = os.path.splitext(v_file)
+    # Pupilometry output CSV filename
     pout_name   = fstub + '_pupils.csv'
     
     # Open pupilometry text file to write
     try:
         pout_stream = open(pout_name, 'w')
     except:
-        print('Problem opening pupilometry file : %s' % pout_name)
+        print('* Problem opening pupilometry results file - skipping pupilometry')
         return False
 
     #
@@ -157,7 +161,7 @@ def VideoPupilometry(v_file, rotate=0):
         # Write data line to pupils file
         WritePupilometry(pout_stream, t, ellipse, blink, artifact)
             
-        if do_graphic:
+        if graphics:
 
             # Overlay ROI and pupil ellipse on RGB frame
             if not blink:
@@ -182,10 +186,10 @@ def VideoPupilometry(v_file, rotate=0):
         # Report processing FPS
         if verbose:
             pfps = fc / (time.time() - t0)  
-            print('Frame %d  FPS %0.1f  Blink %d  Artifact' % (fc, pfps, blink, artifact))
+            print('Frame %d  FPS %0.1f  Blink %d  Artifact %d' % (fc, pfps, blink, artifact))
     
     # Clean up
-    if verbose: print('Cleaning up')
+    if verbose: print('  Cleaning up')
     cv2.destroyAllWindows()
     vin_stream.release()
     vout_stream.release()

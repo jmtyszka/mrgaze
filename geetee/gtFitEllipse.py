@@ -34,14 +34,27 @@ import cv2
 def FitEllipse_RANSAC(pnts, roi):
     
     '''
-    @param pnts:
-    @param roi:
-    @return:
+    Robust ellipse fitting to pupil-iris boundary
+    
+    Parameters
+    ----
+    pnts : n x 2 array of integers
+        Candidate pupil-iris boundary points from edge detection
+    roi : 2D scalar array
+        Grayscale image of pupil-iris region
+        
+    Returns
+    ----
+    best_ellipse : tuple of tuples
+        Best fitted ellipse parameters ((x0, y0), (a,b), theta)
     '''
     
     # Output flags
     do_graphic = False
     verbose    = False
+    
+    # Suppress invalid values
+    np.seterr(invalid='ignore')
     
     #
     # RANSAC parameters
@@ -152,6 +165,13 @@ def FitEllipse_RANSAC(pnts, roi):
 
 
 def EllipseError(pnts, ellipse):
+    """
+    Ellipse fit error function
+    """
+    
+    # Suppress divide-by-zero warnings
+    np.seterr(divide='ignore')
+
  
     # Calculate algebraic distances and gradients of all points from fitted ellipse
     distance, grad, absgrad, normgrad = ConicFunctions(pnts, ellipse)
@@ -167,10 +187,12 @@ def EllipseError(pnts, ellipse):
 
 
 def EllipseNormError(pnts, ellipse):
+    """
+    Error normalization factor, alpha
     
-    # Error normalization factor, alpha
-    # Normalizes cost to 1.0 at point 1 pixel out from minor vertex along minor axis
-
+    Normalizes cost to 1.0 at point 1 pixel out from minor vertex along minor axis
+    """
+    
     # Ellipse tuple has form ( ( x0, y0), (bb, aa), phi_b_deg) )
     # Where aa and bb are the major and minor axes, and phi_b_deg
     # is the CW x to minor axis rotation in degrees
@@ -198,6 +220,9 @@ def EllipseNormError(pnts, ellipse):
 
 
 def EllipseSupport(pnts, ellipse, dIdx, dIdy):
+    """
+    Ellipse support function
+    """
     
     if pnts.size < 5:
         return -np.inf
@@ -230,12 +255,16 @@ def EllipseImageGradDot(pnts, ellipse, dIdx, dIdy):
 # Ellipse Math
 #---------------------------------------------
 
-#
-# Geometric to conic parameter conversion
-# Adapted from Swirski's ConicSection.h
-# https://bitbucket.org/Leszek/pupil-tracker/
-#
+
 def Geometric2Conic(ellipse):
+    """
+    Geometric to conic parameter conversion
+    
+    References
+    ----
+    Adapted from Swirski's ConicSection.h
+    https://bitbucket.org/Leszek/pupil-tracker/
+    """
     
     # Ellipse tuple has form ( ( x0, y0), (bb, aa), phi_b_deg) )
     # Where aa and bb are the major and minor axes, and phi_b_deg
@@ -278,11 +307,14 @@ def Geometric2Conic(ellipse):
     return conic
 
 
-#
-# Merge geometric parameter functions from van Foreest code
-# http://nicky.vanforeest.com/misc/fitEllipse/fitEllipse.html
-#
 def Conic2Geometric(conic):
+    """
+    Merge geometric parameter functions from van Foreest code
+    
+    References
+    ----
+    http://nicky.vanforeest.com/misc/fitEllipse/fitEllipse.html
+    """
     
     # Extract modified conic parameters    
     A,B,C,D,E,F = conic[0], conic[1]/2, conic[2], conic[3]/2, conic[4]/2, conic[5]
@@ -307,18 +339,36 @@ def Conic2Geometric(conic):
     
     # Note OpenCV ellipse parameter format (full axes)
     return (x0,y0), (2*b, 2*a), phi_b_deg
-    
-#
-# Conic quadratic curve support functions
-# Adapted from Swirski's ConicSection.h
-# https://bitbucket.org/Leszek/pupil-tracker/
-#
+
     
 def ConicFunctions(pnts, ellipse):
+    """
+    Calculate various conic quadratic curve support functions
+
+    General 2D quadratic curve (biquadratic)
+    Q = Ax^2 + Bxy + Cy^2 + Dx + Ey + F
+    For point on ellipse, Q = 0, with appropriate coefficients
     
-    # General 2D quadratic curve (biquadratic)
-    # Q = Ax^2 + Bxy + Cy^2 + Dx + Ey + F
-    # For point on ellipse, Q = 0, with appropriate coefficients 
+    Parameters
+    ----
+    pnts : n x 2 array of floats
+    ellipse : tuple of tuples    
+    
+    Returns
+    ----
+    distance : array of floats
+    grad : array of floats
+    absgrad : array of floats
+    normgrad : array of floats
+    
+    References
+    ----    
+    Adapted from Swirski's ConicSection.h
+    https://bitbucket.org/Leszek/pupil-tracker/
+    """
+    
+    # Suppress invalid values
+    np.seterr(invalid='ignore')
     
     # Convert from geometric to conic ellipse parameters
     conic = Geometric2Conic(ellipse)
@@ -354,15 +404,15 @@ def ConicFunctions(pnts, ellipse):
     
     return distance, grad, absgrad, normgrad
 
-#
-# Graphics functions
-#
 
 def OverlayRANSACFit(img, all_pnts, inlier_pnts, ellipse):
-
-    # NOTE : all points are (x,y) pairs, but arrays are (row, col)
-    # so swap coordinate ordering for correct positioning in array
-
+    """
+    NOTE
+    ----
+    All points are (x,y) pairs, but arrays are (row, col) so swap
+    coordinate ordering for correct positioning in array
+    """
+    
     # Overlay all pnts in red
     for col,row in all_pnts:
         img[row,col] = [0,0,255]
