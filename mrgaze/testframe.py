@@ -1,6 +1,6 @@
 #!/opt/local/bin/python
 #
-# Single frame geetee test
+# Single frame mrgaze test
 # - finds pupil
 #
 # USAGE : testframe.py <Test Frame Image>
@@ -9,27 +9,28 @@
 # PLACE  : Caltech
 # DATES  : 2014-05-07 JMT From scratch
 #
-# This file is part of geetee.
+# This file is part of mrgaze.
 #
-#    geetee is free software: you can redistribute it and/or modify
+#    mrgaze is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or
 #    (at your option) any later version.
 #
-#    geetee is distributed in the hope that it will be useful,
+#    mrgaze is distributed in the hope that it will be useful,
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#   along with geetee.  If not, see <http://www.gnu.org/licenses/>.
+#   along with mrgaze.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright 2014 California Institute of Technology.
 
 import sys
 import cv2
-import gtIO
-import gtPupilometry as p
+
+import mrgaze.io as mrio
+import mrgaze.pupilometry as mrp
 
 def main():
     
@@ -51,7 +52,7 @@ def main():
         sys.exit(1)
 
     # Load single frame
-    frame = gtIO.LoadImage(test_img)
+    frame = mrio.LoadImage(test_img)
     
     # Downsample original NTSC video by 4 in both axes
     nx, ny = frame.shape[1], frame.shape[0]
@@ -61,10 +62,10 @@ def main():
     frd = cv2.resize(frame, (nxd, nyd))
         
     # Call pupilometry engine
-    el, roi_rect, blink = p.PupilometryEngine(frd, cascade)
+    el, roi_rect, blink = mrp.PupilometryEngine(frd, cascade)
     
     # Display fitted pupil ellipse over original image
-    p.DisplayPupilEllipse(frd, el, roi_rect)
+    mrp.DisplayPupilEllipse(frd, el, roi_rect)
     
     
 # This is the standard boilerplate that calls the main() function.

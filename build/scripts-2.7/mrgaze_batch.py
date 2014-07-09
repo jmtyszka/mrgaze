@@ -1,4 +1,4 @@
-#!/opt/local/bin/python
+#!/opt/local/Library/Frameworks/Python.framework/Versions/2.7/Resources/Python.app/Contents/MacOS/Python
 """
 Run gaze tracking pipeline on all sessions within a data directory
 
@@ -16,20 +16,20 @@ Dates
 
 License
 ----
-This file is part of geetee.
+This file is part of mrgaze.
 
-    geetee is free software: you can redistribute it and/or modify
+    mrgaze is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
-    geetee is distributed in the hope that it will be useful,
+    mrgaze is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with geetee.  If not, see <http://www.gnu.org/licenses/>.
+along with mrgaze.  If not, see <http://www.gnu.org/licenses/>.
 
 Copyright
 ----
@@ -40,8 +40,7 @@ import os
 import sys
 import datetime as dt
 
-import geetee
-import geetee.pupilometry
+import mrgaze.pipeline as mrp
 
 def main():
     
@@ -54,7 +53,7 @@ def main():
     # Text splash
     print('')
     print('--------------------------------------------------')
-    print('GeeTee Batch Gaze Tracking Video Analysis')
+    print('mrgaze Batch Gaze Tracking Video Analysis')
     print('--------------------------------------------------')
     print('Version   : %s' % '0.1')
     print('Date      : %s' % dt.datetime.now())
@@ -62,7 +61,7 @@ def main():
     print('')
     
     # Run single-session pipeline
-    pipeline.RunBatch(data_dir)
+    mrp.RunBatch(data_dir)
 
 
 # This is the standard boilerplate that calls the main() function.

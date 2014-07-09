@@ -7,26 +7,26 @@ Main python eyetracking wrapper
 
  Example
  ----
- >>> geetee_batch.py <Calibration Video> <Gaze Video>
+ >>> mrgaze_batch.py <Calibration Video> <Gaze Video>
 
  AUTHOR : Mike Tyszka
  PLACE  : Caltech
  DATES  : 2014-05-07 JMT From scratch
 
- This file is part of geetee.
+ This file is part of mrgaze.
 
-    geetee is free software: you can redistribute it and/or modify
+    mrgaze is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
-    geetee is distributed in the hope that it will be useful,
+    mrgaze is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-   along with geetee.  If not, see <http://www.gnu.org/licenses/>.
+   along with mrgaze.  If not, see <http://www.gnu.org/licenses/>.
 
 Copyright 2014 California Institute of Technology.
 """
@@ -34,10 +34,10 @@ Copyright 2014 California Institute of Technology.
 import os
 import sys
 
-import io
-import pupilometry
-import calibrate
-import report
+import mrgaze.utils as mru
+import mrgaze.pupilometry as mrp
+import mrgaze.calibrate as mrc
+import mrgaze.report as mrr
 
 def RunBatch(data_dir=[]):
     """
@@ -84,7 +84,7 @@ def RunSingle(data_dir, subjsess):
 
     # Load configuration from root directory or subj/sess video dir
     # If no config file exists, a default root config is created
-    config = io.LoadConfig(data_dir, subjsess)
+    config = mru.LoadConfig(data_dir, subjsess)
     
     if not config:
         print('* Configuration file missing - returning')
@@ -99,27 +99,27 @@ def RunSingle(data_dir, subjsess):
         print('  Calibration Pupilometry')
 
         # Create results subj/sess dir
-        io._mkdir(ss_res_dir)
+        mru._mkdir(ss_res_dir)
 
         inext = config.get('VIDEO', 'inputextension')       
         cal_video  = os.path.join(ss_vid_dir, 'cal' + inext)
-        pupilometry.VideoPupilometry(cal_video, ss_res_dir, config)
+        mrp.VideoPupilometry(cal_video, ss_res_dir, config)
             
         print('  Gaze Pupilometry')
 
         gaze_video = os.path.join(ss_vid_dir, 'gaze' + inext)
-        pupilometry.VideoPupilometry(gaze_video, ss_res_dir, config)
+        mrp.VideoPupilometry(gaze_video, ss_res_dir, config)
             
         if do_cal:
             
             print('  Create calibration model')
-            C = calibrate.AutoCalibrate(ss_vid_dir, config)
+            C = mrc.AutoCalibrate(ss_vid_dir, config)
 
             print('  Calibrate pupilometry')
-            calibrate.ApplyCalibration(ss_vid_dir, C)
+            mrc.ApplyCalibration(ss_vid_dir, C)
             
         print('  Write report')
-        report.WriteReport(ss_res_dir)
+        mrr.WriteReport(ss_res_dir)
 
     else:
             

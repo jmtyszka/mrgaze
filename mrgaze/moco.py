@@ -9,20 +9,20 @@
 # PLACE  : Caltech
 # DATES  : 2014-05-23 JMT From scratch
 #
-# This file is part of geetee.
+# This file is part of mrgaze.
 #
-#    geetee is free software: you can redistribute it and/or modify
+#    mrgaze is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or
 #    (at your option) any later version.
 #
-#    geetee is distributed in the hope that it will be useful,
+#    mrgaze is distributed in the hope that it will be useful,
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#   along with geetee.  If not, see <http://www.gnu.org/licenses/>.
+#   along with mrgaze.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright 2014 California Institute of Technology.
 
@@ -31,7 +31,7 @@ import sys
 import cv2
 import numpy as np
 
-import io
+import mrgaze.io as mrio
 
 def MotionCorrect(cal_video, gaze_video):
     
@@ -84,7 +84,7 @@ def CreateTemplate(v_in_file, scale = 1, border = 0):
             
         while keep_going:
                 
-            keep_going, I, artifact = io.LoadVideoFrame(v_in, scale, border)
+            keep_going, I, artifact = mrio.LoadVideoFrame(v_in, scale, border)
             
             if keep_going:
             
@@ -109,7 +109,7 @@ def CreateTemplate(v_in_file, scale = 1, border = 0):
     elif method == 'last_frame':
         
         v_in.set(cv2.cv.CV_CAP_PROP_POS_FRAMES, n_frames-2)
-        keep_going, I, artifact = io.LoadVideoFrame(v_in, scale, border)
+        keep_going, I, artifact = mrio.LoadVideoFrame(v_in, scale, border)
         Im = np.float32(I)
     
     # Sobel edges in video scanline direction (x)
@@ -157,7 +157,7 @@ def PhaseCorrelate(v_file, template, scale = 1, border = 0):
     while keep_going:
             
         # Downsample current frame
-        keep_going, I, artifact = io.LoadVideoFrame(v_in, scale, border)
+        keep_going, I, artifact = mrio.LoadVideoFrame(v_in, scale, border)
         
         if keep_going:
             

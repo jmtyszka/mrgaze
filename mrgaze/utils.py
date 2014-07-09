@@ -1,39 +1,31 @@
 #!/opt/local/bin/python
-#
-# Load a single video frame from an image file
-# - optional border trim border argument
-#
-# USAGE : geetee_TestFrame.py <Test Frame Image>
-#
-# AUTHOR : Mike Tyszka
-# PLACE  : Caltech
-# DATES  : 2014-05-07 JMT From scratch
-#
-# This file is part of geetee.
-#
-#    geetee is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    geetee is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#   along with geetee.  If not, see <http://www.gnu.org/licenses/>.
-#
-# Copyright 2014 California Institute of Technology.
+"""
+Utility functions, primarily for I/O
+
+This file is part of mrgaze.
+
+    mrgaze is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    mrgaze is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with mrgaze.  If not, see <http://www.gnu.org/licenses/>.
+
+Copyright 2014 California Institute of Technology.
+"""
 
 import os
 import cv2
 import numpy as np
 import ConfigParser
-
-import mrclean
-import pupilometry
-
+from skimage import exposure
+import mrgaze.mrclean as mrc
 
 def LoadVideoFrame(v_in, config):
     """
@@ -80,7 +72,7 @@ def LoadVideoFrame(v_in, config):
         
         # Apply optional MR artifact suppression
         if do_mrclean:
-            fr, artifact = mrclean.MRClean(fr)
+            fr, artifact = mrc.MRClean(fr)
 
         # Get trimmed frame size
         nx, ny = fr.shape[1], fr.shape[0]
@@ -95,9 +87,32 @@ def LoadVideoFrame(v_in, config):
         fr = cv2.GaussianBlur(fr, (3,3), 1.0)
 
         # Robust rescale to 5th, 95th percentile
-        fr = pupilometry.RobustRescale(fr, (1,99))
+        fr = RobustRescale(fr, (1,99))
         
     return status, fr, artifact
+
+
+def RobustRescale(gray, perc_range=(5, 95)):
+    """
+    Robust image intensity rescaling
+    
+    Arguments
+    ----
+    gray : numpy uint8 array
+        Original grayscale image.
+    perc_range : two element tuple of floats in range [0,100]
+        Percentile scaling range
+    
+    Returns
+    ----
+    gray_rescale : numpy uint8 array
+        Percentile rescaled image.
+    """
+    
+    pA, pB = np.percentile(gray, perc_range)
+    gray_rescale = exposure.rescale_intensity(gray, in_range=(pA, pB))
+    
+    return gray_rescale
 
 
 def TrimBorder(frame, border = 0):
@@ -206,11 +221,11 @@ def LoadConfig(data_dir, subjsess):
     """
     
     # Root config filename
-    root_cfg_file = os.path.join(data_dir, 'geetee.cfg')
+    root_cfg_file = os.path.join(data_dir, 'mrgaze.cfg')
     
     # Subject/Session config filename
     ss_dir = os.path.join(data_dir, subjsess)
-    ss_cfg_file = os.path.join(ss_dir, 'geetee.cfg')
+    ss_cfg_file = os.path.join(ss_dir, 'mrgaze.cfg')
     
     # Create a new parser
     config = ConfigParser.ConfigParser()

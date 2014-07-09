@@ -4,26 +4,26 @@
 # - takes calibration and gaze video filenames as input
 # - controls calibration and gaze estimation workflow
 #
-# USAGE : geetee.py <Calibration Video> <Gaze Video>
+# USAGE : mrgaze.py <Calibration Video> <Gaze Video>
 #
 # AUTHOR : Mike Tyszka
 # PLACE  : Caltech
 # DATES  : 2014-05-07 JMT From scratch
 #
-# This file is part of geetee.
+# This file is part of mrgaze.
 #
-#    geetee is free software: you can redistribute it and/or modify
+#    mrgaze is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or
 #    (at your option) any later version.
 #
-#    geetee is distributed in the hope that it will be useful,
+#    mrgaze is distributed in the hope that it will be useful,
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#   along with geetee.  If not, see <http://www.gnu.org/licenses/>.
+#   along with mrgaze.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright 2014 California Institute of Technology.
 
@@ -32,11 +32,8 @@ import time
 import cv2
 import scipy.ndimage as spi
 import numpy as np
-from skimage import exposure
-
-import fitellipse
-import io
-
+import mrgaze.fitellipse as mrf
+import mrgaze.utils as mru
 
 def VideoPupilometry(vin_path, res_dir, config):
     """
@@ -70,7 +67,7 @@ def VideoPupilometry(vin_path, res_dir, config):
     cascade = cv2.CascadeClassifier('Cascade/cascade.xml')
     
     if cascade.empty():
-        print('LBP cascade is empty - geetee installation problem')
+        print('LBP cascade is empty - mrgaze installation problem')
         return False
     
     #
@@ -93,7 +90,7 @@ def VideoPupilometry(vin_path, res_dir, config):
     fps = vin_stream.get(cv2.cv.CV_CAP_PROP_FPS)
     
     # Read preprocessed video frame from stream
-    keep_going, frame, artifact = io.LoadVideoFrame(vin_stream, config)
+    keep_going, frame, artifact = mru.LoadVideoFrame(vin_stream, config)
      
     # Get size of preprocessed frame for output video setup
     nx, ny = frame.shape[1], frame.shape[0]
@@ -176,7 +173,7 @@ def VideoPupilometry(vin_path, res_dir, config):
         vout_stream.write(frame_rgb)
 
         # Read next frame (if available)
-        keep_going, frame, artifact = io.LoadVideoFrame(vin_stream, config)
+        keep_going, frame, artifact = mru.LoadVideoFrame(vin_stream, config)
         
         # Increment frame counter
         fc = fc + 1
@@ -290,7 +287,7 @@ def FitPupil(bw, roi):
     pnts[:,[0,1]] = pnts[:,[1,0]]
     
     # RANSAC ellipse fitting to edge points
-    ellipse = fitellipse.FitEllipse_RANSAC(pnts, roi)
+    ellipse = mrf.FitEllipse_RANSAC(pnts, roi)
     
     return ellipse
         
@@ -317,29 +314,6 @@ def DisplayPupilEllipse(frame, ellipse, roi_rect):
     # Wait for key press
     cv2.waitKey()
     
-
-def RobustRescale(gray, perc_range=(5, 95)):
-    """
-    Robust image intensity rescaling
-    
-    Arguments
-    ----
-    gray : numpy uint8 array
-        Original grayscale image.
-    perc_range : two element tuple of floats in range [0,100]
-        Percentile scaling range
-    
-    Returns
-    ----
-    gray_rescale : numpy uint8 array
-        Percentile rescaled image.
-    """
-    
-    pA, pB = np.percentile(gray, perc_range)
-    gray_rescale = exposure.rescale_intensity(gray, in_range=(pA, pB))
-    
-    return gray_rescale
-
 
 def RotateFrame(frame, rot):
     """

@@ -1,4 +1,4 @@
-GEETEE Gaze Tracking Package
+MRGAZE Gaze Tracking Package
 ----------------------------
 
 Provides scripts to perform offline pupilometry and gaze estimation from eyetracking video.
