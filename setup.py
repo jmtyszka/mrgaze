@@ -7,5 +7,6 @@ setup ( name = 'mrgaze',
         author_email = ['jmt@caltech.edu'],
         url = ['https://github.com/jmtyszka/geetee'],
         packages = find_packages(),
-        scripts = ['mrgaze_batch.py', 'mrgaze_single.py']
+        scripts = ['mrgaze_batch.py', 'mrgaze_single.py'],
+        package_data = {'mrgaze': ['Cascade/*']},
       )

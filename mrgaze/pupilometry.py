@@ -35,7 +35,7 @@ import numpy as np
 import mrgaze.fitellipse as mrf
 import mrgaze.utils as mru
 
-def VideoPupilometry(vin_path, res_dir, config):
+def VideoPupilometry(data_dir, subj_sess, v_stub, config):
     """
     Perform pupil boundary ellipse fitting on entire video
     
@@ -58,28 +58,43 @@ def VideoPupilometry(vin_path, res_dir, config):
     verbose = config.getboolean('OUTPUT', 'verbose')
     graphics = config.getboolean('OUTPUT', 'graphics')
     
+    # Input video extension
+    vin_ext = config.get('VIDEO', 'inputextension')
+    vout_ext = config.get('VIDEO' ,'outputextension')    
+    
+    # Full video file paths
+    ss_dir = os.path.join(data_dir, subj_sess)
+    vin_path = os.path.join(ss_dir, 'videos', v_stub + vin_ext)
+    vout_path = os.path.join(ss_dir, 'results', v_stub + '_pupils' + vout_ext)
+    
+    # Pupilometry CSV file output path
+    pout_path = os.path.join(ss_dir, 'results', v_stub + '_pupils.csv')
+    
     # Check that input video file exists
     if not os.path.isfile(vin_path):
-        print('* Input video file does not exist - returning')
+        print('* %s does not exist - returning' % vin_path)
         return False
     
-    # Set up LBP cascade classifier
-    cascade = cv2.CascadeClassifier('Cascade/cascade.xml')
+    # Set up the LBP cascade classifier
+    mrclean_root = mru._package_root()
+    LBP_path = os.path.join(mrclean_root, 'Cascade/cascade.xml')
+    
+    print('  Loading LBP cascade')
+    cascade = cv2.CascadeClassifier(LBP_path)
     
     if cascade.empty():
-        print('LBP cascade is empty - mrgaze installation problem')
+        print('* LBP cascade is empty - mrgaze installation problem')
         return False
     
     #
     # Input video
     #
-    if verbose:
-        print('  Opening input video stream')
+    print('  Opening input video stream')
         
     try:
         vin_stream = cv2.VideoCapture(vin_path)
     except:
-        print('* Problem openeing input video stream - skipping pupilometry')        
+        print('* Problem opening input video stream - skipping pupilometry')        
         return False
         
     if not vin_stream.isOpened():
@@ -88,6 +103,9 @@ def VideoPupilometry(vin_path, res_dir, config):
     
     # Get FPS from video file
     fps = vin_stream.get(cv2.cv.CV_CAP_PROP_FPS)
+    
+    # Total number of frames in video file
+    nf = vin_stream.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT)
     
     # Read preprocessed video frame from stream
     keep_going, frame, artifact = mru.LoadVideoFrame(vin_stream, config)
@@ -98,23 +116,14 @@ def VideoPupilometry(vin_path, res_dir, config):
     #
     # Output video
     #
+    print('  Opening output video stream')
         
     # Output video codec (MP4V - poor quality compression)
     # TODO : Find a better multiplatform codec
     fourcc = cv2.cv.CV_FOURCC('m','p','4','v')
-    
-    # Split input video filename into parent, filestub and extension
-    vin_parent, vin_file = os.path.split(vin_path)
-    vin_stub, vin_ext = os.path.splitext(vin_file)
-    
-    # Pupilometry output video filename
-    vout_file = os.path.join(vin_parent, vin_stub + '_pupils.mov')
-    
-    # Pupilometry output CSV filename
-    pout_csv_file = os.path.join(vin_parent, vin_stub + '_pupils.csv')
-    
+
     try:
-        vout_stream = cv2.VideoWriter(vout_file, fourcc, 30, (nx, ny), True)
+        vout_stream = cv2.VideoWriter(vout_path, fourcc, 30, (nx, ny), True)
     except:
         print('* Problem creating output video stream - skipping pupilometry')
         return False
@@ -125,7 +134,7 @@ def VideoPupilometry(vin_path, res_dir, config):
 
     # Open pupilometry CSV file to write
     try:
-        pout_stream = open(pout_csv_file, 'w')
+        pout_stream = open(pout_path, 'w')
     except:
         print('* Problem opening pupilometry CSV file - skipping pupilometry')
         return False
@@ -134,12 +143,23 @@ def VideoPupilometry(vin_path, res_dir, config):
     # Main Video Frame Loop
     #
 
+    # Print verbose column headers
+    if verbose:
+        print('')
+        print('  %10s %10s %10s %10s %10s %10s' % (
+            'Time (s)',
+            '% Done',
+            'Area',
+            'Blink',
+            'Artifact',
+            'FPS'))
+
     # Init frame counter
     fc = 0
     
     # Init processing timer
     t0 = time.time()
-
+    
     while keep_going:
         
         # Current video time in seconds
@@ -180,15 +200,16 @@ def VideoPupilometry(vin_path, res_dir, config):
         
         # Report processing FPS
         if verbose:
-            if fc % 30 == 0:
+            if fc % 100 == 0:
+                perc_done = fc / float(nf) * 100.0
                 pfps = fc / (time.time() - t0)  
-                print('  Frame %d  Area %0.1f  Blink %d  Artifact %d  FPS %0.1f' % (fc, area, blink, artifact, pfps))
+                print('  %10.1f %10.1f %10.1f %10d %10d %10.1f' % (
+                    t, perc_done, area, blink, artifact, pfps))
+    
+
+    print('  Cleaning up')
     
     # Clean up
-    
-    if verbose:
-        print('  Cleaning up')
-        
     cv2.destroyAllWindows()
     vin_stream.release()
     vout_stream.release()
@@ -251,7 +272,7 @@ def SegmentPupil(roi):
     # Intensity rescale to emphasize pupil
     # - assumes pupil is one of the darkest regions
     # - assumes pupil occupies between 5% and 50% of frame area
-    roi = RobustRescale(roi, (5,50))
+    roi = mru.RobustRescale(roi, (5,50))
             
     # Segment pupil in contrast stretched roi and update threshold
     thresh, blobs = cv2.threshold(roi, 128, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
@@ -313,45 +334,6 @@ def DisplayPupilEllipse(frame, ellipse, roi_rect):
     
     # Wait for key press
     cv2.waitKey()
-    
-
-def RotateFrame(frame, rot):
-    """
-    Rotate frame in multiples of 90 degrees.
-    
-    Arguments
-    ----
-    frame : numpy uint8 array
-        video frame to rotate
-    rot : integer
-        rotation angle in degrees (0, 90, 180 or 270)
-        
-    Returns
-    ----
-    frame : numpy uint8 array
-        rotated frame
-        
-    Example
-    ----
-    >>> frame_rot = RotateFrame(frame, 180)
-    """
-    
-    if rot == 270: # Rotate CCW 90
-        frame = cv2.transpose(frame)
-        frame = cv2.flip(frame, flipCode = 0)
-
-    elif rot == 90: # Rotate CW 90
-        frame = cv2.transpose(frame)
-        frame = cv2.flip(frame, flipCode = 1)
-        
-    elif rot == 180: # Rotate by 180
-        frame = cv2.flip(frame, flipCode = 0)
-        frame = cv2.flip(frame, flipCode = 1)
-    
-    else: # Do nothing
-        pass
-        
-    return frame
 
 
 def WritePupilometry(pupil_out, t, ellipse, blink, artifact):

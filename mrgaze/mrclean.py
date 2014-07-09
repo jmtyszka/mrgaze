@@ -8,7 +8,7 @@ Video pupilometry functions
 Example
 -------
 
->>> geetee.py <Calibration Video> <Gaze Video>
+>>> mrgaze.py <Calibration Video> <Gaze Video>
 
 
 Author
@@ -19,20 +19,20 @@ Author
 License
 -------
 
-This file is part of geetee.
+This file is part of mrgaze.
 
-    geetee is free software: you can redistribute it and/or modify
+    mrgaze is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
-    geetee is distributed in the hope that it will be useful,
+    mrgaze is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with geetee.  If not, see <http://www.gnu.org/licenses/>.
+    along with mrgaze.  If not, see <http://www.gnu.org/licenses/>.
 
 Copyright
 ---------

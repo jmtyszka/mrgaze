@@ -51,7 +51,7 @@ def main():
         ss_dir = os.getcwd()
         
     # Split subj/session directory path into data_dir and subj/sess name
-    data_dir, subj_sess = os.path.split(ss_dir)
+    data_dir, subj_sess = os.path.split(os.path.abspath(ss_dir))
 
     # Text splash
     print('')
@@ -62,7 +62,6 @@ def main():
     print('Date      : %s' % dt.datetime.now())
     print('Data dir  : %s' % data_dir)
     print('Subj/Sess : %s' % subj_sess)
-    print('')
     
     # Run single-session pipeline
     mrp.RunSingle(data_dir, subj_sess)

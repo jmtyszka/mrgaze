@@ -28,13 +28,12 @@
 import os
 import string
 
-import mrgaze.utils as mru
-
 # Define template
 TEMPLATE_FORMAT = """
 <html>
 
 <head>
+
 <STYLE TYPE="text/css">
 BODY {
   font-family    : sans-serif;
@@ -47,87 +46,54 @@ td {
   vertical-align : top;
 }
 </STYLE>
+
 </head>
 
 <body>
 
-<h1 style="background-color:#E0E0FF">CBIC Daily QA Report</h1>
+<h1 style="background-color:#E0E0FF">MRGAZE Gaze Tracking Report</h1>
 
 <table>
 <tr>
 
-<!-- Scanner and acquisition info -->
+<!-- Subject/Session Information -->
 <td>
   <table>
-  <tr> <td> <b>Acquisition Date</b> <td bgcolor="#E0FFE0"> <b>$acq_date</b> </tr>
-  <tr> <td> <b>Scanner ID</b>       <td> $scanner_serno </tr>
-  <tr> <td> <b>Frequency</b>        <td> $scanner_freq MHz </tr>
-  <tr> <td> <b>TR</b>               <td> $TR_ms ms </tr>
-  <tr> <td> <b>Volumes</b>          <td> $num_volumes </tr>
+    <tr>
+      <td><b>Subject/Session</b>
+      <td><b>$subj_sess</b>
+    </tr>
   </table>
 </td>
-
-<!-- SNR and absolute signal info -->
-<td>
-  <table>
-  <tr> <td> <b>SNR Phantom</b>      <td bgcolor="#E0FFE0"> <b>$phantom_snr</b> </tr>
-  <tr> <td> <b>SNR Nyquist</b>      <td> $nyquist_snr </tr>
-  <tr> <td> <b>Mean Phantom</b>     <td> $phantom_mean
-  <tr> <td> <b>Mean Nyquist</b>     <td> $nyquist_mean
-  <tr> <td> <b>Mean Noise</b>       <td> $noise_mean
-  </table>
-</td>
-
-<!-- Spikes and drift -->
-<td>
-  <table>
-  <tr> <td> <b>Phantom Spikes</b>   <td> $phantom_spikes </tr>
-  <tr> <td> <b>Nyquist Spikes</b>   <td> $nyquist_spikes </tr>
-  <tr> <td> <b>Noise Spikes</b>     <td> $noise_spikes </tr>
-  <tr> <td> <b>Phantom Drift</b>   <td> $phantom_drift % </tr>
-  <tr> <td> <b>Nyquist Drift</b>   <td> $nyquist_drift % </tr>
-  <tr> <td> <b>Noise Drift</b>     <td> $noise_drift % </tr>
-  </table>
-</td>
-
-<!-- Center of mass and apparent motion -->
-<td>
-  <table>
-  <tr> <td> <b>CofM (mm)</b>        <td> ($com_x, $com_y, $com_z)
-  <tr> <td> <b>Max Disp (um)</b>    <td> ($max_adx, $max_ady, $max_adz)
-  </table>
-</td>
-
-<br><br>
 
 <!-- Plotted timeseries -->
 <table>
-
-<tr>
-<td> <h3>Signal, Drift and Noise</h3>
-<td> <h3>Temporal Summary Images and Masks</h3>
-</tr>
-
-<tr>
-<td valign="top"><img src=qa_timeseries.png />
-<td valign="top">
-<b>tMean</b><br> <img src=qa_mean_ortho.png /><br><br>
-<b>tSD</b><br> <img src=qa_sd_ortho.png /><br><br>
-<b>Region Mask</b><br> <img src=qa_mask_ortho.png /><br><br>
-</tr>
-
+  <tr>
+    <td valign="top"><img src=pupilometry_timeseries.png />
+  </tr>
 </table>
 
+</body>
+
+</html>
 """
 
 # Main function
-def WriteReport(subjsess_results_dir):
+def WriteReport(ss_res_dir):
     
-    # Report directory
-    report_dir = os.path.join(subjsess_results_dir,'report')
+    # Check that results directory exists
+    if not os.path.isdir(ss_res_dir):
+        print('* Results directory does not exist - returning')
+        return False
+        
+    # Extract subj/sess name
+    subj_sess = os.path.basename(ss_res_dir)
     
-    # Safely create report dir
-    mru._mkdir(report_dir)
+    # Create timeseries plots
+    PlotTimeseries(ss_res_dir)
+    
+    # Create gaze heatmaps
+    PlotHeatmaps(ss_res_dir)
     
     #
     # HTML report generation
@@ -135,7 +101,7 @@ def WriteReport(subjsess_results_dir):
 
     # Create substitution dictionary for HTML report
     qa_dict = dict([
-      ('scanner_serno',  "%d"    % (5555)),
+      ('subj_sess',  "%s"    % (subj_sess))
     ])
 
     # Generate HTML report from template (see above)
@@ -143,5 +109,15 @@ def WriteReport(subjsess_results_dir):
     html_data = TEMPLATE.safe_substitute(qa_dict)
     
     # Write HTML report page
-    report_index = os.path.join(report_dir, 'index.html')
+    report_index = os.path.join(ss_res_dir, 'index.html')
     open(report_index, "w").write(html_data)
+
+
+def PlotTimeseries(ss_res_dir):
+    
+    print('Plotting timeseries')
+    
+
+def PlotHeatmaps(ss_res_dir):
+    
+    print('Plotting heatmaps')

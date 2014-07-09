@@ -21,6 +21,7 @@ Copyright 2014 California Institute of Technology.
 """
 
 import os
+import sys
 import cv2
 import numpy as np
 import ConfigParser
@@ -56,6 +57,7 @@ def LoadVideoFrame(v_in, config):
     downsampling = config.getfloat('VIDEO', 'downsampling')
     border = config.getint('VIDEO', 'border')
     do_mrclean = config.getboolean('VIDEO', 'mrclean')
+    rotate = config.getint('VIDEO', 'rotate')
     
     # Init artifact flag for this frame
     artifact = False    
@@ -88,6 +90,9 @@ def LoadVideoFrame(v_in, config):
 
         # Robust rescale to 5th, 95th percentile
         fr = RobustRescale(fr, (1,99))
+        
+        # Finally rotate frame
+        fr = RotateFrame(fr, rotate)
         
     return status, fr, artifact
 
@@ -155,6 +160,45 @@ def TrimBorder(frame, border = 0):
     else:
         
         return frame
+
+
+def RotateFrame(frame, rot):
+    """
+    Rotate frame in multiples of 90 degrees.
+    
+    Arguments
+    ----
+    frame : numpy uint8 array
+        video frame to rotate
+    rot : integer
+        rotation angle in degrees (0, 90, 180 or 270)
+        
+    Returns
+    ----
+    frame : numpy uint8 array
+        rotated frame
+        
+    Example
+    ----
+    >>> frame_rot = RotateFrame(frame, 180)
+    """
+    
+    if rot == 270: # Rotate CCW 90
+        frame = cv2.transpose(frame)
+        frame = cv2.flip(frame, flipCode = 0)
+
+    elif rot == 90: # Rotate CW 90
+        frame = cv2.transpose(frame)
+        frame = cv2.flip(frame, flipCode = 1)
+        
+    elif rot == 180: # Rotate by 180
+        frame = cv2.flip(frame, flipCode = 0)
+        frame = cv2.flip(frame, flipCode = 1)
+    
+    else: # Do nothing
+        pass
+        
+    return frame
 
 
 def LoadImage(image_file, border=0):
@@ -289,14 +333,14 @@ def ReadPupilometry(pupils_csv):
     
     return np.genfromtxt(pupils_csv, delimiter = ',', unpack = True)
     
-#
-# Safe mkdir - from http://code.activestate.com/recipes/82465-a-friendly-mkdir/
-#
+
 def _mkdir(newdir):
-    """works the way a good mkdir should :)
-        - already exists, silently complete
-        - regular file in the way, raise an exception
-        - parent directory(ies) does not exist, make them as well
+    """
+    Safe mkdir accounting for existing filenames, exits cleanly
+    
+    Source
+    ----    
+    http://code.activestate.com/recipes/82465-a-friendly-mkdir/
     """
     if os.path.isdir(newdir):
         pass
@@ -308,3 +352,23 @@ def _mkdir(newdir):
             _mkdir(head)
         if tail:
             os.mkdir(newdir)
+
+
+def _package_root():
+    """
+    Safely determine absolute path to mrclean install directory
+    
+    Source
+    ----
+    https://wiki.python.org/moin/Distutils/Tutorial
+    """
+    
+    try:
+        root = __file__
+        if os.path.islink (root):
+            root = os.path.realpath(root)
+        return os.path.dirname (os.path.abspath(root))
+    except:
+        print "I'm sorry, but something is wrong."
+        print "There is no __file__ variable. Please contact the author."
+        sys.exit(1)

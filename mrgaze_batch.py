@@ -58,10 +58,17 @@ def main():
     print('Version   : %s' % '0.1')
     print('Date      : %s' % dt.datetime.now())
     print('Data dir  : %s' % data_dir)
+
     print('')
+    print('Starting batch analysis')
     
-    # Run single-session pipeline
     mrp.RunBatch(data_dir)
+    
+    print('')
+    print('Completed batch analysis')
+    
+    # Clean exit
+    sys.exit(0)
 
 
 # This is the standard boilerplate that calls the main() function.

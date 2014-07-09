@@ -55,28 +55,29 @@ def RunBatch(data_dir=[]):
         sys.exit(1)
         
     # Loop over all subject subdirectories of the data directory
-    for subjsess in os.walk(data_dir).next()[1]:
+    for subj_sess in os.walk(data_dir).next()[1]:
      
         # Run single-session pipeline
-        RunSingle(data_dir, subjsess)
+        RunSingle(data_dir, subj_sess)
         
     # Clean exit
-    sys.exit(0) 
+    return True 
     
     
-def RunSingle(data_dir, subjsess):
+def RunSingle(data_dir, subj_sess):
     """
     Run the gaze tracking pipeline on a single gaze tracking session
     """
 
-    print('Running single-session pipeline : ' + subjsess)
+    print('')
+    print('Running single-session pipeline : ' + subj_sess)
     
-    if not data_dir or not subjsess:
-        print('* No data or subject/session directories provided - returning')
+    if not data_dir or not subj_sess:
+        print('* Data or subject/session directory not provided - returning')
         return False
     
     # Subject/session directory name
-    ss_dir = os.path.join(data_dir, subjsess)     
+    ss_dir = os.path.join(data_dir, subj_sess)     
 
     # Video and results directory names for this subject/session
     ss_vid_dir = os.path.join(ss_dir, 'videos')
@@ -84,7 +85,7 @@ def RunSingle(data_dir, subjsess):
 
     # Load configuration from root directory or subj/sess video dir
     # If no config file exists, a default root config is created
-    config = mru.LoadConfig(data_dir, subjsess)
+    config = mru.LoadConfig(data_dir, subj_sess)
     
     if not config:
         print('* Configuration file missing - returning')
@@ -95,20 +96,21 @@ def RunSingle(data_dir, subjsess):
     
     # Run pipeline if video directory present
     if os.path.isdir(ss_vid_dir):
-            
-        print('  Calibration Pupilometry')
-
+        
         # Create results subj/sess dir
         mru._mkdir(ss_res_dir)
+        
+        print('')
+        print('  Calibration Pupilometry')
+        print('  -----------------------')
+     
+        mrp.VideoPupilometry(data_dir, subj_sess, 'cal', config)
 
-        inext = config.get('VIDEO', 'inputextension')       
-        cal_video  = os.path.join(ss_vid_dir, 'cal' + inext)
-        mrp.VideoPupilometry(cal_video, ss_res_dir, config)
-            
+        print('')            
         print('  Gaze Pupilometry')
-
-        gaze_video = os.path.join(ss_vid_dir, 'gaze' + inext)
-        mrp.VideoPupilometry(gaze_video, ss_res_dir, config)
+        print('  -----------------------')
+        
+        mrp.VideoPupilometry(data_dir, subj_sess, 'gaze', config)
             
         if do_cal:
             
