@@ -1,10 +1,11 @@
-from distutils.core import setup
+from setuptools import setup, find_packages
+
 setup ( name = 'geetee',
-        version = '0.1',
-        packages = ['geetee'],
-        scripts=['scripts/geetee.py','scripts/geetee.py'],
-        data_files=[('/usr/local/bin',['scripts/geetee.py','scripts/geetee_batch.py'])],
-        author=['Mike Tyszka'],
-        author_email=['jmt@caltech.edu'],
-        url=['https://github.com/jmtyszka/geetee']
+        version = '0.1.1',
+        description = 'Offline video pupilometry and gaze tracking',
+        author = ['Mike Tyszka'],
+        author_email = ['jmt@caltech.edu'],
+        url = ['https://github.com/jmtyszka/geetee'],
+        packages = find_packages(),
+        scripts = ['gt_batch.py', 'gt_single.py']
       )
