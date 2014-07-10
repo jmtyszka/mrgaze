@@ -165,9 +165,6 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, config):
         # Current video time in seconds
         t = fc / fps
         
-        # RGB version of preprocessed frame for output video
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
-        
         # -------------------------------------
         # Pass this frame to pupilometry engine
         # -------------------------------------
@@ -176,16 +173,15 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, config):
         # Write data line to pupilometry CSV file
         area = WritePupilometry(pout_stream, t, ellipse, blink, artifact)
             
-        if graphics:
-
-            # Overlay ROI and pupil ellipse on RGB frame
-            if not blink:
-                p1, p2 = roi_rect                      
-                cv2.rectangle(frame_rgb, p1, p2, (0,255,0), 1)
-                cv2.ellipse(frame_rgb, ellipse, (128,255,255), 1)
+        # RGB version of preprocessed frame for output video
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
             
-            cv2.imshow('Tracking', frame_rgb)
+        # Overlay ROI and pupil ellipse on RGB frame
+        if not blink:
+            frame_rgb = OverlayPupil(frame_rgb, ellipse, roi_rect)
 
+        if graphics:
+            cv2.imshow('Tracking', frame_rgb)
             if cv2.waitKey(5) > 0:
                 break
         
@@ -312,29 +308,45 @@ def FitPupil(bw, roi):
     
     return ellipse
         
-#
-# Overlay fitted pupil ellipse on original frame
-#    
-def DisplayPupilEllipse(frame, ellipse, roi_rect):
 
-    # Ellipse color and line thickness
+def OverlayPupil(frame_rgb, ellipse, roi_rect):
+    """
+    Overlay fitted pupil ellipse and ROI on original frame
+    """
+
+    # line thickness
     thickness = 1
+
+    # Ellipse color
+    ellipse_color = (0,255,0)
     
-    # Convert frame to RGB color
-    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
+    # ROI rectangle color
+    roi_color = (255,255,0)
+
+    # Pupil center cross hair
+    (x0, y0), (a, b), phi = ellipse
+    
+    # Cross hair size proportional to mean ellipse axis
+    r = (a + b) / 20.0
+    
+    # Endpoints of major and minor axes
+    a0 = int(x0 + r), int(y0)
+    a1 = int(x0 - r), int(y0)
+    b0 = int(x0), int(y0 + r)
+    b1 = int(x0), int(y0 - r)
     
     # Overlay ellipse
-    cv2.ellipse(frame_rgb, ellipse, (0,255,0), thickness)
+    cv2.ellipse(frame_rgb, ellipse, ellipse_color, thickness)
+    
+    # Overlay ellipse axes
+    cv2.line(frame_rgb, a0, a1, ellipse_color, thickness)
+    cv2.line(frame_rgb, b0, b1, ellipse_color, thickness)
     
     # Overlay ROI rectangle
-    cv2.rectangle(frame_rgb, roi_rect[0], roi_rect[1], (255,255,0), thickness)
-    
-    # Display frame
-    cv2.imshow('PupilFit', frame_rgb)
-    
-    # Wait for key press
-    cv2.waitKey()
+    cv2.rectangle(frame_rgb, roi_rect[0], roi_rect[1], roi_color, thickness)
 
+    return frame_rgb
+    
 
 def WritePupilometry(pupil_out, t, ellipse, blink, artifact):
     """

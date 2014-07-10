@@ -304,7 +304,7 @@ def InitConfig(config):
     config.set('VIDEO','outputextension','.mov')
     config.set('VIDEO','downsampling','4')
     config.set('VIDEO','border','16')
-    config.set('VIDEO','rotate','False')
+    config.set('VIDEO','rotate','0')
     config.set('VIDEO','mrclean','True')
     
     config.add_section('RANSAC')
@@ -321,7 +321,7 @@ def InitConfig(config):
     config.set('CALIBRATION','targety','0.5, 0.9, 0.9, 0.1, 0.9, 0.9, 0.5, 0.5, 0.1')
 
     config.add_section('OUTPUT')
-    config.set('OUTPUT','verbose','False')
+    config.set('OUTPUT','verbose','True')
     config.set('OUTPUT','graphics','False')
     
     return config
