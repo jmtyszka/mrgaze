@@ -39,8 +39,8 @@ Copyright
 import os
 import sys
 import datetime as dt
+from mrgaze import pipeline
 
-import mrgaze.pipeline as mrp
 
 def main():
     
@@ -62,7 +62,7 @@ def main():
     print('')
     print('Starting batch analysis')
     
-    mrp.RunBatch(data_dir)
+    pipeline.RunBatch(data_dir)
     
     print('')
     print('Completed batch analysis')

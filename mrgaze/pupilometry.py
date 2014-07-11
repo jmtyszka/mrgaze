@@ -31,9 +31,9 @@ import os
 import time
 import cv2
 import scipy.ndimage as spi
+import scipy.signal as sps
 import numpy as np
-import mrgaze.fitellipse as mrf
-import mrgaze.utils as mru
+from mrgaze import media, utils, fitellipse
 
 def VideoPupilometry(data_dir, subj_sess, v_stub, config):
     """
@@ -61,14 +61,18 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, config):
     # Input video extension
     vin_ext = config.get('VIDEO', 'inputextension')
     vout_ext = config.get('VIDEO' ,'outputextension')    
+
+    # Overwrite permission
+    overwrite_ok = False
     
     # Full video file paths
     ss_dir = os.path.join(data_dir, subj_sess)
     vin_path = os.path.join(ss_dir, 'videos', v_stub + vin_ext)
     vout_path = os.path.join(ss_dir, 'results', v_stub + '_pupils' + vout_ext)
     
-    # Pupilometry CSV file output path
-    pout_path = os.path.join(ss_dir, 'results', v_stub + '_pupils.csv')
+    # Raw and filtered pupilometry CSV file paths
+    pupils_raw_csv = os.path.join(ss_dir, 'results', v_stub + '_pupils_raw.csv')
+    pupils_filt_csv = os.path.join(ss_dir, 'results', v_stub + '_pupils_filt.csv')
     
     # Check that input video file exists
     if not os.path.isfile(vin_path):
@@ -76,7 +80,7 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, config):
         return False
     
     # Set up the LBP cascade classifier
-    mrclean_root = mru._package_root()
+    mrclean_root = utils._package_root()
     LBP_path = os.path.join(mrclean_root, 'Cascade/cascade.xml')
     
     print('  Loading LBP cascade')
@@ -85,6 +89,15 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, config):
     if cascade.empty():
         print('* LBP cascade is empty - mrgaze installation problem')
         return False
+        
+    # Check for output CSV existance and overwrite flag
+    if os.path.isfile(pupils_raw_csv):
+        print('+ Pupilometry output already exists - checking overwrite flag')
+        if overwrite_ok:
+            print('+ Overwrite allowed - continuing')
+        else:
+            print('+ Overwrite forbidden - skipping pupilometry')
+            return True
     
     #
     # Input video
@@ -108,7 +121,7 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, config):
     nf = vin_stream.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT)
     
     # Read preprocessed video frame from stream
-    keep_going, frame, artifact = mru.LoadVideoFrame(vin_stream, config)
+    keep_going, frame, artifact = media.LoadVideoFrame(vin_stream, config)
      
     # Get size of preprocessed frame for output video setup
     nx, ny = frame.shape[1], frame.shape[0]
@@ -132,9 +145,9 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, config):
         print('* Output video not opened - skipping pupilometry')
         return False 
 
-    # Open pupilometry CSV file to write
+    # Open raw pupilometry CSV file to write
     try:
-        pout_stream = open(pout_path, 'w')
+        pupils_raw_stream = open(pupils_raw_csv, 'w')
     except:
         print('* Problem opening pupilometry CSV file - skipping pupilometry')
         return False
@@ -147,12 +160,7 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, config):
     if verbose:
         print('')
         print('  %10s %10s %10s %10s %10s %10s' % (
-            'Time (s)',
-            '% Done',
-            'Area',
-            'Blink',
-            'Artifact',
-            'FPS'))
+            'Time (s)', '% Done', 'Area', 'Blink', 'Artifact', 'FPS'))
 
     # Init frame counter
     fc = 0
@@ -171,7 +179,7 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, config):
         ellipse, roi_rect, blink = PupilometryEngine(frame, cascade)
                 
         # Write data line to pupilometry CSV file
-        area = WritePupilometry(pout_stream, t, ellipse, blink, artifact)
+        area = WritePupilometry(pupils_raw_stream, t, ellipse, blink, artifact)
             
         # RGB version of preprocessed frame for output video
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
@@ -189,7 +197,7 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, config):
         vout_stream.write(frame_rgb)
 
         # Read next frame (if available)
-        keep_going, frame, artifact = mru.LoadVideoFrame(vin_stream, config)
+        keep_going, frame, artifact = media.LoadVideoFrame(vin_stream, config)
         
         # Increment frame counter
         fc = fc + 1
@@ -201,15 +209,16 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, config):
                 pfps = fc / (time.time() - t0)  
                 print('  %10.1f %10.1f %10.1f %10d %10d %10.1f' % (
                     t, perc_done, area, blink, artifact, pfps))
-    
 
-    print('  Cleaning up')
-    
     # Clean up
     cv2.destroyAllWindows()
     vin_stream.release()
     vout_stream.release()
-    pout_stream.close()
+    pupils_raw_stream.close()
+
+    # Generate temporally filtered pupilometry timeseries
+    print('  Temporally filtering pupilometry timeseries')
+    FilterPupilometry(pupils_raw_csv, pupils_filt_csv)
 
     # Clean exit
     return True
@@ -262,13 +271,31 @@ def PupilometryEngine(img, cascade):
 
 def SegmentPupil(roi):
     """
-    Segment pupil within pupil-iris ROI'
+    Segment pupil within pupil-iris ROI
+    
+    Arguments
+    ----
+    roi : 2D numpy uint8 array
+        Grayscale image of pupil-iris region
+    
+    Returns
+    ----
+    pupil_bw : 2D numpy uint8 array
+        Binary thresholded version of ROI image
+    
     """
+
+    # TODO: This needs more work - the pupil thresholding is not particularly
+    # robust to the artifact repair remnants.
+    # Try the following:
+    # - bias correction of illumination
+    # - different threshold estimators (percentile, histogram, recursive)
+    # - kmeans clustering of intensities 
 
     # Intensity rescale to emphasize pupil
     # - assumes pupil is one of the darkest regions
     # - assumes pupil occupies between 5% and 50% of frame area
-    roi = mru.RobustRescale(roi, (5,50))
+    roi = media.RobustRescale(roi, (5,50))
             
     # Segment pupil in contrast stretched roi and update threshold
     thresh, blobs = cv2.threshold(roi, 128, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
@@ -293,6 +320,18 @@ def SegmentPupil(roi):
 
 
 def FitPupil(bw, roi):
+    '''
+    Fit ellipse to pupil-iris boundary in segmented ROI
+    
+    Arguments
+    ----
+    bw : 2D numpy uint8 array
+        Binary thresholded version of pupil ROI (from SegmentPupil)
+    roi :
+    
+    Returns
+    ----
+    '''
      
     # Identify edge pixels using Canny filter
     roi_edges = cv2.Canny(bw, 0, 1)
@@ -304,7 +343,7 @@ def FitPupil(bw, roi):
     pnts[:,[0,1]] = pnts[:,[1,0]]
     
     # RANSAC ellipse fitting to edge points
-    ellipse = mrf.FitEllipse_RANSAC(pnts, roi)
+    ellipse = fitellipse.FitEllipse_RANSAC(pnts, roi)
     
     return ellipse
         
@@ -394,3 +433,62 @@ def PupilArea(ellipse):
 
     # Ellipse area assuming semi major axis is actual pupil radius
     return np.pi * a**2
+
+  
+def ReadPupilometry(pupils_csv):
+    '''
+    Read text pupilometry results from CSV file
+    
+    Returns
+    ----
+    p : 2D numpy float array
+        Timeseries in columns. Column order is:
+        0 : Time (s)
+        1 : Corrected pupil area
+        2 : Corrected pupil area (AU)
+        3 : Pupil center in x (pixels)
+        4 : Pupil center in y (pixels)
+        5 : Blink flag (pupil not found)
+        6 : MR artifact present flag
+    '''
+    
+    # Read time series in rows
+    return np.genfromtxt(pupils_csv, delimiter=',')
+
+
+def FilterPupilometry(pupils_raw_csv, pupils_filt_csv):
+    '''
+    Temporally filter all pupilometry timeseries
+    '''
+
+    if not os.path.isfile(pupils_raw_csv):
+        print('* Raw pupilometry CSV file missing - returning')
+        return False
+        
+    # Read raw pupilometry data
+    p = ReadPupilometry(pupils_raw_csv)
+    
+    # Sampling time (s)
+    dt = p[1,0] - p[0,0]
+    
+    # Kernel widths for each metric
+    k_area     = utils._forceodd(0.25 / dt)
+    k_px       = 3
+    k_py       = 3
+    k_blink    = utils._forceodd(0.25 / dt)
+    k_artifact = utils._forceodd(0.25 / dt)
+    
+    # Moving median filter
+    pf = p.copy()
+    pf[:,1] = sps.medfilt(p[:,1], k_area)
+    pf[:,2] = sps.medfilt(p[:,2], k_px)
+    pf[:,3] = sps.medfilt(p[:,3], k_py)
+    pf[:,4] = sps.medfilt(p[:,4], k_blink)
+    pf[:,5] = sps.medfilt(p[:,5], k_artifact)
+    
+    # Write filtered timeseries to new CSV file in results directory
+    np.savetxt(pupils_filt_csv, pf, fmt='%.6f', delimiter=',')
+    
+    # Clean return
+    return True
+    

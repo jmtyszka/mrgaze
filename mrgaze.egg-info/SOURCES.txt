@@ -4,7 +4,9 @@ mrgaze_single.py
 setup.py
 mrgaze/__init__.py
 mrgaze/calibrate.py
+mrgaze/config.py
 mrgaze/fitellipse.py
+mrgaze/media.py
 mrgaze/moco.py
 mrgaze/mrclean.py
 mrgaze/pipeline.py

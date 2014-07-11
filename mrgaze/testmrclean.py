@@ -1,15 +1,19 @@
-import mrgaze.io as mrio
-import mrgaze.mrclean as mrm
+import os
+from mrgaze import media, mrclean
 
 def main():
     
-    bad_frame = '../Data/BadFrame_2.png'
+    bad_frame = '/Users/jmt/GitHub/mrgaze/mrgaze/Data/BadFrame_2.png'
+    
+    if not os.path.isfile(bad_frame):
+        print('* Image not found - exiting')
+        return False
     
     # Read bad frame
-    fr = mrio.LoadImage(bad_frame, border=16)
+    fr = media.LoadImage(bad_frame, border=16)
     
     # Repair frame
-    fr_clean, artifact = mrm.MRClean(fr, verbose=True)
+    fr_clean, artifact = mrclean.MRClean(fr, verbose=True)
     
 # This is the standard boilerplate that calls the main() function.
 if __name__ == '__main__':

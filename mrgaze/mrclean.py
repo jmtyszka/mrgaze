@@ -41,9 +41,11 @@ Copyright
 """
 
 import numpy as np
+import pywt
+import matplotlib.pyplot as plt
 from scipy.signal import medfilt
 from scipy.ndimage.morphology import binary_dilation
-import matplotlib.pyplot as plt
+from mrgaze import utils
 
 def MRClean(frame, verbose=False):
     """
@@ -77,14 +79,20 @@ def MRClean(frame, verbose=False):
     fr_even = frame[0::2,:]
     fr_odd  = frame[1::2,:]
     
-    # Odd - even difference
-    fr_diff = fr_odd.astype(float) - fr_even.astype(float)
+    # Odd - even frame difference
+    df = fr_odd.astype(float) - fr_even.astype(float)
     
     # Absolute row median of frame difference
-    med = np.abs(np.median(fr_diff, axis=1))
+    am_df = np.abs(np.median(df, axis=1))
+    
+    # Estimate noise SD from detail coefficients
+    sd_n = WaveletNoiseSD(am_df)
+    
+    # Frame difference z-scores
+    z = am_df / sd_n
 
-    # Find scanlines with median row difference > 3.0
-    bad_rows = med > 3.0
+    # Find scanlines with |z| > 3.0
+    bad_rows = np.abs(z) > 3.0
         
     # Median smooth the bad rows mask then dilate by 3 lines (kernel 2*3+1 = 7)
     bad_rows = medfilt(bad_rows)
@@ -158,12 +166,12 @@ def MRClean(frame, verbose=False):
             plt.title('Even Repaired')
             
             plt.subplot(325)
-            plt.imshow(fr_diff)
+            plt.imshow(df)
             plt.title('Odd - Even')
             
             plt.subplot(326)
-            plt.plot(y, med / np.max(med), y, bad_rows)
-            plt.title('Bad Row Mask')
+            plt.plot(y, z, y, bad_rows * z.max() * 0.9)
+            plt.title('Z-score and Bad Row Mask')
             
             plt.show()
 
@@ -198,8 +206,8 @@ def InpaintRows(src, r0, r1):
     
     # Protect against overrange rows
     nr = src.shape[0]
-    r0 = clamp(r0, 0, nr-1)
-    r1 = clamp(r1, 0, nr-1)
+    r0 = utils._clamp(r0, 0, nr-1)
+    r1 = utils._clamp(r1, 0, nr-1)
     
     # Extract start and end row values
     I0 = (src[r0, :].astype(float)).reshape(1,-1)
@@ -222,27 +230,15 @@ def InpaintRows(src, r0, r1):
     return dest
 
 
-def clamp(x, x_min, x_max):
-    """
-    Clamp value to range
+def WaveletNoiseSD(x):
+    '''
+    Estimate noise SD from wavelet detail coefficients
+    '''
     
-    Arguments
-    ----
-    x : scalar
-        Value to be clamped
-    x_min : scalar
-        Minimum allowable value
-    x_max : scalar
-        Maximum allowable value
-        
-    Returns
-    ----
-    x clamped to range [x_min, x_max]
-
-    Example
-    ----
-    >>> clamp(11, 0, 10)
-    >>> 10    
-    """
+    # Wavelet decomposition
+    cA, cD = pywt.dwt(x.flatten(), 'db1')    
     
-    return np.max((x_min, np.min((x, x_max))))
+    # Estimate sd_n from MAD of detail coefficients
+    sd_n = np.std(cD)
+    
+    return sd_n

@@ -33,11 +33,7 @@ Copyright 2014 California Institute of Technology.
 
 import os
 import sys
-
-import mrgaze.utils as mru
-import mrgaze.pupilometry as mrp
-import mrgaze.calibrate as mrc
-import mrgaze.report as mrr
+from mrgaze import utils, pupilometry, calibrate, report, config
 
 def RunBatch(data_dir=[]):
     """
@@ -85,48 +81,51 @@ def RunSingle(data_dir, subj_sess):
 
     # Load configuration from root directory or subj/sess video dir
     # If no config file exists, a default root config is created
-    config = mru.LoadConfig(data_dir, subj_sess)
+    cfg = config.LoadConfig(data_dir, subj_sess)
     
-    if not config:
+    if not cfg:
         print('* Configuration file missing - returning')
         return False
         
     # Extract operational flags from config
-    do_cal = config.getboolean('CALIBRATION', 'calibrate')
+    do_cal = cfg.getboolean('CALIBRATION', 'calibrate')
     
     # Run pipeline if video directory present
     if os.path.isdir(ss_vid_dir):
         
         # Create results subj/sess dir
-        mru._mkdir(ss_res_dir)
+        utils._mkdir(ss_res_dir)
         
         print('')
         print('  Calibration Pupilometry')
         print('  -----------------------')
      
-        mrp.VideoPupilometry(data_dir, subj_sess, 'cal', config)
+        pupilometry.VideoPupilometry(data_dir, subj_sess, 'cal', cfg)
 
         print('')            
         print('  Gaze Pupilometry')
         print('  -----------------------')
         
-        mrp.VideoPupilometry(data_dir, subj_sess, 'gaze', config)
+        pupilometry.VideoPupilometry(data_dir, subj_sess, 'gaze', cfg)
             
         if do_cal:
             
             print('  Create calibration model')
-            C = mrc.AutoCalibrate(ss_vid_dir, config)
+            C = calibrate.AutoCalibrate(ss_vid_dir, cfg)
 
             print('  Calibrate pupilometry')
-            mrc.ApplyCalibration(ss_vid_dir, C)
-            
-        print('  Write report')
-        mrr.WriteReport(ss_res_dir)
+            calibrate.ApplyCalibration(ss_vid_dir, C)
+        
+        print('')
+        print('  Generate Report')
+        print('  ---------------')
+        report.WriteReport(ss_dir)
 
     else:
             
         print('%s does not exist - skipping' % ss_vid_dir)
         
+    print('')
     print('Completed single-session pipeline')
         
     return True

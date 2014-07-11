@@ -20,13 +20,11 @@ This file is part of mrgaze.
 Copyright 2014 California Institute of Technology.
 """
 
-import os
-import sys
 import cv2
 import numpy as np
-import ConfigParser
-from skimage import exposure
 import mrgaze.mrclean as mrc
+from skimage import exposure
+
 
 def LoadVideoFrame(v_in, config):
     """
@@ -97,6 +95,49 @@ def LoadVideoFrame(v_in, config):
     return status, fr, artifact
 
 
+
+def LoadImage(image_file, border=0):
+    """
+    Load an image from a file and strip the border.
+
+    Parameters
+    ----------
+    image_file : string
+        File name of image
+    border : integer
+        Pixel width of border to strip [0].
+        
+
+    Returns
+    -------
+    frame : 2D numpy array
+        Grayscale image array.
+
+    Examples
+    --------
+    >>> img = LoadImage('test.png', 5)
+    """
+
+    # Initialize frame
+    frame = np.array([])
+
+    # load test frame image
+    try:
+        frame = cv2.imread(image_file)
+    except:
+        print('Problem opening %s to read' % image_file)
+        return frame
+        
+    # Convert to grayscale image if necessary
+    if frame.shape[2] == 3:
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    
+    # Trim border (if requested)
+    frame = TrimBorder(frame, border)
+    
+    return frame
+
+    
 def RobustRescale(gray, perc_range=(5, 95)):
     """
     Robust image intensity rescaling
@@ -199,176 +240,3 @@ def RotateFrame(frame, rot):
         pass
         
     return frame
-
-
-def LoadImage(image_file, border=0):
-    """
-    Load an image from a file and strip the border.
-
-    Parameters
-    ----------
-    image_file : string
-        File name of image
-    border : integer
-        Pixel width of border to strip [0].
-        
-
-    Returns
-    -------
-    frame : 2D numpy array
-        Grayscale image array.
-
-    Examples
-    --------
-    >>> img = LoadImage('test.png', 5)
-    """
-
-    # Initialize frame
-    frame = np.array([])
-
-    # load test frame image
-    try:
-        frame = cv2.imread(image_file)
-    except:
-        print('Problem opening %s to read' % image_file)
-        return frame
-        
-    # Convert to grayscale image if necessary
-    if frame.shape[2] == 3:
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    
-    # Trim border (if requested)
-    frame = TrimBorder(frame, border)
-    
-    return frame
-
-
-def LoadConfig(data_dir, subjsess):
-    """
-    Load ET pipeline configuration parameters
-    
-    Check first for a global configuration in the root directory,
-    then for a specific configuration in the subject/session directory.
-    The subj/sess config has precedence.
-    
-    Arguments
-    ----
-    root_dir : string
-        Root directory containing videos subdir.
-    subjsess_dir : string
-        Subject/Session subdirectory.
-        
-    Returns
-    ----
-    config : config object (see ConfigParser package)
-        Configuration object.
-    """
-    
-    # Root config filename
-    root_cfg_file = os.path.join(data_dir, 'mrgaze.cfg')
-    
-    # Subject/Session config filename
-    ss_dir = os.path.join(data_dir, subjsess)
-    ss_cfg_file = os.path.join(ss_dir, 'mrgaze.cfg')
-    
-    # Create a new parser
-    config = ConfigParser.ConfigParser()
-    
-    # Check first for subject/session config
-    if os.path.isfile(ss_cfg_file):
-        
-        # Load existing subj/sess config file
-        config.read(ss_cfg_file)
-
-    elif os.path.isfile(root_cfg_file):
-        
-        # Load existing root config file
-        config.read(root_cfg_file)
-        
-    else:
-
-        # Write a new default root config file
-        config = InitConfig(config)
-        with open(root_cfg_file,'wb') as cfg_stream:
-            config.write(cfg_stream)
-            cfg_stream.close()
-            
-    return config
-   
-
-def InitConfig(config):
-    
-    # Add video defaults
-    config.add_section('VIDEO')
-    config.set('VIDEO','inputextension','.mpg')
-    config.set('VIDEO','outputextension','.mov')
-    config.set('VIDEO','downsampling','4')
-    config.set('VIDEO','border','16')
-    config.set('VIDEO','rotate','False')
-    config.set('VIDEO','mrclean','True')
-    
-    config.add_section('RANSAC')
-    config.set('RANSAC','maxiterations','5')
-    config.set('RANSAC','maxrefinements','3')
-    config.set('RANSAC','maxinlierperc','95')
-    
-    config.add_section('LBP')
-    config.set('LBP','strictness','40')
-    
-    config.add_section('CALIBRATION')
-    config.set('CALIBRATION','calibrate','False')
-    config.set('CALIBRATION','targetx','0.5, 0.1, 0.9, 0.1, 0.1, 0.5, 0.1, 0.9, 0.5')
-    config.set('CALIBRATION','targety','0.5, 0.9, 0.9, 0.1, 0.9, 0.9, 0.5, 0.5, 0.1')
-
-    config.add_section('OUTPUT')
-    config.set('OUTPUT','verbose','False')
-    config.set('OUTPUT','graphics','False')
-    
-    return config
-    
-#
-# Pupilometry CSV IO
-#
-def ReadPupilometry(pupils_csv):
-    
-    return np.genfromtxt(pupils_csv, delimiter = ',', unpack = True)
-    
-
-def _mkdir(newdir):
-    """
-    Safe mkdir accounting for existing filenames, exits cleanly
-    
-    Source
-    ----    
-    http://code.activestate.com/recipes/82465-a-friendly-mkdir/
-    """
-    if os.path.isdir(newdir):
-        pass
-    elif os.path.isfile(newdir):
-        raise OSError("a file with same name as desired dir ('%s') already exists." % newdir)
-    else:
-        head, tail = os.path.split(newdir)
-        if head and not os.path.isdir(head):
-            _mkdir(head)
-        if tail:
-            os.mkdir(newdir)
-
-
-def _package_root():
-    """
-    Safely determine absolute path to mrclean install directory
-    
-    Source
-    ----
-    https://wiki.python.org/moin/Distutils/Tutorial
-    """
-    
-    try:
-        root = __file__
-        if os.path.islink (root):
-            root = os.path.realpath(root)
-        return os.path.dirname (os.path.abspath(root))
-    except:
-        print "I'm sorry, but something is wrong."
-        print "There is no __file__ variable. Please contact the author."
-        sys.exit(1)

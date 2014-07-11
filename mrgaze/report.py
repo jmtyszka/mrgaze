@@ -27,6 +27,10 @@
 
 import os
 import string
+import pylab as plt
+import numpy as np
+from mrgaze import pupilometry
+
 
 # Define template
 TEMPLATE_FORMAT = """
@@ -51,26 +55,31 @@ td {
 
 <body>
 
-<h1 style="background-color:#E0E0FF">MRGAZE Gaze Tracking Report</h1>
-
-<table>
-<tr>
+<h1 style="background-color:#E0E0FF">MRGAZE Report</h1>
 
 <!-- Subject/Session Information -->
-<td>
-  <table>
-    <tr>
-      <td><b>Subject/Session</b>
-      <td><b>$subj_sess</b>
-    </tr>
-  </table>
-</td>
+<p>
+<table>
+  <tr><td><h2>Session Information</h2><td></tr>
+  <tr><td><b>Subject/Session</b><td>$subj_sess</tr>
+</table>
 
 <!-- Plotted timeseries -->
+<p>
 <table>
-  <tr>
-    <td valign="top"><img src=pupilometry_timeseries.png />
-  </tr>
+
+  <tr><td><h2>Raw Calibration Pupilometry</h2></tr>
+  <tr><td valign="top"><img src=cal_pupils_raw.png /></tr>
+
+  <tr><td><h2>Filtered Calibration Pupilometry</h2></tr>
+  <tr><td valign="top"><img src=cal_pupils_filt.png /></tr>
+
+  <tr><td><h2>Raw Gaze Pupilometry</h2></tr>
+  <tr><td valign="top"><img src=gaze_pupils_raw.png /></tr>
+
+  <tr><td><h2>Filtered Gaze Pupilometry</h2></tr>
+  <tr><td valign="top"><img src=gaze_pupils_filt.png /></tr>
+
 </table>
 
 </body>
@@ -79,7 +88,10 @@ td {
 """
 
 # Main function
-def WriteReport(ss_res_dir):
+def WriteReport(ss_dir):
+    
+    # Results subdirectoy
+    ss_res_dir = os.path.join(ss_dir, 'results')
     
     # Check that results directory exists
     if not os.path.isdir(ss_res_dir):
@@ -87,17 +99,34 @@ def WriteReport(ss_res_dir):
         return False
         
     # Extract subj/sess name
-    subj_sess = os.path.basename(ss_res_dir)
+    subj_sess = os.path.basename(ss_dir)
     
     # Create timeseries plots
-    PlotTimeseries(ss_res_dir)
+    print('  Plot raw calibration video timeseries')
+    cal_raw_csv = os.path.join(ss_res_dir, 'cal_pupils_raw.csv')
+    cal_raw_png = os.path.join(ss_res_dir, 'cal_pupils_raw.png')
+    PlotTimeseries(cal_raw_csv, cal_raw_png)
     
-    # Create gaze heatmaps
-    PlotHeatmaps(ss_res_dir)
+    print('  Plot filtered calibration video timeseries')
+    cal_filt_csv = os.path.join(ss_res_dir, 'cal_pupils_filt.csv')
+    cal_filt_png = os.path.join(ss_res_dir, 'cal_pupils_filt.png')
+    PlotTimeseries(cal_filt_csv, cal_filt_png)
+    
+    print('  Plot raw gaze video timeseries')
+    gaze_raw_csv = os.path.join(ss_res_dir, 'gaze_pupils_raw.csv')
+    gaze_raw_png = os.path.join(ss_res_dir, 'gaze_pupils_raw.png')
+    PlotTimeseries(gaze_raw_csv, gaze_raw_png)
+    
+    print('  Plot filtered gaze video timeseries')
+    gaze_filt_csv = os.path.join(ss_res_dir, 'gaze_pupils_filt.csv')
+    gaze_filt_png = os.path.join(ss_res_dir, 'gaze_pupils_filt.png')
+    PlotTimeseries(gaze_filt_csv, gaze_filt_png)
     
     #
     # HTML report generation
     #
+
+    print('  Generating HTML report')
 
     # Create substitution dictionary for HTML report
     qa_dict = dict([
@@ -113,11 +142,53 @@ def WriteReport(ss_res_dir):
     open(report_index, "w").write(html_data)
 
 
-def PlotTimeseries(ss_res_dir):
+def PlotTimeseries(csv_file, plot_png):
     
-    print('Plotting timeseries')
+    if not os.path.isfile(csv_file):
+        print('* Pupilometry file not found - returning')
+        return False
     
+    # Load pupilometry data from CSV file
+    p = pupilometry.ReadPupilometry(csv_file)
+    
+    # Downsample if total samples > 1000
+    nt = p.shape[0]
+    if nt > 1000:
+        dd = int(nt / 1000.0)
+        inds = np.arange(0, nt, dd)
+        p = p[inds,:]
+    
+    # Create figure, plot all timeseries in subplots
+    fig = plt.figure(figsize = (6,6))
+    
+    # Extract time vector
+    t = p[:,0]
 
-def PlotHeatmaps(ss_res_dir):
+    ax = fig.add_subplot(411)
+    ax.plot(t, p[:,1])
+    ax.set_title('Corrected Pupil Area', x = 0.5, y = 0.8, fontsize=8)
+    ax.tick_params(axis='both', labelsize=8)
     
-    print('Plotting heatmaps')
+    ax = fig.add_subplot(412)
+    ax.plot(t, p[:,2], p[:,0], p[:,3])
+    ax.set_title('Pupil Center', x = 0.5, y = 0.8, fontsize=8)
+    ax.tick_params(axis='both', labelsize=8)
+        
+    ax = fig.add_subplot(413)
+    ax.plot(t, p[:,4])
+    ax.set_ylim([-0.5, 1.5])
+    ax.set_title('Blink', x = 0.5, y = 0.8, fontsize=10)
+    ax.tick_params(axis='both', labelsize=8)
+        
+    ax = fig.add_subplot(414)
+    ax.plot(t, p[:,5])
+    ax.set_ylim([-0.5, 1.5])
+    ax.set_title('Artifact Present', x = 0.5, y = 0.8, fontsize=10)
+    ax.tick_params(axis='both', labelsize=8)
+    
+    # Pack all subplots and labels tightly
+    fig.subplots_adjust(hspace = 0.2)
+
+    # Save figure to file in same directory as CSV file
+    plt.savefig(plot_png, dpi = 150, bbox_inches = 'tight')    
+    
