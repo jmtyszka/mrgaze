@@ -13,7 +13,7 @@ def main():
     fr = media.LoadImage(bad_frame, border=16)
     
     # Repair frame
-    fr_clean, artifact = mrclean.MRClean(fr, verbose=True)
+    fr_clean, artifact = mrclean.MRClean(fr, 5.0)
     
 # This is the standard boilerplate that calls the main() function.
 if __name__ == '__main__':

@@ -26,7 +26,7 @@ import mrgaze.mrclean as mrc
 from skimage import exposure
 
 
-def LoadVideoFrame(v_in, config):
+def LoadVideoFrame(v_in, cfg):
     """
     Load and preprocess a single frame from a video stream
     
@@ -47,19 +47,21 @@ def LoadVideoFrame(v_in, config):
         Completion status.
     fr : numpy uint8 array
         Preprocessed video frame.
-    artifacts : boolean
-        Artifact presence in frame.
+    art_power : float
+        Artifact power in frame.
     """
     
     # Extract config parameters
-    downsampling = config.getfloat('VIDEO', 'downsampling')
-    border = config.getint('VIDEO', 'border')
-    do_mrclean = config.getboolean('VIDEO', 'mrclean')
-    rotate = config.getint('VIDEO', 'rotate')
+    downsampling = cfg.getfloat('VIDEO', 'downsampling')
+    border       = cfg.getint('VIDEO', 'border')
+    rotate       = cfg.getint('VIDEO', 'rotate')
+    do_mrclean   = cfg.getboolean('ARTIFACTS', 'mrclean')
+    z_thresh     = cfg.getfloat('ARTIFACTS', 'zthresh')
     
-    # Init artifact flag for this frame
-    artifact = False    
+    # Init returned artifact power
+    art_power = 0.0    
     
+    # Read one frame from stream    
     status, fr = v_in.read()
     
     if status:
@@ -72,7 +74,7 @@ def LoadVideoFrame(v_in, config):
         
         # Apply optional MR artifact suppression
         if do_mrclean:
-            fr, artifact = mrc.MRClean(fr)
+            fr, art_power = mrc.MRClean(fr, z_thresh)
 
         # Get trimmed frame size
         nx, ny = fr.shape[1], fr.shape[0]
@@ -91,8 +93,8 @@ def LoadVideoFrame(v_in, config):
         
         # Finally rotate frame
         fr = RotateFrame(fr, rotate)
-        
-    return status, fr, artifact
+    
+    return status, fr, art_power
 
 
 

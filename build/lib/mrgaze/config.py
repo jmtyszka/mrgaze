@@ -21,12 +21,7 @@ Copyright 2014 California Institute of Technology.
 """
 
 import os
-import sys
-import cv2
-import numpy as np
 import ConfigParser
-from skimage import exposure
-import mrgaze.mrclean as mrc
 
 
 def LoadConfig(data_dir, subjsess):
@@ -91,7 +86,6 @@ def InitConfig(config):
     config.set('VIDEO','downsampling','4')
     config.set('VIDEO','border','16')
     config.set('VIDEO','rotate','0')
-    config.set('VIDEO','mrclean','True')
     
     config.add_section('RANSAC')
     config.set('RANSAC','maxiterations','5')
@@ -99,7 +93,12 @@ def InitConfig(config):
     config.set('RANSAC','maxinlierperc','95')
     
     config.add_section('LBP')
-    config.set('LBP','strictness','40')
+    config.set('LBP','minneighbors','16')
+    config.set('LBP','scalefactor','1.05')
+    
+    config.add_section('ARTIFACTS')
+    config.set('ARTIFACTS','mrclean','True')
+    config.set('ARTIFACTS','zthresh','8.0')
     
     config.add_section('CALIBRATION')
     config.set('CALIBRATION','calibrate','False')
@@ -109,6 +108,7 @@ def InitConfig(config):
     config.add_section('OUTPUT')
     config.set('OUTPUT','verbose','True')
     config.set('OUTPUT','graphics','False')
+    config.set('OUTPUT','overwrite','True')
     
     return config
   

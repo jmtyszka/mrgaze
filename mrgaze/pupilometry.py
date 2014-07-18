@@ -35,17 +35,19 @@ import scipy.signal as sps
 import numpy as np
 from mrgaze import media, utils, fitellipse
 
-def VideoPupilometry(data_dir, subj_sess, v_stub, config):
+def VideoPupilometry(data_dir, subj_sess, v_stub, cfg):
     """
     Perform pupil boundary ellipse fitting on entire video
     
     Arguments
     ----
-    vin_path : string
-        Video file name. Any format supported by ffmpeg.
-    res_dir : string
-        Pupilometry results directory
-    config : 
+    data_dir : string
+        Root data directory path.
+    subj_sess : string
+        Subject/Session name used for subdirectory within data_dir
+    v_stub : string
+        Video filename stub, eg 'cal' or 'gaze'
+    cfg : 
         Analysis configuration parameters
     
     Returns
@@ -55,15 +57,13 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, config):
     """
     
     # Output flags
-    verbose = config.getboolean('OUTPUT', 'verbose')
-    graphics = config.getboolean('OUTPUT', 'graphics')
+    verbose   = cfg.getboolean('OUTPUT', 'verbose')
+    graphics  = cfg.getboolean('OUTPUT', 'graphics')
+    overwrite = cfg.getboolean('OUTPUT','overwrite')
     
     # Input video extension
-    vin_ext = config.get('VIDEO', 'inputextension')
-    vout_ext = config.get('VIDEO' ,'outputextension')    
-
-    # Overwrite permission
-    overwrite_ok = False
+    vin_ext = cfg.get('VIDEO', 'inputextension')
+    vout_ext = cfg.get('VIDEO' ,'outputextension')    
     
     # Full video file paths
     ss_dir = os.path.join(data_dir, subj_sess)
@@ -93,7 +93,7 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, config):
     # Check for output CSV existance and overwrite flag
     if os.path.isfile(pupils_raw_csv):
         print('+ Pupilometry output already exists - checking overwrite flag')
-        if overwrite_ok:
+        if overwrite:
             print('+ Overwrite allowed - continuing')
         else:
             print('+ Overwrite forbidden - skipping pupilometry')
@@ -120,8 +120,8 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, config):
     # Total number of frames in video file
     nf = vin_stream.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT)
     
-    # Read preprocessed video frame from stream
-    keep_going, frame, artifact = media.LoadVideoFrame(vin_stream, config)
+    # Read first preprocessed video frame from stream
+    keep_going, frame, art_power = media.LoadVideoFrame(vin_stream, cfg)
      
     # Get size of preprocessed frame for output video setup
     nx, ny = frame.shape[1], frame.shape[0]
@@ -176,10 +176,10 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, config):
         # -------------------------------------
         # Pass this frame to pupilometry engine
         # -------------------------------------
-        ellipse, roi_rect, blink = PupilometryEngine(frame, cascade)
+        ellipse, roi_rect, blink = PupilometryEngine(frame, cascade, cfg)
                 
         # Write data line to pupilometry CSV file
-        area = WritePupilometry(pupils_raw_stream, t, ellipse, blink, artifact)
+        area = WritePupilometry(pupils_raw_stream, t, ellipse, blink, art_power)
             
         # RGB version of preprocessed frame for output video
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
@@ -197,7 +197,7 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, config):
         vout_stream.write(frame_rgb)
 
         # Read next frame (if available)
-        keep_going, frame, artifact = media.LoadVideoFrame(vin_stream, config)
+        keep_going, frame, art_power = media.LoadVideoFrame(vin_stream, cfg)
         
         # Increment frame counter
         fc = fc + 1
@@ -207,8 +207,8 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, config):
             if fc % 100 == 0:
                 perc_done = fc / float(nf) * 100.0
                 pfps = fc / (time.time() - t0)  
-                print('  %10.1f %10.1f %10.1f %10d %10d %10.1f' % (
-                    t, perc_done, area, blink, artifact, pfps))
+                print('  %10.1f %10.1f %10.1f %10d %10.3f %10.1f' % (
+                    t, perc_done, area, blink, art_power, pfps))
 
     # Clean up
     cv2.destroyAllWindows()
@@ -224,26 +224,34 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, config):
     return True
 
 
-def PupilometryEngine(img, cascade):
+def PupilometryEngine(img, cascade, cfg):
     """
     RANSAC ellipse fitting of pupil boundary with image support
     """
     
+    min_neighbors = cfg.getint('LBP','minneighbors')
+    scale_factor  = cfg.getfloat('LBP','scalefactor')    
+    
     # Find pupils in frame
-    pupils = cascade.detectMultiScale(img, minNeighbors = 40)
+    pupils = cascade.detectMultiScale(img,
+                                      minNeighbors=min_neighbors,
+                                      scaleFactor=scale_factor)
         
     # Count detected pupil candidates
     n_pupils = len(pupils)
-
-    # TODO : adaptively adjust minNeighbors to return one pupil
-        
+    
     if n_pupils > 0:
         
         # Unset blink flag
         blink = False
-            
-        # Take first detected pupil ROI
-        x, y, w, h = pupils[0,:]
+        
+        # Use largest pupil candidate (works most of the time)
+        # TODO: refine this selection somehow
+        sizes = np.sqrt(pupils[:,2] * pupils[:,3])
+        best_pupil = sizes.argmax()
+        
+        # Get ROI info for largest pupil
+        x, y, w, h = pupils[best_pupil,:]
         x0, x1, y0, y1 = x, x+w, y, y+h
         roi_rect = (x0,y0),(x1,y1)
             
@@ -387,7 +395,7 @@ def OverlayPupil(frame_rgb, ellipse, roi_rect):
     return frame_rgb
     
 
-def WritePupilometry(pupil_out, t, ellipse, blink, artifact):
+def WritePupilometry(pupil_out, t, ellipse, blink, art_power):
     """
     Write pupilometry data line to file
     
@@ -401,8 +409,8 @@ def WritePupilometry(pupil_out, t, ellipse, blink, artifact):
         Ellipse parameters ((x0,y0),(a,b),theta)
     blink : boolean
         Blink flag
-    artifact : boolean
-        Artifact flag
+    art_power : float
+        Artifact power
     
     Returns
     ----
@@ -417,7 +425,7 @@ def WritePupilometry(pupil_out, t, ellipse, blink, artifact):
     area = PupilArea(ellipse)
     
     # Write pupilometry line to file
-    pupil_out.write('%0.3f,%0.1f,%0.1f,%0.1f,%d,%d,\n' % (t, area, x0, y0, blink, artifact))
+    pupil_out.write('%0.3f,%0.1f,%0.1f,%0.1f,%d,%0.3f,\n' % (t, area, x0, y0, blink, art_power))
     
     # Return corrected area
     return area
@@ -449,7 +457,7 @@ def ReadPupilometry(pupils_csv):
         3 : Pupil center in x (pixels)
         4 : Pupil center in y (pixels)
         5 : Blink flag (pupil not found)
-        6 : MR artifact present flag
+        6 : MR artifact power
     '''
     
     # Read time series in rows
@@ -472,11 +480,11 @@ def FilterPupilometry(pupils_raw_csv, pupils_filt_csv):
     dt = p[1,0] - p[0,0]
     
     # Kernel widths for each metric
-    k_area     = utils._forceodd(0.25 / dt)
-    k_px       = 3
-    k_py       = 3
-    k_blink    = utils._forceodd(0.25 / dt)
-    k_artifact = utils._forceodd(0.25 / dt)
+    k_area  = utils._forceodd(0.25 / dt)
+    k_px    = 3
+    k_py    = 3
+    k_blink = utils._forceodd(0.25 / dt)
+    k_art   = utils._forceodd(0.25 / dt)
     
     # Moving median filter
     pf = p.copy()
@@ -484,7 +492,7 @@ def FilterPupilometry(pupils_raw_csv, pupils_filt_csv):
     pf[:,2] = sps.medfilt(p[:,2], k_px)
     pf[:,3] = sps.medfilt(p[:,3], k_py)
     pf[:,4] = sps.medfilt(p[:,4], k_blink)
-    pf[:,5] = sps.medfilt(p[:,5], k_artifact)
+    pf[:,5] = sps.medfilt(p[:,5], k_art)
     
     # Write filtered timeseries to new CSV file in results directory
     np.savetxt(pupils_filt_csv, pf, fmt='%.6f', delimiter=',')

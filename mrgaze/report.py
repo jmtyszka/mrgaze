@@ -61,7 +61,8 @@ td {
 <p>
 <table>
   <tr><td><h2>Session Information</h2><td></tr>
-  <tr><td><b>Subject/Session</b><td>$subj_sess</tr>
+  <tr><td><b>Subject/Session</b> <td>$subj_sess</tr>
+  <tr><td><b>Artifact Start Time</b> <td>$art_t0 seconds</tr>
 </table>
 
 <!-- Plotted timeseries -->
@@ -74,10 +75,10 @@ td {
   <tr><td><h2>Filtered Calibration Pupilometry</h2></tr>
   <tr><td valign="top"><img src=cal_pupils_filt.png /></tr>
 
-  <tr><td><h2>Raw Gaze Pupilometry</h2></tr>
+  <tr><td><h2>Raw Gaze Pupilometry (Downsampled by 1000)</h2></tr>
   <tr><td valign="top"><img src=gaze_pupils_raw.png /></tr>
 
-  <tr><td><h2>Filtered Gaze Pupilometry</h2></tr>
+  <tr><td><h2>Filtered Gaze Pupilometry (Downsampled by 1000)</h2></tr>
   <tr><td valign="top"><img src=gaze_pupils_filt.png /></tr>
 
 </table>
@@ -86,6 +87,8 @@ td {
 
 </html>
 """
+
+from mrgaze import utils
 
 # Main function
 def WriteReport(ss_dir):
@@ -122,6 +125,10 @@ def WriteReport(ss_dir):
     gaze_filt_png = os.path.join(ss_res_dir, 'gaze_pupils_filt.png')
     PlotTimeseries(gaze_filt_csv, gaze_filt_png)
     
+    # Estimate time of first artifact
+    print('  Locating artifact start time')
+    art_t0 = ArtifactStartTime(gaze_raw_csv)
+    
     #
     # HTML report generation
     #
@@ -130,7 +137,8 @@ def WriteReport(ss_dir):
 
     # Create substitution dictionary for HTML report
     qa_dict = dict([
-      ('subj_sess',  "%s"    % (subj_sess))
+        ('subj_sess',  "%s"    % (subj_sess)),
+        ('art_t0',     "%0.1f" % (art_t0))        
     ])
 
     # Generate HTML report from template (see above)
@@ -182,8 +190,7 @@ def PlotTimeseries(csv_file, plot_png):
         
     ax = fig.add_subplot(414)
     ax.plot(t, p[:,5])
-    ax.set_ylim([-0.5, 1.5])
-    ax.set_title('Artifact Present', x = 0.5, y = 0.8, fontsize=10)
+    ax.set_title('Artifact Power', x = 0.5, y = 0.8, fontsize=10)
     ax.tick_params(axis='both', labelsize=8)
     
     # Pack all subplots and labels tightly
@@ -191,4 +198,36 @@ def PlotTimeseries(csv_file, plot_png):
 
     # Save figure to file in same directory as CSV file
     plt.savefig(plot_png, dpi = 150, bbox_inches = 'tight')    
+    
+
+def ArtifactStartTime(csv_file):
+    '''
+    Estimate the time of the first artifact
+    '''
+
+    if not os.path.isfile(csv_file):
+        print('* Pupilometry file not found - returning')
+        return False
+    
+    # Load pupilometry data from CSV file
+    p = pupilometry.ReadPupilometry(csv_file)
+    
+    # Frame times in seconds
+    t = p[:,0]
+    dt = t[1]-t[0]
+    
+    # Artifact power in each frame (temporally median filtered)
+    art = p[:,5]
+    
+    # Get MAD of first 1.0s of artifact power
+    clean_mad = utils._mad(art[0:int(1.0/dt)])
+    
+    # Threshold at 100 times this value
+    art_thresh = 100.0 * clean_mad
+    art_on = art > art_thresh
+    
+    # Time in seconds corresponding to first detected artifact
+    art_t0 = t[np.argmax(art_on)]
+    
+    return art_t0
     
