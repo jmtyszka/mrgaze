@@ -41,11 +41,12 @@ Copyright
 """
 
 import numpy as np
-import pywt
 import matplotlib.pyplot as plt
 from scipy.signal import medfilt
 from scipy.ndimage.morphology import binary_dilation
 from mrgaze import utils
+from mrgaze import improc as ip
+
 
 def MRClean(frame, z_thresh=8.0):
     """
@@ -91,7 +92,7 @@ def MRClean(frame, z_thresh=8.0):
     art_power = np.mean(df_row_mean**2)
 
     # Robust estimate of noise SD in row projection
-    sd_n = WaveletNoiseSD(df_row_mean)
+    sd_n = ip.WaveletNoiseSD(df_row_mean)
     
     # Frame difference projection z-scores
     z = df_row_mean / sd_n
@@ -275,24 +276,3 @@ def InterpRows(src, r0, r1):
     
     return row_block
 
-
-def NoiseSD(x):
-    '''
-    Robust background noise SD estimation
-    '''
-    
-    return np.median(np.abs(x.flatten())) * 1.48
-    
-
-def WaveletNoiseSD(x):
-    '''
-    Estimate noise SD from wavelet detail coefficients
-    '''
-    
-    # Wavelet decomposition
-    cA, cD = pywt.dwt(x.flatten(), 'db1')    
-    
-    # Estimate sd_n from MAD of detail coefficients
-    sd_n = np.median(np.abs(cD)) * 1.48
-    
-    return sd_n

@@ -21,6 +21,7 @@ Copyright 2014 California Institute of Technology.
 """
 
 import cv2
+import pywt
 import numpy as np
 from skimage import exposure
 from mrgaze import utils
@@ -105,3 +106,24 @@ def RobustRescale(gray, perc_range=(5, 95)):
     
     return gray_rescale
 
+
+def NoiseSD(x):
+    '''
+    Robust background noise SD estimation
+    '''
+    
+    return np.median(np.abs(x.flatten())) * 1.48
+    
+
+def WaveletNoiseSD(x):
+    '''
+    Estimate noise SD from wavelet detail coefficients
+    '''
+    
+    # Wavelet decomposition
+    cA, cD = pywt.dwt(x.flatten(), 'db1')    
+    
+    # Estimate sd_n from MAD of detail coefficients
+    sd_n = np.median(np.abs(cD)) * 1.48
+    
+    return sd_n

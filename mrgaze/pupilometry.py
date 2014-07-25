@@ -485,7 +485,7 @@ def FilterPupilometry(pupils_raw_csv, pupils_filt_csv):
     k_px    = 3
     k_py    = 3
     k_blink = utils._forceodd(0.25 / dt)
-    k_art   = utils._forceodd(0.25 / dt)
+    k_art   = utils._forceodd(1.0 / dt)
     
     # Moving median filter
     pf = p.copy()
@@ -493,7 +493,11 @@ def FilterPupilometry(pupils_raw_csv, pupils_filt_csv):
     pf[:,2] = sps.medfilt(p[:,2], k_px)
     pf[:,3] = sps.medfilt(p[:,3], k_py)
     pf[:,4] = sps.medfilt(p[:,4], k_blink)
-    pf[:,5] = sps.medfilt(p[:,5], k_art)
+    
+    # Apply 1 frame SD temporal gaussian filter before median filter
+    # Artifact power fluctuates hugely frame to frame
+    pf[:,5] = spi.filters.gaussian_filter1d(p[:,5], sigma=1.0)
+    pf[:,5] = sps.medfilt(pf[:,5], k_art)
     
     # Write filtered timeseries to new CSV file in results directory
     np.savetxt(pupils_filt_csv, pf, fmt='%.6f', delimiter=',')
