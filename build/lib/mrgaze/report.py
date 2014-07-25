@@ -127,7 +127,7 @@ def WriteReport(ss_dir):
     
     # Estimate time of first artifact
     print('  Locating artifact start time')
-    art_t0 = ArtifactStartTime(gaze_raw_csv)
+    art_t0 = ArtifactStartTime(gaze_filt_csv)
     
     #
     # HTML report generation
