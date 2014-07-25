@@ -25,15 +25,26 @@
 #
 # Copyright 2014 California Institute of Technology.
 
-import mrgaze.moco as mrm
+import os
+from mrgaze import moco, config
 
 def main():
-    
-    # Large shift between cal and gaze videos
-    cal_file = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron/videos/04axa_cal1_choice1/cal.mov'
-    gaze_file = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron/videos/04axa_cal1_choice1/gaze.mov'
 
-    mrm.MotionCorrect(cal_file, gaze_file)
+    data_dir = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron/data'
+    subj_sess = '04axa_cal1_choice1'
+    ssv_dir = os.path.join(data_dir, subj_sess, 'videos')
+    
+    cal_file = os.path.join(ssv_dir, 'cal.mov')
+    gaze_file = os.path.join(ssv_dir, 'gaze.mov')
+
+    # Load config
+    cfg = config.LoadConfig(data_dir, subj_sess)
+    
+    if not cfg:
+        print('* Configuration file missing - returning')
+        return False
+
+    moco.MotionCorrect(cal_file, gaze_file, cfg)
     
     
 # This is the standard boilerplate that calls the main() function.

@@ -22,8 +22,8 @@ Copyright 2014 California Institute of Technology.
 
 import cv2
 import numpy as np
-import mrgaze.mrclean as mrc
-from skimage import exposure
+from mrgaze import mrclean as mrc
+from mrgaze import improc as ip
 
 
 def LoadVideoFrame(v_in, cfg):
@@ -58,6 +58,11 @@ def LoadVideoFrame(v_in, cfg):
     do_mrclean   = cfg.getboolean('ARTIFACTS', 'mrclean')
     z_thresh     = cfg.getfloat('ARTIFACTS', 'zthresh')
     
+    # Preprocesing flags
+    gauss_sd = 1.0
+    perc_range = (1, 99)
+    bias_correct = True
+    
     # Init returned artifact power
     art_power = 0.0    
     
@@ -86,16 +91,22 @@ def LoadVideoFrame(v_in, cfg):
         fr = cv2.resize(fr, (nxd, nyd))
         
         # Gaussian blur
-        fr = cv2.GaussianBlur(fr, (3,3), 1.0)
+        if gauss_sd > 0.0:
+            fr = cv2.GaussianBlur(fr, (3,3), gauss_sd)
+            
+        # Correct for illumination bias
+        if bias_correct:
+            bias_field = ip.EstimateBias(fr)
+            fr = ip.Unbias(fr, bias_field)
 
-        # Robust rescale to 5th, 95th percentile
-        fr = RobustRescale(fr, (1,99))
+        # Robust rescale to [0,50] percentile
+        # Emphasize darker areas such as pupil
+        fr = ip.RobustRescale(fr, perc_range)
         
         # Finally rotate frame
         fr = RotateFrame(fr, rotate)
     
     return status, fr, art_power
-
 
 
 def LoadImage(image_file, border=0):
@@ -138,29 +149,6 @@ def LoadImage(image_file, border=0):
     frame = TrimBorder(frame, border)
     
     return frame
-
-    
-def RobustRescale(gray, perc_range=(5, 95)):
-    """
-    Robust image intensity rescaling
-    
-    Arguments
-    ----
-    gray : numpy uint8 array
-        Original grayscale image.
-    perc_range : two element tuple of floats in range [0,100]
-        Percentile scaling range
-    
-    Returns
-    ----
-    gray_rescale : numpy uint8 array
-        Percentile rescaled image.
-    """
-    
-    pA, pB = np.percentile(gray, perc_range)
-    gray_rescale = exposure.rescale_intensity(gray, in_range=(pA, pB))
-    
-    return gray_rescale
 
 
 def TrimBorder(frame, border = 0):

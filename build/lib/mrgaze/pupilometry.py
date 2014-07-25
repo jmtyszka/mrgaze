@@ -34,6 +34,7 @@ import scipy.ndimage as spi
 import scipy.signal as sps
 import numpy as np
 from mrgaze import media, utils, fitellipse
+from mrgaze import improc as ip
 
 def VideoPupilometry(data_dir, subj_sess, v_stub, cfg):
     """
@@ -302,8 +303,8 @@ def SegmentPupil(roi):
 
     # Intensity rescale to emphasize pupil
     # - assumes pupil is one of the darkest regions
-    # - assumes pupil occupies between 5% and 50% of frame area
-    roi = media.RobustRescale(roi, (5,50))
+    # - assumes pupil occupies up to 50% of frame area
+    roi = ip.RobustRescale(roi, (0,50))
             
     # Segment pupil in contrast stretched roi and update threshold
     thresh, blobs = cv2.threshold(roi, 128, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)

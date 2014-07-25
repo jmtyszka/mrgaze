@@ -6,6 +6,7 @@ mrgaze/__init__.py
 mrgaze/calibrate.py
 mrgaze/config.py
 mrgaze/fitellipse.py
+mrgaze/improc.py
 mrgaze/media.py
 mrgaze/moco.py
 mrgaze/mrclean.py

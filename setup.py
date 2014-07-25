@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup ( name = 'mrgaze',
-        version = '0.2.0',
+        version = '0.3.0',
         description = 'Offline video pupilometry and gaze tracking',
         author = ['Mike Tyszka'],
         author_email = ['jmt@caltech.edu'],

@@ -26,25 +26,13 @@
 #
 # Copyright 2014 California Institute of Technology.
 
-import os
 import mrgaze.pipeline as mrpipe
 
 def main():
     
-    # Root data directory
-    group_dir = '/Users/jmt/Data/Eye_Tracking/Groups'
-    
-    # JARON
-    # group = 'Jaron'
-    # root_dir = os.path.join(group_dir, group)
-    # v_file = os.path.join(root_dir, 'videos', '26mxk_cal2_choice1', 'cal.mov')   
-    # v_file = os.path.join(root_dir, 'videos', '02txw_cal2_choice1', 'cal.mov')
-    # v_file = os.path.join(root_dir, 'videos', '02txw_cal2_choice1', 'gaze.mov')   
-    
     # LAURA
-    group = 'Laura'
-    data_dir = os.path.join(group_dir, group, 'data')
-    subjsess = 'RA0546_1'
+    data_dir = '/Volumes/Data/laura/ET_Sandbox'
+    subjsess = 'RA0546_Gaze1'
     
     # Run single-session pipeline
     mrpipe.RunSingle(data_dir, subjsess)

@@ -30,22 +30,17 @@ import os
 import sys
 import cv2
 import numpy as np
+from mrgaze import media
 
-import mrgaze.io as mrio
+def MotionCorrect(cal_video, gaze_video, cfg):
 
-def MotionCorrect(cal_video, gaze_video):
-    
-    # Downsampling scale factor and frame border in pixels
-    scale = 4
-    border = 16    
-    
     # Create template from calibration video
     print('Creating phase correlation template')
-    template = CreateTemplate(cal_video, scale, border)
+    template = CreateTemplate(cal_video, cfg)
 
     # Phase correlate
     print('Phase correlating video')
-    dx_t, dy_t = PhaseCorrelate(cal_video, template, scale, border)
+    dx_t, dy_t = PhaseCorrelate(cal_video, template, cfg)
     
     # Optional: generate motion corrected video
     # print('Motion correcting video')
@@ -57,10 +52,10 @@ def MotionCorrect(cal_video, gaze_video):
 #
 # Create phase correlation template from mean calibration video
 #
-def CreateTemplate(v_in_file, scale = 1, border = 0):
+def CreateTemplate(v_in_file, cfg):
     
     # Template creation method
-    method = 'last_frame'    
+    method = 'last_frame'
     
     # Open video
     try:
@@ -84,7 +79,7 @@ def CreateTemplate(v_in_file, scale = 1, border = 0):
             
         while keep_going:
                 
-            keep_going, I, artifact = mrio.LoadVideoFrame(v_in, scale, border)
+            keep_going, I, artifact = media.LoadVideoFrame(v_in, cfg)
             
             if keep_going:
             
@@ -109,7 +104,7 @@ def CreateTemplate(v_in_file, scale = 1, border = 0):
     elif method == 'last_frame':
         
         v_in.set(cv2.cv.CV_CAP_PROP_POS_FRAMES, n_frames-2)
-        keep_going, I, artifact = mrio.LoadVideoFrame(v_in, scale, border)
+        keep_going, I, artifact = media.LoadVideoFrame(v_in, cfg)
         Im = np.float32(I)
     
     # Sobel edges in video scanline direction (x)
@@ -126,72 +121,51 @@ def CreateTemplate(v_in_file, scale = 1, border = 0):
 
     return template
 
-#
-# FFT-based phase correlation of video frames with template
-# Use OpenCV implementation
-#   
-def PhaseCorrelate(v_file, template, scale = 1, border = 0):
+  
+def PhaseCorrelate(src, template):
+    '''
+    Estimate frame to template displacement by phase correlation
     
-    # Open video of moving eye
-    try:
-        v_in = cv2.VideoCapture(v_file)
-    except:
-        sys.exit(1)
-        
-    if not v_in.isOpened():
-        sys.exit(1)
-        
-    # Get frame total for video
-    n_frames = v_in.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT)
+    Arguments
+    ----
+    src : 2D numpy uint8 array
+        Displaced frame
+    template : 2D numpy uint8 array
+        Undisplaced template frame (Sobel x-gradient)
     
-    # Create results arrays
-    dx_t = np.zeros((n_frames,1))
-    dy_t = np.zeros((n_frames,1))
-        
-    # Frame counter
-    fc = 0
-    
-    # Init continuation flag
-    keep_going = True
-    
-    while keep_going:
-            
-        # Downsample current frame
-        keep_going, I, artifact = mrio.LoadVideoFrame(v_in, scale, border)
-        
-        if keep_going:
-            
-            # Horizontal Sobel edges
-            xedge = SobelX(I)
-            
-            # Cross correlate with template
-            dx, dy = cv2.phaseCorrelate(template, xedge)
-            
-            # Rescale to original pixel size
-            dx_t[fc], dy_t[fc] = dx * scale, dy * scale
-            
-            # Construct rigid body transform matrix
-            M = np.float32([[1,0,dx], [0,1,dy]]) 
+    Returns
+    ----
+    dest : 2D numpy uint8 array
+        Corrected frame
+    dx, dy : floats
+        X and Y displacement of img from template
+    '''    
 
-            # Apply rigide body transform to frame
-            I_moco = cv2.warpAffine(I, M, (I.shape[1], I.shape[0]), flags=cv2.INTER_LINEAR + cv2.WARP_INVERSE_MAP)
-            
-            # Display original and corrected frame
-            im = np.hstack((np.uint8(template), np.uint8(xedge), np.uint8(I_moco)))
-            cv2.imshow('MOCO', im)
-            if cv2.waitKey(5) > 0:
-                break
-            
-            # Increment frame counter
-            fc += 1
-            
-    # Close video stream
-    v_in.release()
+    # Affine warp flags
+    aff_flags = cv2.INTER_LINEAR + cv2.WARP_INVERSE_MAP
 
-    return dx_t, dy_t
+    # Source frame size (x = columns)
+    src_dims = src.shape[1], src.shape[0]
+
+    # Horizontal Sobel edges
+    xgrad = SobelX(src)
+            
+    # Cross correlate with template
+    dx, dy = cv2.phaseCorrelate(template, xgrad)
+    
+    # Construct rigid body transform matrix
+    M = np.float32([[1,0,dx], [0,1,dy]]) 
+
+    # Apply rigid body transform to frame
+    dest = cv2.warpAffine(src, M, src_dims, flags=aff_flags)
+
+    return dest, dx, dy
     
 
 def SobelX(img):
+    '''
+    Sobel x-gradient of image : dI/dx
+    '''
     
     # Sobel kernel size
     k = 5
@@ -204,6 +178,6 @@ def SobelX(img):
     
     # Rescale image to [0,255] 32F
     imax, imin = np.amax(xedge), np.amin(xedge)
-    xedge = ((xedge - imin) / (imax - imin) * 255).astype(np.float32)
+    xgrad = ((xedge - imin) / (imax - imin) * 255).astype(np.float32)
 
-    return xedge
+    return xgrad
