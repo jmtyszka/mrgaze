@@ -64,22 +64,25 @@ def EstimateBias(fr):
     k = utils._forceodd(nd/2)
     bias_field_d = cv2.medianBlur(fr_d, k)
     
-    # Upsample biasfield to same size as original frame
-    bias_field = cv2.resize(bias_field_d, (nx, ny))
+    # Bias correction
+    bias_corr_d = 1 - (bias_field_d - np.mean(fr_d)) / fr_d
     
-    return bias_field
+    # Upsample biasfield to same size as original frame
+    bias_corr = cv2.resize(bias_corr_d, (nx, ny))
+    
+    # DEBUG: Flat bias correction
+    bias_corr = np.ones_like(fr)
+    
+    return bias_corr
 
     
-def Unbias(fr, bias_field):
+def Unbias(fr, bias_corr):
 
     # Cast frame to floats    
     frf = fr.astype(float)
-
-    # Save image mean (add back after high pass filter)
-    fr_mean = np.mean(frf)
     
     # Apply bias correction multiplier
-    fr_unbias = np.uint8(frf / bias_field * fr_mean)
+    fr_unbias = np.uint8(frf * bias_corr)
     
     return fr_unbias
 

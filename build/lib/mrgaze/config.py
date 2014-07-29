@@ -87,6 +87,11 @@ def InitConfig(config):
     config.set('VIDEO','border','16')
     config.set('VIDEO','rotate','0')
     
+    config.add_section('PUPILSEG')
+    config.set('PUPILSEG','method','kmeans')
+    config.set('PUPILSEG','percmin','0')
+    config.set('PUPILSEG','percmax','50')
+    
     config.add_section('RANSAC')
     config.set('RANSAC','maxiterations','5')
     config.set('RANSAC','maxrefinements','3')

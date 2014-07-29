@@ -30,9 +30,10 @@
 import os
 import time
 import cv2
+import numpy as np
 import scipy.ndimage as spi
 import scipy.signal as sps
-import numpy as np
+from scipy.cluster.vq import kmeans, whiten, vq
 from mrgaze import media, utils, fitellipse
 from mrgaze import improc as ip
 
@@ -260,7 +261,7 @@ def PupilometryEngine(img, cascade, cfg):
         pupil_roi = img[y0:y1,x0:x1]
         
         # Segment pupil intelligently
-        pupil_bw = SegmentPupil(pupil_roi)
+        pupil_bw = SegmentPupil(pupil_roi, cfg)
             
         # Fit ellipse to pupil boundary
         el_roi = FitPupil(pupil_bw, pupil_roi)
@@ -278,7 +279,7 @@ def PupilometryEngine(img, cascade, cfg):
     return el, roi_rect, blink            
 
 
-def SegmentPupil(roi):
+def SegmentPupil(roi, cfg):
     """
     Segment pupil within pupil-iris ROI
     
@@ -286,6 +287,8 @@ def SegmentPupil(roi):
     ----
     roi : 2D numpy uint8 array
         Grayscale image of pupil-iris region
+    cfg : configuration object
+        Analysis configuration parameters
     
     Returns
     ----
@@ -294,20 +297,44 @@ def SegmentPupil(roi):
     
     """
 
-    # TODO: This needs more work - the pupil thresholding is not particularly
-    # robust to the artifact repair remnants.
-    # Try the following:
-    # - bias correction of illumination
-    # - different threshold estimators (percentile, histogram, recursive)
-    # - kmeans clustering of intensities 
-
+    # Get config parameters
+    method = cfg.get('PUPILSEG','method')
+    perclims = cfg.getfloat('PUPILSEG','percmin'), cfg.getfloat('PUPILSEG','percmax')
+    
+    # Remove glint if present - helps RANSAC stability
+    roi = RemoveGlint(roi)    
+    
     # Intensity rescale to emphasize pupil
-    # - assumes pupil is one of the darkest regions
-    # - assumes pupil occupies up to 50% of frame area
-    roi = ip.RobustRescale(roi, (0,50))
-            
-    # Segment pupil in contrast stretched roi and update threshold
-    thresh, blobs = cv2.threshold(roi, 128, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
+    # If pupil occupies about 25% of ROI, then setting an upper percentile
+    # limit of about 30% might work well.
+    roi = ip.RobustRescale(roi, perclims)
+    
+    if method == 'otsu':
+
+        # Binary threshold of ROI using Ostu's method
+        thresh, blobs = cv2.threshold(roi, 128, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
+    
+    elif method == 'kmeans':
+        
+        # Number of clusters to shoot for
+        K = 4
+        
+        # Flatten and whiten ROI pixels
+        data = whiten(roi.flatten())
+        
+        # 1D k-means clustering of intensity values
+        centroids, _ = kmeans(data, K)
+        
+        # Assume minimum valued centroid represents pupil pixels
+        pupil_idx = np.argmin(centroids)
+        
+        # Assign all pixels to a cluster
+        idx, _ = vq(data, centroids)
+        
+        idx = np.reshape(idx, roi.shape)
+        
+        # Create mask for minimum centroid pixels
+        blobs = np.uint8(idx == pupil_idx)
         
     # Morphological opening (circle 5 pixels diameter)
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(5,5))
@@ -326,6 +353,39 @@ def SegmentPupil(roi):
     pupil_bw = np.uint8(labels == pupil_label)
         
     return pupil_bw
+    
+
+def RemoveGlint(roi, plim=95, k=5):
+    '''
+    Remove small bright areas from pupil/iris ROI
+    
+    Arguments:
+    roi : 2D numpy uint8 array
+        Pupil/iris ROI image
+    plim : float
+        Prcentile lower bound for brightest pixels
+    k : odd integer
+        Kernel size for mask dilation and inpainting
+    
+    Returns:
+    roi_noglint : 2D numpy uint8 array
+        Pupil/iris ROI without small bright areas
+    '''
+    
+    # Inpaint top 5% brightest pixels
+    imax = np.percentile(roi, plim)
+    
+    # Inpainting mask
+    mask = np.uint8(roi >= imax)
+    
+    # Dilate
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(k,k))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_DILATE, kernel)
+    
+    # Inpaint bright regions
+    roi_noglint = cv2.inpaint(roi, mask, k, cv2.INPAINT_TELEA)
+    
+    return roi_noglint
 
 
 def FitPupil(bw, roi):

@@ -61,7 +61,7 @@ def LoadVideoFrame(v_in, cfg):
     # Preprocesing flags
     gauss_sd = 1.0
     perc_range = (1, 99)
-    bias_correct = True
+    bias_correct = False
     
     # Init returned artifact power
     art_power = 0.0    

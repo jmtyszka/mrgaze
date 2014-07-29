@@ -32,7 +32,7 @@ def main():
     
     # LAURA
     data_dir = '/Volumes/Data/laura/ET_Sandbox'
-    subjsess = 'RA0546_Gaze1'
+    subjsess = 'RA0813_Gaze1'
     
     # Run single-session pipeline
     mrpipe.RunSingle(data_dir, subjsess)
