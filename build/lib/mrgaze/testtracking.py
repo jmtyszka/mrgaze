@@ -31,8 +31,8 @@ import mrgaze.pipeline as mrpipe
 def main():
     
     # LAURA
-    data_dir = '/Volumes/Data/laura/ET_Sandbox'
-    subjsess = 'RA0813_Gaze1'
+    data_dir = '/Volumes/Data/laura/ET_Sandbox/AVI2MPG'
+    subjsess = 'RA0750_Gaze1'
     
     # Run single-session pipeline
     mrpipe.RunSingle(data_dir, subjsess)

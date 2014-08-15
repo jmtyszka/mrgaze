@@ -13,12 +13,6 @@ mrgaze/mrclean.py
 mrgaze/pipeline.py
 mrgaze/pupilometry.py
 mrgaze/report.py
-mrgaze/testcal.py
-mrgaze/testedges.py
-mrgaze/testframe.py
-mrgaze/testmoco.py
-mrgaze/testmrclean.py
-mrgaze/testtracking.py
 mrgaze/utils.py
 mrgaze.egg-info/PKG-INFO
 mrgaze.egg-info/SOURCES.txt

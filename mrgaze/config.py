@@ -104,6 +104,7 @@ def InitConfig(config):
     config.add_section('ARTIFACTS')
     config.set('ARTIFACTS','mrclean','True')
     config.set('ARTIFACTS','zthresh','8.0')
+    config.set('ARTIFACTS','motioncorr','True')
     
     config.add_section('CALIBRATION')
     config.set('CALIBRATION','calibrate','False')

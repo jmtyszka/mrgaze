@@ -169,27 +169,38 @@ def PlotTimeseries(csv_file, plot_png):
     # Create figure, plot all timeseries in subplots
     fig = plt.figure(figsize = (6,6))
     
-    # Extract time vector
-    t = p[:,0]
+    # Extract timeseries
+    t      = p[:,0]
+    area   = p[:,1]
+    px     = p[:,2]
+    py     = p[:,3]
+    blink  = p[:4]
+    art    = p[:,5]
+    gx     = p[:,6]
+    gy     = p[:,7]
+    
+    # (pupil - glint) vector
+    pgx = px - gx
+    pgy = py - gy
 
-    ax = fig.add_subplot(411)
-    ax.plot(t, p[:,1])
+    ax = fig.add_subplot(511)
+    ax.plot(t, area)
     ax.set_title('Corrected Pupil Area', x = 0.5, y = 0.8, fontsize=8)
     ax.tick_params(axis='both', labelsize=8)
     
-    ax = fig.add_subplot(412)
-    ax.plot(t, p[:,2], p[:,0], p[:,3])
-    ax.set_title('Pupil Center', x = 0.5, y = 0.8, fontsize=8)
+    ax = fig.add_subplot(512)
+    ax.plot(t, pgx, t, pgy)
+    ax.set_title('Corrected Pupil Center', x = 0.5, y = 0.8, fontsize=8)
     ax.tick_params(axis='both', labelsize=8)
         
-    ax = fig.add_subplot(413)
-    ax.plot(t, p[:,4])
+    ax = fig.add_subplot(513)
+    ax.plot(t, blink)
     ax.set_ylim([-0.5, 1.5])
     ax.set_title('Blink', x = 0.5, y = 0.8, fontsize=10)
     ax.tick_params(axis='both', labelsize=8)
         
-    ax = fig.add_subplot(414)
-    ax.plot(t, p[:,5])
+    ax = fig.add_subplot(514)
+    ax.plot(t, art)
     ax.set_title('Artifact Power', x = 0.5, y = 0.8, fontsize=10)
     ax.tick_params(axis='both', labelsize=8)
     

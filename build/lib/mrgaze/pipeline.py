@@ -33,7 +33,7 @@ Copyright 2014 California Institute of Technology.
 
 import os
 import sys
-from mrgaze import utils, pupilometry, calibrate, report, config
+from mrgaze import utils, pupilometry, calibrate, report, config, moco
 
 def RunBatch(data_dir=[]):
     """
@@ -89,12 +89,17 @@ def RunSingle(data_dir, subj_sess):
         
     # Extract operational flags from config
     do_cal = cfg.getboolean('CALIBRATION', 'calibrate')
+    do_moco = cfg.getboolean('ARTIFACTS', 'motioncorr')
     
     # Run pipeline if video directory present
     if os.path.isdir(ss_vid_dir):
         
         # Create results subj/sess dir
         utils._mkdir(ss_res_dir)
+        
+        # Create motion correction template from calibration video
+        if do_moco:
+            moco.CreateTemplate(data_dir, subj_sess, 'cal', cfg)
         
         print('')
         print('  Calibration Pupilometry')
@@ -111,10 +116,10 @@ def RunSingle(data_dir, subj_sess):
         if do_cal:
             
             print('  Create calibration model')
-            C = calibrate.AutoCalibrate(ss_vid_dir, cfg)
+            C = calibrate.AutoCalibrate(ss_res_dir, cfg)
 
             print('  Calibrate pupilometry')
-            calibrate.ApplyCalibration(ss_vid_dir, C)
+            calibrate.ApplyCalibration(ss_res_dir, C)
         
         print('')
         print('  Generate Report')

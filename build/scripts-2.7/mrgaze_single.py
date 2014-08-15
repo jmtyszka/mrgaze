@@ -40,7 +40,7 @@ import os
 import sys
 import datetime as dt
 
-import mrgaze.pipeline as mrp
+from mrgaze import pipeline
 
 def main():
     
@@ -64,7 +64,7 @@ def main():
     print('Subj/Sess : %s' % subj_sess)
     
     # Run single-session pipeline
-    mrp.RunSingle(data_dir, subj_sess)
+    pipeline.RunSingle(data_dir, subj_sess)
 
 
 # This is the standard boilerplate that calls the main() function.

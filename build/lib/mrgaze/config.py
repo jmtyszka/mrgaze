@@ -88,7 +88,7 @@ def InitConfig(config):
     config.set('VIDEO','rotate','0')
     
     config.add_section('PUPILSEG')
-    config.set('PUPILSEG','method','kmeans')
+    config.set('PUPILSEG','method','otsu')
     config.set('PUPILSEG','percmin','0')
     config.set('PUPILSEG','percmax','50')
     
@@ -104,6 +104,7 @@ def InitConfig(config):
     config.add_section('ARTIFACTS')
     config.set('ARTIFACTS','mrclean','True')
     config.set('ARTIFACTS','zthresh','8.0')
+    config.set('ARTIFACTS','motioncorr','True')
     
     config.add_section('CALIBRATION')
     config.set('CALIBRATION','calibrate','False')

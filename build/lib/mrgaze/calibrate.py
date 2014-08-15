@@ -26,30 +26,46 @@
 
 import os
 import cv2
+import json
 import numpy as np
 from skimage import filter, exposure
 from scipy import ndimage
 from scipy.ndimage import filters
 from scipy.signal import medfilt, gaussian
 from matplotlib import pyplot as plt
+from mrgaze import pupilometry
 
-import io
-
-def AutoCalibrate(subjsess_dir, targets):
-
+def AutoCalibrate(ss_res_dir, cfg):
+    
+    # Get target coordinates
+    targetx = json.loads(cfg.get('CALIBRATION', 'targetx'))
+    targety = json.loads(cfg.get('CALIBRATION', 'targetx'))
+    targets = [targetx, targety]
+    
     # Calibration pupilometry file
-    cal_pupils_csv = os.path.join(subjsess_dir,'cal_pupils.csv')
+    cal_pupils_csv = os.path.join(ss_res_dir,'cal_pupils_raw.csv')
     
     if not os.path.isfile(cal_pupils_csv):
-        print('Calibration pupilometry not found - returning')
+        print('* Calibration pupilometry not found - returning')
         return False
         
-    # Load table from CSV file
-    t,area,x,y,blink,dummy = io.ReadPupilometry(cal_pupils_csv)
+    # Read raw pupilometry data
+    p = pupilometry.ReadPupilometry(cal_pupils_csv)
+    
+    # Extract timeseries
+    t      = p[:,0]
+    px     = p[:,2]
+    py     = p[:,3]
+    gx     = p[:,6]
+    gy     = p[:,7]
+    
+    # (pupil - glint) vector
+    pgx = px - gx
+    pgy = py - gy
     
     # Remove NaNs (blinks, etc) from t, x and y
-    ok = np.isfinite(x)
-    t, x, y = t[ok], x[ok], y[ok]
+    ok = np.isfinite(pgx)
+    t, x, y = t[ok], pgx[ok], pgy[ok]
     
     # Use kmeans clustering to find calibration fixations
     fixations = FindFixations(t, x, y)
@@ -289,7 +305,7 @@ def CalibrationModel(fixations, targets):
     # Moore-Penrose pseudoinverse of R
     Rinv = np.linalg.pinv(R)
     
-    # R0 is the target coordinate array
+    # R0 is the target coordinate array (2 x 9)
     R0 = targets
     
     # Solve C.R = R0 by postmultiplying R0 by Rinv
