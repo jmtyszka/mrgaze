@@ -56,7 +56,7 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, cfg):
     
     Returns
     ----
-    status : boolean
+    pupils : boolean
         Completion status (True = successful)
     """
     
@@ -64,13 +64,11 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, cfg):
     verbose   = cfg.getboolean('OUTPUT', 'verbose')
     graphics  = cfg.getboolean('OUTPUT', 'graphics')
     overwrite = cfg.getboolean('OUTPUT','overwrite')
-        
-    # Motion correction
-    do_moco = cfg.getboolean('ARTIFACTS', 'motioncorr')
     
-    # Input video extension
+    # Video information
     vin_ext = cfg.get('VIDEO', 'inputextension')
-    vout_ext = cfg.get('VIDEO' ,'outputextension')    
+    vout_ext = cfg.get('VIDEO' ,'outputextension')
+    vin_fps = cfg.getfloat('VIDEO', 'inputfps')
     
     # Full video file paths
     ss_dir = os.path.join(data_dir, subj_sess)
@@ -123,11 +121,14 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, cfg):
         print('* Video input stream not opened - skipping pupilometry')
         return False
     
-    # Get FPS from video file
-    fps = vin_stream.get(cv2.cv.CV_CAP_PROP_FPS)
+    # Video FPS from metadata
+    # TODO: may not work with Quicktime videos
+    # fps = vin_stream.get(cv2.cv.CV_CAP_PROP_FPS)
     
     # Total number of frames in video file
     nf = vin_stream.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT)
+    
+    print('  Video has %d frames at %0.3f fps' % (nf, vin_fps))
     
     # Read first preprocessed video frame from stream
     keep_going, frame, art_power = media.LoadVideoFrame(vin_stream, cfg)
@@ -180,7 +181,7 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, cfg):
     while keep_going:
         
         # Current video time in seconds
-        t = fc / fps
+        t = fc / vin_fps
         
         # -------------------------------------
         # Pass this frame to pupilometry engine
@@ -188,7 +189,10 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, cfg):
         ellipse, roi_rect, blink = PupilometryEngine(frame, cascade, cfg)
         
         # Pseudo-glint : robust center of mass of vertical edges in frame
-        pglint = moco.PseudoGlint(frame)
+        if not blink:
+            pglint = moco.PseudoGlint(frame, roi_rect)
+        else:
+            pglint = (np.nan, np.nan)
         
         # Write data line to pupilometry CSV file
         area = WritePupilometry(pupils_raw_stream, t, ellipse, blink, art_power, pglint)
@@ -516,26 +520,34 @@ def WritePupilometry(pupil_out, t, ellipse, blink, art_power, pglint):
     """
     
     # Unpack ellipse tuple
-    (x0, y0), (bb, aa), phi_b_deg = ellipse
+    (px, py), (bb, aa), phi_b_deg = ellipse
     
     # Pupil area corrected for viewing angle
     area = PupilArea(ellipse)
     
     # Unpack pseudo-glint location
-    px, py = pglint
+    gx, gy = pglint
     
-    # Write pupilometry line to file
-    # 0 : Time (s)
-    # 1 : Corrected pupil area (AU)
-    # 2 : Pupil center x (pixels)
-    # 3 : Pupil center y (pixels)
-    # 4 : Blink flag
-    # 5 : MR artifact power
-    # 6 : Pseudo-glint x (pixels)
-    # 7 : Pseudo-glint y (pixels)
+    # Pupil-glint vector
+    pgx, pgy = px-gx, py-gy
+    
+    '''
+    Write pupilometry line to file
+        Timeseries in columns. Column order is:
+        0 : Time (s)
+        1 : Corrected pupil area (AU)
+        2 : Pupil center in x (pixels)
+        3 : Pupil center in y (pixels)
+        4 : Pseudo-glint x (pixels)
+        5 : Pseudo-glint y (pixels)
+        6 : Pupil-glint x (pixels)
+        7 : Pupil-glint y (pixels)
+        8 : Blink flag (pupil not found)
+        9 : MR artifact power
+    '''
     pupil_out.write(
-        '%0.3f,%0.1f,%0.1f,%0.1f,%d,%0.3f,%0.3f,%0.3f,\n' %
-        (t, area, x0, y0, blink, art_power, px, py)
+        '%0.3f,%0.3f,%0.3f,%0.3f,%0.3f,%0.3f,%0.3f,%0.1f,%d,%0.3f,\n' %
+        (t, area, px, py, gx, gy, pgx, pgy, blink, art_power)
         )
     
     # Return corrected area
@@ -554,10 +566,12 @@ def ReadPupilometry(pupils_csv):
         1 : Corrected pupil area (AU)
         2 : Pupil center in x (pixels)
         3 : Pupil center in y (pixels)
-        4 : Blink flag (pupil not found)
-        5 : MR artifact power
-        6 : Pseudo-glint x (pixels)
-        7 : Pseudo-glint y (pixels)
+        4 : Pseudo-glint x (pixels)
+        5 : Pseudo-glint y (pixels)
+        6 : Pupil-glint x (pixels)
+        7 : Pupil-glint y (pixels)
+        8 : Blink flag (pupil not found)
+        9 : MR artifact power
     '''
     
     # Read time series in rows
@@ -593,22 +607,27 @@ def FilterPupilometry(pupils_raw_csv, pupils_filt_csv):
     
     # Kernel widths for each metric
     k_area  = utils._forceodd(0.25 / dt)
-    k_px    = 3
-    k_py    = 3
+    k_pupil = 3
     k_blink = utils._forceodd(0.25 / dt)
     k_art   = utils._forceodd(1.0 / dt)
     
     # Moving median filter
     pf = p.copy()
     pf[:,1] = sps.medfilt(p[:,1], k_area)
-    pf[:,2] = sps.medfilt(p[:,2], k_px)
-    pf[:,3] = sps.medfilt(p[:,3], k_py)
-    pf[:,4] = sps.medfilt(p[:,4], k_blink)
+    pf[:,2] = sps.medfilt(p[:,2], k_pupil) # Pupil x
+    pf[:,3] = sps.medfilt(p[:,3], k_pupil) # Pupil y
+    pf[:,4] = sps.medfilt(p[:,4], k_pupil) # Glint x
+    pf[:,5] = sps.medfilt(p[:,5], k_pupil) # Glint y
+    pf[:,6] = sps.medfilt(p[:,6], k_pupil) # Pupil-Glint x
+    pf[:,7] = sps.medfilt(p[:,7], k_pupil) # Pupil-Glint y
     
-    # Apply 1 frame SD temporal gaussian filter before median filter
+    # Blink filter
+    pf[:,8] = sps.medfilt(p[:,8], k_blink)
+    
     # Artifact power fluctuates hugely frame to frame
-    pf[:,5] = spi.filters.gaussian_filter1d(p[:,5], sigma=1.0)
-    pf[:,5] = sps.medfilt(pf[:,5], k_art)
+    # Apply 1 frame SD temporal gaussian filter before median filter
+    pf[:,9] = spi.filters.gaussian_filter1d(p[:,9], sigma=1.0)
+    pf[:,9] = sps.medfilt(pf[:,9], k_art)
     
     # Write filtered timeseries to new CSV file in results directory
     np.savetxt(pupils_filt_csv, pf, fmt='%.6f', delimiter=',')

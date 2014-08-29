@@ -83,6 +83,7 @@ def InitConfig(config):
     config.add_section('VIDEO')
     config.set('VIDEO','inputextension','.mpg')
     config.set('VIDEO','outputextension','.mov')
+    config.set('VIDEO','inputfps','29.97')
     config.set('VIDEO','downsampling','4')
     config.set('VIDEO','border','16')
     config.set('VIDEO','rotate','0')
@@ -98,7 +99,7 @@ def InitConfig(config):
     config.set('RANSAC','maxinlierperc','95')
     
     config.add_section('LBP')
-    config.set('LBP','minneighbors','16')
+    config.set('LBP','minneighbors','40')
     config.set('LBP','scalefactor','1.05')
     
     config.add_section('ARTIFACTS')

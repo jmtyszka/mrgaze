@@ -48,8 +48,9 @@ def main():
     if len(sys.argv) > 1:
         ss_dir = sys.argv[1]
     else:
-        ss_dir = os.getcwd()
-        
+        # ss_dir = os.getcwd()
+        ss_dir = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron/data/02txw_cal2_choice1'
+       
     # Split subj/session directory path into data_dir and subj/sess name
     data_dir, subj_sess = os.path.split(os.path.abspath(ss_dir))
 

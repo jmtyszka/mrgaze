@@ -97,10 +97,6 @@ def RunSingle(data_dir, subj_sess):
         # Create results subj/sess dir
         utils._mkdir(ss_res_dir)
         
-        # Create motion correction template from calibration video
-        if do_moco:
-            moco.CreateTemplate(data_dir, subj_sess, 'cal', cfg)
-        
         print('')
         print('  Calibration Pupilometry')
         print('  -----------------------')
@@ -117,6 +113,9 @@ def RunSingle(data_dir, subj_sess):
             
             print('  Create calibration model')
             C = calibrate.AutoCalibrate(ss_res_dir, cfg)
+            
+            if not C.any():
+                return False
 
             print('  Calibrate pupilometry')
             calibrate.ApplyCalibration(ss_res_dir, C)

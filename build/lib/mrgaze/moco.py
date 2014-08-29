@@ -31,7 +31,7 @@ import numpy as np
 from scipy.ndimage.measurements import center_of_mass
 
 
-def PseudoGlint(frame):
+def PseudoGlint(frame, roi_rect):
     '''
     Estimate pseudo-glint location in frame
     
@@ -42,6 +42,9 @@ def PseudoGlint(frame):
     Arguments
     ----
     frame : 2D numpy uint8 array
+        Current video frame
+    roi_rect : tuple
+        Pupil-iris square ROI ((p0x, p0y), (p1x, p1y))
     
     Returns
     ----
@@ -50,10 +53,20 @@ def PseudoGlint(frame):
     '''
     
     # Sobel horizontal intensity gradient
-    gx = np.abs(cv2.Sobel(frame, cv2.CV_32F, 1, 0))
+    gxy = SobelXY(frame) 
     
-    # Robust center of mass of x-gradient image
-    py, px = center_of_mass(gx)
+    # Mask out interior of ROI
+    # p0, p1 = roi_rect
+    # gxy[p0[1]:p1[1], p0[0]:p1[0]] = 0.0
+    
+    # Robust center of mass of masked x-gradient image
+    py, px = center_of_mass(gxy)
+    
+    if True:
+        rgb = cv2.cvtColor(np.uint8(gxy), cv2.COLOR_GRAY2RGB)
+        cv2.circle(rgb, (int(px), int(py)), 1, (255,255,0))
+        cv2.imshow('PseudoGlint', rgb)
+        cv2.waitKey(5)
     
     return px, py
 
@@ -77,3 +90,24 @@ def SobelX(img):
     xgrad = ((xedge - imin) / (imax - imin) * 255).astype(np.float32)
 
     return xgrad
+    
+
+def SobelXY(img):
+    '''
+    Sobel x + y gradient of image : dI/dx + dI/dy
+    '''
+    
+    # Sobel kernel size
+    k = 5
+    
+    # Sobel edges in video scanline direction (x)
+    xedge = np.abs(cv2.Sobel(img, cv2.CV_32F, 1, 0, ksize=k))
+    yedge = np.abs(cv2.Sobel(img, cv2.CV_32F, 0, 1, ksize=k))
+
+    xyedge = xedge + yedge
+    
+    # Rescale image to [0,255] 32F
+    imax, imin = np.amax(xyedge), np.amin(xyedge)
+    xygrad = ((xyedge - imin) / (imax - imin) * 255).astype(np.float32)
+
+    return xygrad
