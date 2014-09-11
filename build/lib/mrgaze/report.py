@@ -72,17 +72,11 @@ td {
   <tr><td><h2>Calibrated Gaze Results</h2></tr>
   <tr><td valign="top"><img src=gaze_calibrated.png /></tr>
 
-  <tr><td><h2>Raw Calibration Pupilometry</h2></tr>
-  <tr><td valign="top"><img src=cal_pupils_raw.png /></tr>
+  <tr><td><h2>Calibration</h2></tr>
+  <tr><td valign="top"><img src=cal_pupils.png /></tr>
 
-  <tr><td><h2>Filtered Calibration Pupilometry</h2></tr>
-  <tr><td valign="top"><img src=cal_pupils_filt.png /></tr>
-
-  <tr><td><h2>Raw Gaze Pupilometry (Downsampled by 1000)</h2></tr>
-  <tr><td valign="top"><img src=gaze_pupils_raw.png /></tr>
-
-  <tr><td><h2>Filtered Gaze Pupilometry (Downsampled by 1000)</h2></tr>
-  <tr><td valign="top"><img src=gaze_pupils_filt.png /></tr>
+  <tr><td><h2>Gaze Pupilometry</h2></tr>
+  <tr><td valign="top"><img src=gaze_pupils.png /></tr>
 
 </table>
 
@@ -90,8 +84,6 @@ td {
 
 </html>
 """
-
-from mrgaze import utils
 
 # Main function
 def WriteReport(ss_dir):
@@ -108,25 +100,15 @@ def WriteReport(ss_dir):
     subj_sess = os.path.basename(ss_dir)
     
     # Create timeseries plots
-    print('  Plot raw calibration video timeseries')
-    cal_raw_csv = os.path.join(ss_res_dir, 'cal_pupils_raw.csv')
-    cal_raw_png = os.path.join(ss_res_dir, 'cal_pupils_raw.png')
-    PlotPupilometry(cal_raw_csv, cal_raw_png)
+    print('  Plot calibration video pupilometry')
+    cal_csv = os.path.join(ss_res_dir, 'cal_pupils.csv')
+    cal_png = os.path.join(ss_res_dir, 'cal_pupils.png')
+    PlotPupilometry(cal_csv, cal_png)
     
-    print('  Plot filtered calibration video timeseries')
-    cal_filt_csv = os.path.join(ss_res_dir, 'cal_pupils_filt.csv')
-    cal_filt_png = os.path.join(ss_res_dir, 'cal_pupils_filt.png')
-    PlotPupilometry(cal_filt_csv, cal_filt_png)
-    
-    print('  Plot raw gaze video timeseries')
-    gaze_pupils_raw_csv = os.path.join(ss_res_dir, 'gaze_pupils_raw.csv')
-    gaze_pupils_raw_png = os.path.join(ss_res_dir, 'gaze_pupils_raw.png')
-    PlotPupilometry(gaze_pupils_raw_csv, gaze_pupils_raw_png)
-    
-    print('  Plot filtered gaze video timeseries')
-    gaze_pupils_filt_csv = os.path.join(ss_res_dir, 'gaze_pupils_filt.csv')
-    gaze_pupils_filt_png = os.path.join(ss_res_dir, 'gaze_pupils_filt.png')
-    PlotPupilometry(gaze_pupils_filt_csv, gaze_pupils_filt_png)
+    print('  Plot gaze video pupilometry')
+    gaze_pupils_csv = os.path.join(ss_res_dir, 'gaze_pupils.csv')
+    gaze_pupils_png = os.path.join(ss_res_dir, 'gaze_pupils.png')
+    PlotPupilometry(gaze_pupils_csv, gaze_pupils_png)
     
     print('  Plot calibrated gaze results')
     gaze_csv = os.path.join(ss_res_dir, 'gaze_calibrated.csv')
@@ -135,7 +117,7 @@ def WriteReport(ss_dir):
     
     # Estimate time of first artifact
     print('  Locating artifact start time')
-    art_t0 = ArtifactStartTime(gaze_pupils_filt_csv)
+    art_t0 = ArtifactStartTime(gaze_pupils_csv)
     
     #
     # HTML report generation
@@ -170,52 +152,40 @@ def PlotPupilometry(csv_file, plot_png):
     # Load pupilometry data from CSV file
     p = pupilometry.ReadPupilometry(csv_file)
     
-    # Downsample if total samples > 1000
-    nt = p.shape[0]
-    if nt > 1000:
-        dd = int(nt / 1000.0)
-        inds = np.arange(0, nt, dd)
-        p = p[inds,:]
-        
     # Extract timeseries
     t        = p[:,0]
     area     = p[:,1]
     px, py   = p[:,2], p[:,3]
-    gx, gy   = p[:,4], p[:,5]
-    pgx, pgy = p[:,6], p[:,7]
-    blink    = p[:,8]
-    art      = p[:,9]
+    blink    = p[:,4]
+    art      = p[:,5]
+    
+    # Downsample if total samples > 2000
+    nt = p.shape[0]
+    if nt > 2000:
+        dt = int(nt / 2000.0)
+        inds = np.arange(0, nt, dt)
+        p = p[inds,:]
         
     # Create figure, plot all timeseries in subplots
     fig = plt.figure(figsize = (6,8))
 
-    ax = fig.add_subplot(611)
+    ax = fig.add_subplot(411)
     ax.plot(t, area)
     ax.set_title('Corrected Pupil Area', y=1.1, fontsize=8)
     ax.tick_params(axis='both', labelsize=8)
     
-    ax = fig.add_subplot(612)
-    ax.plot(t, pgx, t, pgy)
+    ax = fig.add_subplot(412)
+    ax.plot(t, px, t, py)
     ax.set_title('Corrected Pupil Center', y=1.1, fontsize=8)
     ax.tick_params(axis='both', labelsize=8)
     
-    ax = fig.add_subplot(613)
-    ax.plot(t, px, t, py)
-    ax.set_title('Raw Pupil Center', y=1.1, fontsize=8)
-    ax.tick_params(axis='both', labelsize=8)    
-    
-    ax = fig.add_subplot(614)
-    ax.plot(t, gx, t, gy)
-    ax.set_title('Pseudoglint Center', y=1.1, fontsize=8)
-    ax.tick_params(axis='both', labelsize=8)    
-    
-    ax = fig.add_subplot(615)
+    ax = fig.add_subplot(413)
     ax.plot(t, blink)
     ax.set_ylim([-0.1, 1.1])
     ax.set_title('Blink', y=1.1, fontsize=8)
     ax.tick_params(axis='both', labelsize=8)
         
-    ax = fig.add_subplot(616)
+    ax = fig.add_subplot(414)
     ax.plot(t, art)
     ax.set_title('Artifact Power', y=1.1, fontsize=8)
     ax.tick_params(axis='both', labelsize=8)
@@ -229,6 +199,7 @@ def PlotPupilometry(csv_file, plot_png):
     # Close figure without showing it
     plt.close(fig)
 
+
 def ArtifactStartTime(csv_file):
     '''
     Estimate the time of the first artifact
@@ -241,19 +212,11 @@ def ArtifactStartTime(csv_file):
     # Load pupilometry data from CSV file
     p = pupilometry.ReadPupilometry(csv_file)
     
-    # Frame times in seconds
-    t = p[:,0]
-    dt = t[1]-t[0]
+    # Extract time and artifact power vectors
+    t, art   = p[:,0], p[:,5]
     
-    # Artifact power in each frame (temporally median filtered)
-    art = p[:,5]
-    
-    # Get MAD of first 1.0s of artifact power
-    clean_mad = utils._mad(art[0:int(1.0/dt)])
-    
-    # Threshold at 100 times this value
-    art_thresh = 100.0 * clean_mad
-    art_on = art > art_thresh
+    # Threshold at median artifact power distribution
+    art_on = art > np.median(art)
     
     # Time in seconds corresponding to first detected artifact
     art_t0 = t[np.argmax(art_on)]

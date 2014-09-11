@@ -31,7 +31,7 @@ import numpy as np
 import pylab as plt
 from skimage import filter, exposure
 from scipy import ndimage
-from mrgaze import pupilometry
+from mrgaze import pupilometry, moco
 
 
 def AutoCalibrate(ss_res_dir, cfg):
@@ -39,13 +39,21 @@ def AutoCalibrate(ss_res_dir, cfg):
     Automatic calibration transform from pupil center timeseries
     '''
     
+    # Get fixation heatmap percentile limits and Gaussian blur sigma
+    heatpercmin = cfg.getfloat('CALIBRATION', 'heatpercmin')    
+    heatpercmax = cfg.getfloat('CALIBRATION', 'heatpercmax')
+    heatsigma = cfg.getfloat('CALIBRATION', 'heatsigma')
+    heatplims = (heatpercmin, heatpercmax)
+        
     # Get target coordinates
     targetx = json.loads(cfg.get('CALIBRATION', 'targetx'))
     targety = json.loads(cfg.get('CALIBRATION', 'targety'))
-    targets = np.array([targetx, targety])
+    
+    # Gaze space target coordinates (n x 2)
+    targets = np.array([targetx, targety]).transpose()
     
     # Calibration pupilometry file
-    cal_pupils_csv = os.path.join(ss_res_dir,'cal_pupils_raw.csv')
+    cal_pupils_csv = os.path.join(ss_res_dir,'cal_pupils.csv')
     
     if not os.path.isfile(cal_pupils_csv):
         print('* Calibration pupilometry not found - returning')
@@ -55,54 +63,64 @@ def AutoCalibrate(ss_res_dir, cfg):
     p = pupilometry.ReadPupilometry(cal_pupils_csv)
     
     # Extract useful timeseries
-    t      = p[:,0]
-    pgx    = p[:,6]
-    pgy    = p[:,7]
+    t  = p[:,0] # Video soft timestamp
+    px = p[:,2] # Video pupil center, x
+    py = p[:,3] # Video pupil center, y
     
     # Remove NaNs (blinks, etc) from t, x and y
-    ok = np.isfinite(pgx)
-    t, x, y = t[ok], pgx[ok], pgy[ok]
+    ok = np.isfinite(px)
+    t, x, y = t[ok], px[ok], py[ok]
     
     # Find spatial fixations and sort temporally
     # Returns heatmap with axes
-    fixations, hmap, xedges, yedges = FindFixations(x, y)
+    fixations, hmap, xedges, yedges = FindFixations(x, y, heatplims, heatsigma)
     
     # Temporally sort fixations - required for matching to targets
-    fixations, fix_order, t_fix_sorted = SortFixations(t, x, y, fixations)
+    fixations = SortFixations(t, x, y, fixations)
     
     # Plot labeled calibration heatmap to results directory
     PlotCalibration(ss_res_dir, hmap, xedges, yedges, fixations)   
 
     # Check for autocalibration problems
-    n_targets = targets.shape[1]
+    n_targets = targets.shape[0]
     n_fixations = fixations.shape[0]
 
-    if n_targets != n_fixations:
-        print('* Number of detected fixations (%d) and targets (%d) differ - exiting' % (n_fixations, n_targets))
-        return np.array([])
+    if n_targets == n_fixations:
+        
+        # Compute calibration mapping video to gaze space
+        C = CalibrationModel(fixations, targets)
     
-    # Search for optimal fixation order and associated calibration model coefficients
-    C = CalibrationModel(fixations, targets)
-   
-    return C
+        # Determine central fixation coordinate in video space
+        central_fix = CentralFixation(fixations, targets)
+    
+        # Write calibration results to CSV files in the results subdir
+        WriteCalibration(ss_res_dir, fixations, C, central_fix)
+
+    else:
+        
+        print('* Number of detected fixations (%d) and targets (%d) differ - exiting' % (n_fixations, n_targets))
+
+        # Return empty/dummy values
+        C = np.array([])
+        central_fix = 0.0, 0.0
+    
+    return C, central_fix
 
 
-def FindFixations(x, y):
+def FindFixations(x, y, perc_lims=(5,95), sigma=2.0):
     '''
     Find fixations by blob location in pupil center heat map
     
     Fixations returned are not time ordered
     '''
     
-    # Gaussian blur sigma for heatmap
-    sigma = 2.0
-    
     # Find robust ranges
-    xmin, xmax = np.percentile(x, (1, 99))
-    ymin, ymax = np.percentile(y, (1, 99))
+    xmin, xmax = np.percentile(x, perc_lims)
+    ymin, ymax = np.percentile(y, perc_lims)
     
-    # Expand bounding box by 20%
-    hx, hy = (xmax - xmin) * 0.6, (ymax - ymin) * 0.6
+    # Expand bounding box by 30%
+    sf = 1.30
+    hx, hy = (xmax - xmin) * sf * 0.5, (ymax - ymin) * sf * 0.5
     cx, cy = (xmin + xmax) * 0.5, (ymin + ymax) * 0.5
     xmin, xmax = cx - hx, cx + hx
     ymin, ymax = cy - hy, cy + hy
@@ -125,7 +143,11 @@ def FindFixations(x, y):
     
     # Otsu threshold clamped heatmap
     th = filter.threshold_otsu(hmap)
-    blobs = np.array(hmap > th, dtype = int)
+    blobs = np.array(hmap > th, np.uint8)
+    
+    # Morphological opening (circle 2 pixels diameter)
+    # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3,3))
+    # blobs = cv2.morphologyEx(blobs, cv2.MORPH_OPEN, kernel)
         
     # Label connected components
     labels, n_labels = ndimage.label(blobs)
@@ -170,10 +192,8 @@ def SortFixations(t, x, y, fixations):
     ----
     fixations_sorted : 2 x n float array
         Spatial fixations sorted temporally
-    fix_order : integer vector
-        Order mapping original to sorted fixations
-    t_fix_sorted : float vector
-        Sorted median times in seconds of each fixation
+    central_fix : float tuple
+        Pupil center in video space for central fixation
     '''
 
     # Count number of fixations and timepoints
@@ -195,12 +215,10 @@ def SortFixations(t, x, y, fixations):
     
     # Temporally sort fixations
     fix_order = np.argsort(t_fix)
-
-    t_fix_sorted = t_fix[fix_order]
-
     fixations_sorted = fixations[fix_order,:]
     
-    return fixations_sorted, fix_order, t_fix_sorted
+    
+    return fixations_sorted
 
 
 def NearestFixation(X, fixations):
@@ -233,30 +251,25 @@ def CalibrationModel(fixations, targets):
     
     We need to solve the matrix equation C * R = R0 where
 
-    C = biquadratic coefficients (2 x 6),
+    C = biquadratic transform matrix (2 x 6) (rank 2, full row rank)
 
-    R = binomial coordinate matrix (6 x 9) - one column per centroid and
+    R = fixation matrix (6 x n) in video space (rank 6)
     
-    R0 = corrected screen coordinates (2 x 9)
+    R0 = fixation targets (2 x n) in gaze space (rank 2)
     
-    R has rows x2_i, xy_i, y2_i, x_i, y_i, 1 (i = 1..9)
-
-    x0_j = R_1j = C11 * x_j^2 + C12 * x_j * y_j + ... + C16
-
-    y0_j = R_2j = C21 * x_j^2 + C22 * x_j * y_j + ... + C26    
-    
+    R has rows xx, xy, yy, x, y, 1
     
     Arguments
     ----
     fixations : n x 2 float array
         Fixation coordinates in video space. n >= 6
-    targets : 2 x 9 float array
+    targets : n x 2 float array
         Fixation targets in normalized gazed space
     
     Returns
     ----
     C : 2 x 6 float array
-        Biquadratic video-gaze transform matrix
+        Biquadratic video-gaze post-multiply transform matrix
     '''
 
     # Init biquadratic coefficient array
@@ -267,31 +280,42 @@ def CalibrationModel(fixations, targets):
         print('Too few fixations for biquadratic video to gaze mapping')
         return C
 
-    # Extract fixation coordinates
-    fx, fy = fixations[:,0], fixations[:,1]    
+    # Create fixation biquadratic matrix, R
+    R = MakeR(fixations)
     
-    # Additional binomial coordinates
-    fx2 = fx * fx
-    fy2 = fy * fy
-    fxy = fx * fy;
+    # R0t is the transposed target coordinate array (n x 2)
+    R0 = targets.transpose()
     
-    # Construct R (6 x 9)
-    R = np.array((fx2, fxy, fy2, fx, fy, np.ones_like(fx)))
+    # Compute C by pseudoinverse of R (R+)
+    # C.R = R0
+    # C.R.R+ = R0.R+ = C
+    Rplus = np.linalg.pinv(R)
+    C = R0.dot(Rplus)
     
-    # Moore-Penrose pseudoinverse of R (9 x 6)
-    Rinv = np.linalg.pinv(R)
-    
-    # R0 is the target coordinate array (2 x 9)
-    R0 = targets
-    
-    # Solve C.R = R0 by postmultiplying R0 by Rinv
-    # C.R.Rinv = C = R0.Rinv
-    C = R0.dot(Rinv)
+    # Check that C maps correctly
+    # print(C.dot(R).transpose())
+    # print(R0.transpose())
 
     return C
 
 
-def HeatMap(x, y, xlims, ylims, sigma=2):
+def MakeR(points):
+    
+    # Extract coordinates from n x 2 points matrix
+    x, y = points[:,0], points[:,1]    
+    
+    # Additional binomial coordinates
+    xx = x * x
+    yy = y * y
+    xy = x * y;
+    
+    # Construct R (n x 6)
+    R = np.array((xx, xy, yy, x, y, np.ones_like(x)))
+    
+    return R
+
+
+def HeatMap(x, y, xlims, ylims, sigma=1.0):
     '''
     Convert pupil center timeseries to 2D heatmap
     '''
@@ -313,7 +337,7 @@ def HeatMap(x, y, xlims, ylims, sigma=2):
     # Composite histogram axis ranges
     # Make bin count different for x and y for debugging
     # *** Note y/row, x/col ordering
-    hbins = [np.linspace(ymin, ymax, 50), np.linspace(xmin, xmax, 51)]
+    hbins = [np.linspace(ymin, ymax, 64), np.linspace(xmin, xmax, 65)]
 
     # Construct histogram 
     # *** Note y/row, x/col ordering
@@ -326,17 +350,27 @@ def HeatMap(x, y, xlims, ylims, sigma=2):
     return hmap, xedges, yedges
 
 
-def ApplyCalibration(ss_res_dir, C):
+def ApplyCalibration(ss_dir, C, central_fix, cfg):
     '''
     Apply calibration transform to gaze pupil center timeseries
     
-    Save to text file in results directory
+    - apply motion correction if requested (highpass or known fixations)
+    - Save calibrated gaze to text file in results directory
+    
+    Arguments
+    ----
+    
+    Returns
+    ----
     '''
     
     print('  Calibrating pupilometry timeseries')
-
+    
     # Uncalibrated gaze pupilometry file
-    gaze_uncal_csv = os.path.join(ss_res_dir,'gaze_pupils_filt.csv')
+    gaze_uncal_csv = os.path.join(ss_dir,'results','gaze_pupils.csv')
+    
+    # Known central fixations file
+    fixations_txt = os.path.join(ss_dir,'videos','fixations.txt')
     
     if not os.path.isfile(gaze_uncal_csv):
         print('* Uncalibrated gaze pupilometry not found - returning')
@@ -346,27 +380,69 @@ def ApplyCalibration(ss_res_dir, C):
     p = pupilometry.ReadPupilometry(gaze_uncal_csv)
     
     # Extract useful timeseries
-    t      = p[:,0]
-    x      = p[:,6] # Pupil-glint x
-    y      = p[:,7] # Pupil-glint y
+    t      = p[:,0] # Video soft timestamp
+    x      = p[:,2] # Pupil x
+    y      = p[:,3] # Pupil y
+    
+    # Motion correction - typically required for accurate gaze estimation
+    motioncorr = cfg.get('ARTIFACTS','motioncorr')
+    mocokernel = cfg.getint('ARTIFACTS','mocokernel')
+    
+    if motioncorr == 'knownfixations':
+        
+        print('  Motion correction using known fixations')
+        print('  Central fixation at (%0.3f, %0.3f)' % (central_fix[0], central_fix[1]))
+        
+        x, y = moco.KnownFixations(t, x, y, fixations_txt, central_fix)
+        
+    elif motioncorr == 'highpass':
+        
+        print('  Motion correction by high pass filtering (%d sample kernel)' % mocokernel)
+        print('  Central fixation at (%0.3f, %0.3f)' % (central_fix[0], central_fix[1]))
+        
+        x, y = moco.HighPassFilter(t, x, y, mocokernel, central_fix)
+
+    else:
+        
+        print('* Unknown motion correction requested (%s) - skipping' % (motioncorr))
     
     # Additional binomial coordinates
-    x2 = x * x
-    y2 = y * y
+    xx = x * x
+    yy = y * y
     xy = x * y;
     
     # Construct R
-    R = np.array((x2, xy, y2, x, y, np.ones_like(x))) 
+    R = np.array((xx, xy, yy, x, y, np.ones_like(x))) 
     
     # Apply calibration transform to pupil-glint vector timeseries
     # (2 x n) = (2 x 6) x (6 x n)
     gaze = C.dot(R)
     
     # Write calibrated gaze to CSV file in results directory
-    gaze_csv = os.path.join(ss_res_dir,'gaze_calibrated.csv')
+    gaze_csv = os.path.join(ss_dir,'results','gaze_calibrated.csv')
     WriteGaze(gaze_csv, t, gaze[0,:], gaze[1,:])
     
     return True
+    
+
+def CentralFixation(fixations, targets):
+    '''
+    Find video coordinate corresponding to gaze fixation at (0.5, 0.5)
+    '''
+        
+    idx = -1
+    central_fix = np.array([np.NaN, np.NaN])
+    
+    for ii in range(targets.shape[0]):
+        if targets[ii,0] == 0.5 and targets[ii,1] == 0.5:
+            idx = ii
+            central_fix = fixations[idx,:]
+            
+    if idx < 0:
+        print('* Central fixation target not found')
+        central_fix = np.array([np.NaN, np.NaN])
+
+    return central_fix
 
 
 def WriteGaze(gaze_csv, t, gaze_x, gaze_y):
@@ -438,3 +514,41 @@ def PlotCalibration(res_dir, hmap, xedges, yedges, fixations):
 
     # Close figure without showing it
     plt.close(fig)
+    
+
+def WriteCalibration(ss_res_dir, fixations, C, central_fix):
+    '''
+    Write calibration matrix and fixations to CSV files in results subdirectory
+    '''
+    
+    # Write calibration matrix to text file in results subdir
+    calmat_csv = os.path.join(ss_res_dir, 'calibration_matrix.csv')
+    
+    # Write calibration matrix to CSV file
+    try:
+        np.savetxt(calmat_csv, C, delimiter=",")
+    except:
+        print('* Problem saving calibration matrix to CSV file - skipping')
+        return False
+ 
+    # Write calibration fixations in video space to results subdir
+    calfix_csv = os.path.join(ss_res_dir, 'calibration_fixations.csv')
+    
+    # Write calibration fixations to CSV file
+    try:
+        np.savetxt(calfix_csv, fixations, delimiter=",")
+    except:
+        print('* Problem saving calibration fixations to CSV file - skipping')
+        return False
+        
+    # Write central fixation in video space to results subdir
+    ctrfix_csv = os.path.join(ss_res_dir, 'central_fixation.csv')
+    
+    # Write calibration fixations to CSV file
+    try:
+        np.savetxt(ctrfix_csv, central_fix, delimiter=",")
+    except:
+        print('* Problem saving central fixation to CSV file - skipping')
+        return False
+        
+    return True

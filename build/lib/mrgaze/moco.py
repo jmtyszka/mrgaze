@@ -1,9 +1,9 @@
 #!/opt/local/bin/python
 #
-# Motion correction for gaze tracking
-# - assume rigid body displacement of eye within frame only
-# - use mean calibration video image as reference
-# - use large downsampling factors for speed and robustness
+# Motion and drift corrections for gaze tracking
+# - robust high-pass filtering
+# - known fixation correction
+# - pseudo-glint estimation
 #
 # AUTHOR : Mike Tyszka
 # PLACE  : Caltech
@@ -29,7 +29,107 @@
 import cv2
 import numpy as np
 from scipy.ndimage.measurements import center_of_mass
+from scipy.signal import medfilt
+from mrgaze import utils
 
+
+def HighPassFilter(t, px, py, moco_kernel, central_fix):
+    '''
+    Slow drift correction by robust high-pass filtering
+    
+    Effectively forces long-term average pupil fixation to be centrally
+    fixated in video space.
+    
+    Arguments
+    ----
+    t : 1D float array
+        Video soft timestamps in seconds
+    px : 1D float array
+        Video space pupil center x
+    py : 1D float array
+        Video space pupil center y
+    moco_kernel : integer
+        Temporal kernel width in samples [31]
+    central_fix : float tuple
+        (x,y) coordinate in video space of central fixation
+    
+    Returns
+    ----
+    px_filt : 1D float array
+        Drift corrected video space pupil center x
+    py_filt : 1D float array
+        Drift corrected video space pupil center y
+    '''
+    
+    # Force odd-valued kernel width
+    moco_kernel = utils._forceodd(moco_kernel)
+
+    print('  Highpass filtering with %d sample kernel' % moco_kernel)
+    
+    # Infill NaN regions
+    # Replace NaNs with unreasonable but finite value for median filtering
+    nan_idx = np.isnan(px)
+    px[nan_idx] = -1e9
+    py[nan_idx] = -1e9
+    
+    # Moving median filter to estimate baseline
+    px_bline = medfilt(px, moco_kernel)
+    py_bline = medfilt(py, moco_kernel)
+    
+    # Restore NaNs to vectors
+    px_bline[nan_idx] = np.nan
+    py_bline[nan_idx] = np.nan
+    
+    # Subtract baseline and add central fixation offset
+    px_filt = px - px_bline + central_fix[0]
+    py_filt = py - py_bline + central_fix[1]
+    
+    return px_filt, py_filt
+
+
+def KnownFixations(t, px, py, fixations_txt, central_fix):
+    '''
+    t : 1D float array
+        
+    px : 1D float array
+        Uncorrected pupil x in video space
+    py : 1D float array
+        Uncorrected pupil y in video space
+    fixations_txt : string
+        CSV file containing known fixation times and durations
+    central_fix : float tuple
+        (x,y) coordinate in video space of central fixation
+    
+    Returns
+    ----
+    px_filt : 1D float array
+        Drift corrected video space pupil center x
+    py_filt : 1D float array
+        Drift corrected video space pupil center y
+    '''
+    
+    # Load known central fixations from space-delimited text file into array
+    # Columns : fixation number, start time (s), duration (s)
+    fix = np.genfromtxt(fixations_txt)
+    
+    # Parse fixation timing array
+    t0 = fix[:,1]
+    t1 = t0 + fix[:,2]
+    
+    # TODO: Create central fixation mask for pupilometry
+    for (tc, _) in enumerate(t0):
+        print('  Fixation from %0.3f to %0.3f' % (t0[tc], t1[tc]))
+
+    # TODO: Estimate linear trend during fixation
+
+    # TODO: Interpolate gaps between fixation periods
+
+    # TODO: Correct pupil center timeseries with estimated trends
+    px_filt = px.copy()
+    py_filt = py.copy()
+    
+    return px_filt, py_filt
+    
 
 def PseudoGlint(frame, roi_rect):
     '''
@@ -52,18 +152,21 @@ def PseudoGlint(frame, roi_rect):
         Pseudo-glint location in frame
     '''
     
-    # Sobel horizontal intensity gradient
-    gxy = SobelXY(frame) 
+    # Debugging display flag
+    debug = False    
+    
+    # Sobel edge detection
+    edges = Sobel(frame, gx=True, gy=True) 
     
     # Mask out interior of ROI
     # p0, p1 = roi_rect
     # gxy[p0[1]:p1[1], p0[0]:p1[0]] = 0.0
     
-    # Robust center of mass of masked x-gradient image
-    py, px = center_of_mass(gxy)
+    # Center of mass of  Sobel edge image
+    py, px = center_of_mass(edges)
     
-    if True:
-        rgb = cv2.cvtColor(np.uint8(gxy), cv2.COLOR_GRAY2RGB)
+    if debug:
+        rgb = cv2.cvtColor(np.uint8(edges), cv2.COLOR_GRAY2RGB)
         cv2.circle(rgb, (int(px), int(py)), 1, (255,255,0))
         cv2.imshow('PseudoGlint', rgb)
         cv2.waitKey(5)
@@ -71,43 +174,38 @@ def PseudoGlint(frame, roi_rect):
     return px, py
 
 
-def SobelX(img):
+def Sobel(img, gx=True, gy=False):
     '''
-    Sobel x-gradient of image : dI/dx
-    '''
+    Sobel edge detection image
     
-    # Sobel kernel size
-    k = 5
-    
-    # Sobel edges in video scanline direction (x)
-    xedge = cv2.Sobel(img, cv2.CV_32F, 1, 0, ksize=k)
-
-    # Force positive   
-    xedge = np.abs(xedge)
-    
-    # Rescale image to [0,255] 32F
-    imax, imin = np.amax(xedge), np.amin(xedge)
-    xgrad = ((xedge - imin) / (imax - imin) * 255).astype(np.float32)
-
-    return xgrad
-    
-
-def SobelXY(img):
-    '''
-    Sobel x + y gradient of image : dI/dx + dI/dy
+    Arguments
+    ---
+    img : 2D uint8 array
+        Grayscale video frame
+    gx : boolean
+        X-gradient flag
+    gy : boolean
+        Y-gradient flag
     '''
     
     # Sobel kernel size
-    k = 5
+    k = 3
     
-    # Sobel edges in video scanline direction (x)
-    xedge = np.abs(cv2.Sobel(img, cv2.CV_32F, 1, 0, ksize=k))
-    yedge = np.abs(cv2.Sobel(img, cv2.CV_32F, 0, 1, ksize=k))
+    # Sobel edges in x dimension
+    if gx:
+        xedge = np.abs(cv2.Sobel(img, cv2.CV_32F, 1, 0, ksize=k))
+    else:
+        xedge = np.zeros_like(img)
+        
+    if gy:
+        yedge = np.abs(cv2.Sobel(img, cv2.CV_32F, 0, 1, ksize=k))
+    else:
+        yedge = np.zeros_like(img)
 
-    xyedge = xedge + yedge
+    edges = xedge + yedge
     
     # Rescale image to [0,255] 32F
-    imax, imin = np.amax(xyedge), np.amin(xyedge)
-    xygrad = ((xyedge - imin) / (imax - imin) * 255).astype(np.float32)
+    imax, imin = np.amax(edges), np.amin(edges)
+    edges = ((edges - imin) / (imax - imin) * 255).astype(np.float32)
 
-    return xygrad
+    return edges

@@ -31,7 +31,7 @@ import cv2
 # RANSACE Ellipse Fitting Functions
 #---------------------------------------------
 
-def FitEllipse_RANSAC(pnts, roi):
+def FitEllipse_RANSAC(pnts, roi, cfg):
     
     '''
     Robust ellipse fitting to pupil-iris boundary
@@ -61,10 +61,13 @@ def FitEllipse_RANSAC(pnts, roi):
     #
     
     # Maximum number of main iterations (random samples of 5 points)
-    max_itts = 5
+    max_itts = cfg.getint('RANSAC','maxiterations')
     
     # Maximum number of refinements
-    max_refines = 3
+    max_refines = cfg.getint('RANSAC','maxrefinements')
+    
+    # Maximum percentage of inlier points
+    max_perc_inliers = cfg.getfloat('RANSAC','maxinlierperc')
     
     # Maximum normalized error squared for inliers
     max_norm_err_sq = 4.0
@@ -157,7 +160,7 @@ def FitEllipse_RANSAC(pnts, roi):
             support = 0
             perc_inliers = 0
 
-        if perc_inliers > 95.0:
+        if perc_inliers > max_perc_inliers:
             if verbose: print('Break Max Perc Inliers')
             break
     

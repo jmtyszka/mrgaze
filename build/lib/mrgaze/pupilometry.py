@@ -32,9 +32,8 @@ import time
 import cv2
 import numpy as np
 import scipy.ndimage as spi
-import scipy.signal as sps
 from scipy.cluster.vq import kmeans, whiten, vq
-from mrgaze import media, utils, fitellipse, moco
+from mrgaze import media, utils, fitellipse
 from mrgaze import improc as ip
 
 def VideoPupilometry(data_dir, subj_sess, v_stub, cfg):
@@ -49,8 +48,6 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, cfg):
         Subject/Session name used for subdirectory within data_dir
     v_stub : string
         Video filename stub, eg 'cal' or 'gaze'
-    template : 2D numpy float array
-        Motion correction template image
     cfg : 
         Analysis configuration parameters
     
@@ -78,8 +75,7 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, cfg):
     vout_path = os.path.join(res_dir, v_stub + '_pupils' + vout_ext)
     
     # Raw and filtered pupilometry CSV file paths
-    pupils_raw_csv = os.path.join(res_dir, v_stub + '_pupils_raw.csv')
-    pupils_filt_csv = os.path.join(res_dir, v_stub + '_pupils_filt.csv')
+    pupils_csv = os.path.join(res_dir, v_stub + '_pupils.csv')
     
     # Check that input video file exists
     if not os.path.isfile(vin_path):
@@ -98,7 +94,7 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, cfg):
         return False
         
     # Check for output CSV existance and overwrite flag
-    if os.path.isfile(pupils_raw_csv):
+    if os.path.isfile(pupils_csv):
         print('+ Pupilometry output already exists - checking overwrite flag')
         if overwrite:
             print('+ Overwrite allowed - continuing')
@@ -155,9 +151,9 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, cfg):
         print('* Output video not opened - skipping pupilometry')
         return False 
 
-    # Open raw pupilometry CSV file to write
+    # Open pupilometry CSV file to write
     try:
-        pupils_raw_stream = open(pupils_raw_csv, 'w')
+        pupils_stream = open(pupils_csv, 'w')
     except:
         print('* Problem opening pupilometry CSV file - skipping pupilometry')
         return False
@@ -186,23 +182,23 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, cfg):
         # -------------------------------------
         # Pass this frame to pupilometry engine
         # -------------------------------------
-        ellipse, roi_rect, blink = PupilometryEngine(frame, cascade, cfg)
+        ellipse, roi_rect, blink, glint = PupilometryEngine(frame, cascade, cfg)
         
-        # Pseudo-glint : robust center of mass of vertical edges in frame
-        if not blink:
-            pglint = moco.PseudoGlint(frame, roi_rect)
-        else:
-            pglint = (np.nan, np.nan)
+        # Derive pupilometry parameters
+        px, py, area = PupilometryPars(ellipse, glint)
         
         # Write data line to pupilometry CSV file
-        area = WritePupilometry(pupils_raw_stream, t, ellipse, blink, art_power, pglint)
+        pupils_stream.write(
+            '%0.3f,%0.3f,%0.3f,%0.3f,%d,%0.3f,\n' %
+            (t, area, px, py, blink, art_power)
+        )
             
         # RGB version of preprocessed frame for output video
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
             
         # Overlay ROI, pupil ellipse and pseudo-glint on RGB frame
         if not blink:
-            frame_rgb = OverlayPupil(frame_rgb, ellipse, roi_rect, pglint)
+            frame_rgb = OverlayPupil(frame_rgb, ellipse, roi_rect, glint)
 
         if graphics:
             cv2.imshow('Tracking', frame_rgb)
@@ -230,14 +226,10 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, cfg):
     cv2.destroyAllWindows()
     vin_stream.release()
     vout_stream.release()
-    pupils_raw_stream.close()
+    pupils_stream.close()
 
-    # Generate temporally filtered pupilometry timeseries
-    print('  Temporally filtering pupilometry timeseries')
-    FilterPupilometry(pupils_raw_csv, pupils_filt_csv)
-
-    # Clean exit
-    return True
+    # Return pupilometry timeseries
+    return t, px, py, area, blink, art_power
 
 
 def PupilometryEngine(frame, cascade, cfg):
@@ -255,7 +247,7 @@ def PupilometryEngine(frame, cascade, cfg):
         
     Returns
     ----
-    el : float tuple
+    ellipse : float tuple
         Ellipse parameters (x0, y0), (a, b), phi
     roi_rect : float tuple
         Pupil ROI rectangle (x0, y0), (x1, y1)
@@ -292,23 +284,24 @@ def PupilometryEngine(frame, cascade, cfg):
         # Extract pupil ROI (note row,col indexing of image array)
         pupil_roi = frame[y0:y1,x0:x1]
         
-        # Segment pupil intelligently
-        pupil_bw = SegmentPupil(pupil_roi, cfg)
+        # Segment pupil intelligently - also return glint
+        pupil_bw, glint = SegmentPupil(pupil_roi, cfg)
             
-        # Fit ellipse to pupil boundary
-        el_roi = FitPupil(pupil_bw, pupil_roi)
+        # Fit ellipse to pupil boundary - returns ellipse ROI
+        eroi = FitPupil(pupil_bw, pupil_roi, cfg)
             
         # Add ROI offset to ellipse center
-        el = (el_roi[0][0]+x0, el_roi[0][1]+y0), el_roi[1], el_roi[2]
+        ellipse = (eroi[0][0]+x0, eroi[0][1]+y0),eroi[1], eroi[2]
         
     else:
             
-        # Set blink flag
+        # Set blink flag - fill remaining parameters with NaNs
         blink = True
-        el = ((np.nan, np.nan), (np.nan, np.nan), np.nan)
+        ellipse = ((np.nan, np.nan), (np.nan, np.nan), np.nan)
         roi_rect = (np.nan, np.nan), (np.nan, np.nan)
+        glint = (np.nan, np.nan)
 
-    return el, roi_rect, blink            
+    return ellipse, roi_rect, blink, glint            
 
 
 def SegmentPupil(roi, cfg):
@@ -333,8 +326,9 @@ def SegmentPupil(roi, cfg):
     method = cfg.get('PUPILSEG','method')
     perclims = cfg.getfloat('PUPILSEG','percmin'), cfg.getfloat('PUPILSEG','percmax')
     
-    # Remove glint if present - helps RANSAC stability
-    roi = RemoveGlint(roi)    
+    # Remove glints if present - helps RANSAC stability
+    # TODO: find and return best glint candidate
+    roi, glint = RemoveGlint(roi)
     
     # Intensity rescale to emphasize pupil
     # If pupil occupies about 25% of ROI, then setting an upper percentile
@@ -384,12 +378,12 @@ def SegmentPupil(roi, cfg):
     # Extract blob with largest area
     pupil_bw = np.uint8(labels == pupil_label)
         
-    return pupil_bw
+    return pupil_bw, glint
     
 
-def RemoveGlint(roi, plim=95, k=5):
+def RemoveGlint(roi, plim=99):
     '''
-    Remove small bright areas from pupil/iris ROI
+    [INACTIVE] Remove small bright areas from pupil/iris ROI
     
     Arguments:
     roi : 2D numpy uint8 array
@@ -403,24 +397,44 @@ def RemoveGlint(roi, plim=95, k=5):
     roi_noglint : 2D numpy uint8 array
         Pupil/iris ROI without small bright areas
     '''
+
+    # Operational flags
+    debug = False
+    inpaint = True
     
-    # Inpaint top 5% brightest pixels
+    # Kernel sizes
+    k_dil = 5
+    k_inpaint = 5
+
+    # Determine threshold for brightest pixels
     imax = np.percentile(roi, plim)
     
     # Inpainting mask
     mask = np.uint8(roi >= imax)
     
     # Dilate
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(k,k))
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(k_dil,k_dil))
     mask = cv2.morphologyEx(mask, cv2.MORPH_DILATE, kernel)
     
     # Inpaint bright regions
-    roi_noglint = cv2.inpaint(roi, mask, k, cv2.INPAINT_TELEA)
+    if inpaint:
+        roi_noglint = cv2.inpaint(roi, mask, k_inpaint, cv2.INPAINT_NS)
+    else:
+        roi_noglint = roi * (1-mask)
+        
+    # TODO: estimate best glint candidate center
+    # Return dummy for now
+    glint = (0.0, 0.0)
     
-    return roi_noglint
+    if debug:
+        img = np.hstack((roi, mask * 255, roi_noglint))
+        cv2.imshow('Glint Removal', img)
+        cv2.waitKey(5)
+    
+    return roi_noglint, glint
 
 
-def FitPupil(bw, roi):
+def FitPupil(bw, roi, cfg):
     '''
     Fit ellipse to pupil-iris boundary in segmented ROI
     
@@ -428,10 +442,14 @@ def FitPupil(bw, roi):
     ----
     bw : 2D numpy uint8 array
         Binary thresholded version of pupil ROI (from SegmentPupil)
-    roi :
+    roi : 2D scalar array
+        Grayscale image of pupil-iris region
+    cfg : configuration object
     
     Returns
     ----
+    ellipse : tuple of tuples
+        Fitted ellipse parameters ((x0, y0), (a,b), theta)
     '''
      
     # Identify edge pixels using Canny filter
@@ -444,12 +462,12 @@ def FitPupil(bw, roi):
     pnts[:,[0,1]] = pnts[:,[1,0]]
     
     # RANSAC ellipse fitting to edge points
-    ellipse = fitellipse.FitEllipse_RANSAC(pnts, roi)
+    ellipse = fitellipse.FitEllipse_RANSAC(pnts, roi, cfg)
     
     return ellipse
         
 
-def OverlayPupil(frame_rgb, ellipse, roi_rect, pglint):
+def OverlayPupil(frame_rgb, ellipse, roi_rect, glint):
     """
     Overlay fitted pupil ellipse and ROI on original frame
     """
@@ -464,7 +482,7 @@ def OverlayPupil(frame_rgb, ellipse, roi_rect, pglint):
     roi_color = (255,255,0)
     
     # Pseudo-glint marker color
-    pglint_color = (0,255,255)
+    glint_color = (0,255,255)
 
     # Pupil center cross hair
     (x0, y0), (a, b), phi = ellipse
@@ -489,69 +507,10 @@ def OverlayPupil(frame_rgb, ellipse, roi_rect, pglint):
     cv2.rectangle(frame_rgb, roi_rect[0], roi_rect[1], roi_color, thickness)
     
     # Overlay pseudoglint
-    px, py = int(pglint[0]), int(pglint[1])
-    cv2.circle(frame_rgb, (px, py), 2, pglint_color)
+    px, py = int(glint[0]), int(glint[1])
+    cv2.circle(frame_rgb, (px, py), 2, glint_color)
 
     return frame_rgb
-    
-
-def WritePupilometry(pupil_out, t, ellipse, blink, art_power, pglint):
-    """
-    Write pupilometry data line to file
-    
-    Arguments
-    ----
-    pupil_out : file stream
-        Output pupilometry stream
-    t : float
-        Time from video start in seconds
-    ellipse : ellipse tuple
-        Ellipse parameters ((x0,y0), (a,b), theta)
-    blink : boolean
-        Blink flag
-    art_power : float
-        Artifact power
-    pglint : float tuple
-        Pseudo-glint location (x0, y0)
-    Returns
-    ----
-    area : float
-        Corrected pupil area (AU)
-    """
-    
-    # Unpack ellipse tuple
-    (px, py), (bb, aa), phi_b_deg = ellipse
-    
-    # Pupil area corrected for viewing angle
-    area = PupilArea(ellipse)
-    
-    # Unpack pseudo-glint location
-    gx, gy = pglint
-    
-    # Pupil-glint vector
-    pgx, pgy = px-gx, py-gy
-    
-    '''
-    Write pupilometry line to file
-        Timeseries in columns. Column order is:
-        0 : Time (s)
-        1 : Corrected pupil area (AU)
-        2 : Pupil center in x (pixels)
-        3 : Pupil center in y (pixels)
-        4 : Pseudo-glint x (pixels)
-        5 : Pseudo-glint y (pixels)
-        6 : Pupil-glint x (pixels)
-        7 : Pupil-glint y (pixels)
-        8 : Blink flag (pupil not found)
-        9 : MR artifact power
-    '''
-    pupil_out.write(
-        '%0.3f,%0.3f,%0.3f,%0.3f,%0.3f,%0.3f,%0.3f,%0.1f,%d,%0.3f,\n' %
-        (t, area, px, py, gx, gy, pgx, pgy, blink, art_power)
-        )
-    
-    # Return corrected area
-    return area
     
 
 def ReadPupilometry(pupils_csv):
@@ -566,41 +525,46 @@ def ReadPupilometry(pupils_csv):
         1 : Corrected pupil area (AU)
         2 : Pupil center in x (pixels)
         3 : Pupil center in y (pixels)
-        4 : Pseudo-glint x (pixels)
-        5 : Pseudo-glint y (pixels)
-        6 : Pupil-glint x (pixels)
-        7 : Pupil-glint y (pixels)
-        8 : Blink flag (pupil not found)
-        9 : MR artifact power
+        4 : Blink flag (pupil not found)
+        5 : MR artifact power
     '''
     
     # Read time series in rows
     return np.genfromtxt(pupils_csv, delimiter=',')
 
 
-def PupilArea(ellipse):
+def PupilometryPars(ellipse, glint):
     """
-    Pupil area corrected for viewing angle
+    Extract pupil center and corrected area
     """
     
     # Unpack ellipse tuple
-    (x0,y0), (b,a), phi_b_deg = ellipse
-
-    # Ellipse area assuming semi major axis is actual pupil radius
-    return np.pi * a**2
+    (px, py), (bb, aa), phi_b_deg = ellipse
+    
+    # Adjust pupil center for glint location
+    # If glint correction is off, gx = gy = 0.0
+    gx, gy = glint
+    px = px - gx
+    py = py - gy
+    
+    # Pupil area corrected for viewing angle
+    # Assumes semi-major axis is actual pupil radius
+    area = np.pi * aa**2
+    
+    return px, py, area
 
   
-def FilterPupilometry(pupils_raw_csv, pupils_filt_csv):
+def FilterPupilometry(pupils_csv, pupils_filt_csv):
     '''
-    Temporally filter all pupilometry timeseries
+    DEPRECATED: Temporally filter all pupilometry timeseries
     '''
 
-    if not os.path.isfile(pupils_raw_csv):
+    if not os.path.isfile(pupils_csv):
         print('* Raw pupilometry CSV file missing - returning')
         return False
         
     # Read raw pupilometry data
-    p = ReadPupilometry(pupils_raw_csv)
+    p = ReadPupilometry(pupils_csv)
     
     # Sampling time (s)
     dt = p[1,0] - p[0,0]
@@ -613,25 +577,18 @@ def FilterPupilometry(pupils_raw_csv, pupils_filt_csv):
     
     # Moving median filter
     pf = p.copy()
-    pf[:,1] = sps.medfilt(p[:,1], k_area)
-    pf[:,2] = sps.medfilt(p[:,2], k_pupil) # Pupil x
-    pf[:,3] = sps.medfilt(p[:,3], k_pupil) # Pupil y
-    pf[:,4] = sps.medfilt(p[:,4], k_pupil) # Glint x
-    pf[:,5] = sps.medfilt(p[:,5], k_pupil) # Glint y
-    pf[:,6] = sps.medfilt(p[:,6], k_pupil) # Pupil-Glint x
-    pf[:,7] = sps.medfilt(p[:,7], k_pupil) # Pupil-Glint y
+    pf[:,1] = utils._nanmedfilt(p[:,1], k_area)
+    pf[:,2] = utils._nanmedfilt(p[:,2], k_pupil) # Pupil x
+    pf[:,3] = utils._nanmedfilt(p[:,3], k_pupil) # Pupil y
     
     # Blink filter
-    pf[:,8] = sps.medfilt(p[:,8], k_blink)
+    pf[:,4] = utils._nanmedfilt(p[:,8], k_blink)
     
-    # Artifact power fluctuates hugely frame to frame
-    # Apply 1 frame SD temporal gaussian filter before median filter
-    pf[:,9] = spi.filters.gaussian_filter1d(p[:,9], sigma=1.0)
-    pf[:,9] = sps.medfilt(pf[:,9], k_art)
+    # Artifact power
+    pf[:,5] = utils._nanmedfilt(pf[:,9], k_art)
     
     # Write filtered timeseries to new CSV file in results directory
     np.savetxt(pupils_filt_csv, pf, fmt='%.6f', delimiter=',')
     
     # Clean return
     return True
-    

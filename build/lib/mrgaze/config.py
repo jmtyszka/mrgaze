@@ -105,7 +105,8 @@ def InitConfig(config):
     config.add_section('ARTIFACTS')
     config.set('ARTIFACTS','mrclean','True')
     config.set('ARTIFACTS','zthresh','8.0')
-    config.set('ARTIFACTS','motioncorr','True')
+    config.set('ARTIFACTS','motioncorr','high_pass')
+    config.set('ARTIFACTS','mocokernel','31')
     
     config.add_section('CALIBRATION')
     config.set('CALIBRATION','calibrate','False')

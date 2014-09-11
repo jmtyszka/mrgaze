@@ -23,6 +23,8 @@ Copyright 2014 California Institute of Technology.
 import os
 import sys
 import numpy as np
+from scipy.ndimage import generic_filter
+from scipy.stats import nanmedian
 
 
 def _mkdir(newdir):
@@ -113,3 +115,11 @@ def _mad(x):
     '''
     
     return np.median(np.abs(x.flatten()))
+    
+    
+def _nanmedfilt(x, k):
+    '''
+    1D moving median filter with NaN masking
+    '''
+    
+    return generic_filter(x, nanmedian, k)
