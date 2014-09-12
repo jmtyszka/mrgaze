@@ -73,6 +73,7 @@ td {
   <tr><td valign="top"><img src=gaze_calibrated.png /></tr>
 
   <tr><td><h2>Calibration</h2></tr>
+  <tr><td valign="top"><img src=cal_fix_space.png /></tr>
   <tr><td valign="top"><img src=cal_pupils.png /></tr>
 
   <tr><td><h2>Gaze Pupilometry</h2></tr>
