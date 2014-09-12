@@ -177,7 +177,7 @@ def PlotPupilometry(csv_file, plot_png):
     
     ax = fig.add_subplot(412)
     ax.plot(t, px, t, py)
-    ax.set_title('Corrected Pupil Center', y=1.1, fontsize=8)
+    ax.set_title('Pupil Center', y=1.1, fontsize=8)
     ax.tick_params(axis='both', labelsize=8)
     
     ax = fig.add_subplot(413)

@@ -40,11 +40,11 @@ def AutoCalibrate(ss_res_dir, cfg):
     '''
     
     # Get fixation heatmap percentile limits and Gaussian blur sigma
-    heatpercmin = cfg.getfloat('CALIBRATION', 'heatpercmin')    
-    heatpercmax = cfg.getfloat('CALIBRATION', 'heatpercmax')
-    heatsigma = cfg.getfloat('CALIBRATION', 'heatsigma')
-    heatplims = (heatpercmin, heatpercmax)
-        
+    pmin = cfg.getfloat('CALIBRATION', 'heatpercmin')    
+    pmax = cfg.getfloat('CALIBRATION', 'heatpercmax')
+    plims = (pmin, pmax)
+    sigma = cfg.getfloat('CALIBRATION', 'heatsigma')
+    
     # Get target coordinates
     targetx = json.loads(cfg.get('CALIBRATION', 'targetx'))
     targety = json.loads(cfg.get('CALIBRATION', 'targety'))
@@ -73,7 +73,7 @@ def AutoCalibrate(ss_res_dir, cfg):
     
     # Find spatial fixations and sort temporally
     # Returns heatmap with axes
-    fixations, hmap, xedges, yedges = FindFixations(x, y, heatplims, heatsigma)
+    fixations, hmap, xedges, yedges = FindFixations(x, y, plims, sigma)
     
     # Temporally sort fixations - required for matching to targets
     fixations = SortFixations(t, x, y, fixations)
@@ -107,7 +107,7 @@ def AutoCalibrate(ss_res_dir, cfg):
     return C, central_fix
 
 
-def FindFixations(x, y, perc_lims=(5,95), sigma=2.0):
+def FindFixations(x, y, plims=(5,95), sigma=2.0):
     '''
     Find fixations by blob location in pupil center heat map
     
@@ -115,8 +115,8 @@ def FindFixations(x, y, perc_lims=(5,95), sigma=2.0):
     '''
     
     # Find robust ranges
-    xmin, xmax = np.percentile(x, perc_lims)
-    ymin, ymax = np.percentile(y, perc_lims)
+    xmin, xmax = np.percentile(x, plims)
+    ymin, ymax = np.percentile(y, plims)
     
     # Expand bounding box by 30%
     sf = 1.30
@@ -345,7 +345,7 @@ def HeatMap(x, y, xlims, ylims, sigma=1.0):
     
     # Gaussian blur
     if sigma > 0:
-        hmap = cv2.GaussianBlur(hmap, (5,5), sigma)
+        hmap = cv2.GaussianBlur(hmap, (0,0), sigma, sigma)
     
     return hmap, xedges, yedges
 
@@ -494,7 +494,7 @@ def PlotCalibration(res_dir, hmap, xedges, yedges, fixations):
     '''
 
     # Create a new figure
-    fig = plt.figure()
+    fig = plt.figure(figsize = (6,6))
 
     # Plot spatial heatmap with fixation centroids
     plt.imshow(hmap, interpolation='nearest', aspect='equal',
