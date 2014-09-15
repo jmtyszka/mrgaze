@@ -200,9 +200,11 @@ def RotateFrame(frame, rot):
     Arguments
     ----
     frame : numpy uint8 array
-        video frame to rotate
+        Video frame to rotate.
     rot : integer
-        rotation angle in degrees (0, 90, 180 or 270)
+        Rotation angle in degrees.
+        Integer multiples of 90 degrees are handled quickly.
+        Arbitrary rotation angles are slower.
         
     Returns
     ----
@@ -214,19 +216,38 @@ def RotateFrame(frame, rot):
     >>> frame_rot = RotateFrame(frame, 180)
     """
     
-    if rot == 270: # Rotate CCW 90
+    if rot == 0:
+        
+        # Do nothing
+        pass
+    
+    elif rot == 270:
+    
+        # Rotate CCW 90
         frame = cv2.transpose(frame)
         frame = cv2.flip(frame, flipCode = 0)
 
-    elif rot == 90: # Rotate CW 90
+    elif rot == 90:
+    
+        # Rotate CW 90
         frame = cv2.transpose(frame)
         frame = cv2.flip(frame, flipCode = 1)
         
-    elif rot == 180: # Rotate by 180
+    elif rot == 180:
+    
+        # Rotate by 180
         frame = cv2.flip(frame, flipCode = 0)
         frame = cv2.flip(frame, flipCode = 1)
     
-    else: # Do nothing
-        pass
+    else: # Arbitrary rotation
+    
+        # Get frame dimensions
+        w, h = frame.shape[1], frame.shape[0]
+    
+        # Construct 2D affine rotation matrix
+        rotmat = cv2.getRotationMatrix2D((w*0.5, h*0.5), rot, scale=1.0)
+        
+        # Apply rotation transform
+        frame = cv2.warpAffine(frame, rotmat, (w,h))
         
     return frame
