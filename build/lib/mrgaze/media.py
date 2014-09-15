@@ -24,6 +24,7 @@ import cv2
 import numpy as np
 from mrgaze import mrclean as mrc
 from mrgaze import improc as ip
+from skimage.transform import rotate
 
 
 def LoadVideoFrame(v_in, cfg):
@@ -193,7 +194,7 @@ def TrimBorder(frame, border = 0):
         return frame
 
 
-def RotateFrame(frame, rot):
+def RotateFrame(frame, theta_deg):
     """
     Rotate frame in multiples of 90 degrees.
     
@@ -201,53 +202,49 @@ def RotateFrame(frame, rot):
     ----
     frame : numpy uint8 array
         Video frame to rotate.
-    rot : integer
-        Rotation angle in degrees.
+    theta_deg : integer
+        CCW rotation angle in degrees (math convention)
         Integer multiples of 90 degrees are handled quickly.
         Arbitrary rotation angles are slower.
         
     Returns
     ----
-    frame : numpy uint8 array
+    new_frame : numpy uint8 array
         rotated frame
         
     Example
     ----
-    >>> frame_rot = RotateFrame(frame, 180)
+    >>> frame_rot = RotateFrame(frame, 90)
     """
     
-    if rot == 0:
+    if theta_deg == 0:
         
         # Do nothing
-        pass
+        new_frame = frame.copy()
     
-    elif rot == 270:
+    elif theta_deg == 90:
     
         # Rotate CCW 90
-        frame = cv2.transpose(frame)
-        frame = cv2.flip(frame, flipCode = 0)
+        new_frame = cv2.transpose(frame)
+        new_frame = cv2.flip(new_frame, flipCode = 0)
 
-    elif rot == 90:
+    elif theta_deg == 270:
     
-        # Rotate CW 90
-        frame = cv2.transpose(frame)
-        frame = cv2.flip(frame, flipCode = 1)
+        # Rotate CCW 270 (CW 90)
+        new_frame = cv2.transpose(frame)
+        new_frame = cv2.flip(new_frame, flipCode = 1)
         
-    elif rot == 180:
+    elif theta_deg == 180:
     
         # Rotate by 180
-        frame = cv2.flip(frame, flipCode = 0)
-        frame = cv2.flip(frame, flipCode = 1)
+        new_frame = cv2.flip(frame, flipCode = 0)
+        new_frame = cv2.flip(new_frame, flipCode = 1)
     
     else: # Arbitrary rotation
     
-        # Get frame dimensions
-        w, h = frame.shape[1], frame.shape[0]
-    
-        # Construct 2D affine rotation matrix
-        rotmat = cv2.getRotationMatrix2D((w*0.5, h*0.5), rot, scale=1.0)
+        new_frame = rotate(frame, theta_deg, resize=True)
         
-        # Apply rotation transform
-        frame = cv2.warpAffine(frame, rotmat, (w,h))
+        # Scale and recast to uint8
+        new_frame = np.uint8(new_frame * 255.0)
         
-    return frame
+    return new_frame
