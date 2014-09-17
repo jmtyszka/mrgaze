@@ -180,7 +180,7 @@ def EllipseError(pnts, ellipse):
 
     # Calculate error from distance and gradient
     # See Swirski et al 2012
-    # TODO : May have to use distance / |grad|^0.45 - see Swirski code
+    # TODO : May have to use distance / |grad|^0.45 - see Swirski source
 
     # Gradient array has x and y components in rows (see ConicFunctions)
     err = distance / absgrad
@@ -406,6 +406,19 @@ def ConicFunctions(pnts, ellipse):
     normgrad = grad / absgrad
     
     return distance, grad, absgrad, normgrad
+
+
+def Eccentricity(ellipse):
+    '''
+    Calculate eccentricity of an ellipse
+    '''
+    
+    # Ellipse tuple has form ( ( x0, y0), (bb, aa), phi_b_deg) )
+    # Where aa and bb are the major and minor axes, and phi_b_deg
+    # is the CW x to minor axis rotation in degrees
+    (x0,y0), (bb, aa), phi_b_deg = ellipse
+
+    return np.sqrt(1 - (bb/aa)**2)
 
 
 def OverlayRANSACFit(img, all_pnts, inlier_pnts, ellipse):

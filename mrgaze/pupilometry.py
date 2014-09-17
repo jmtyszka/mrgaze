@@ -293,10 +293,20 @@ def PupilometryEngine(frame, cascade, cfg):
         # Add ROI offset to ellipse center
         ellipse = (eroi[0][0]+x0, eroi[0][1]+y0),eroi[1], eroi[2]
         
+        # Check for unusually high eccentricity
+        if fitellipse.Eccentricity(ellipse) > 0.8:
+            
+            # Convert to blink
+            blink = True
+        
     else:
             
         # Set blink flag - fill remaining parameters with NaNs
         blink = True
+    
+    # Fill return values with NaNs if blink detected
+    if blink:
+        
         ellipse = ((np.nan, np.nan), (np.nan, np.nan), np.nan)
         roi_rect = (np.nan, np.nan), (np.nan, np.nan)
         glint = (np.nan, np.nan)
@@ -416,10 +426,12 @@ def RemoveGlint(roi, plim=99):
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(k_dil,k_dil))
     mask = cv2.morphologyEx(mask, cv2.MORPH_DILATE, kernel)
     
-    # Inpaint bright regions
+    # Remove bright regions
     if inpaint:
+        # Inpaint bright regions - higher quality glint removal
         roi_noglint = cv2.inpaint(roi, mask, k_inpaint, cv2.INPAINT_NS)
     else:
+        # Zero out bright regions - prepare for edge artifacts
         roi_noglint = roi * (1-mask)
         
     # TODO: estimate best glint candidate center
