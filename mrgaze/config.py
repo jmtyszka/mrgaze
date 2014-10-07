@@ -99,6 +99,7 @@ def InitConfig(config):
     config.set('RANSAC','maxinlierperc','95')
     
     config.add_section('LBP')
+    config.set('LBP','enabled','False')
     config.set('LBP','minneighbors','40')
     config.set('LBP','scalefactor','1.05')
     

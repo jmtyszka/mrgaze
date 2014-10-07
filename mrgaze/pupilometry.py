@@ -255,54 +255,61 @@ def PupilometryEngine(frame, cascade, cfg):
         Blink flag (no pupil detected)
     """
     
-    min_neighbors = cfg.getint('LBP','minneighbors')
-    scale_factor  = cfg.getfloat('LBP','scalefactor')
+    # Unset blink flag
+    blink = False
+
+    # Shall we use the classifier at all, or whole frame?
+    if cfg.getboolean('LBP', 'enabled'): 
+        min_neighbors = cfg.getint('LBP','minneighbors')
+        scale_factor  = cfg.getfloat('LBP','scalefactor')
+        
+        # Find pupils in frame
+        pupils = cascade.detectMultiScale(image=frame,
+                                      scaleFactor=scale_factor,
+                                      minNeighbors=min_neighbors)
+        
+        # Count detected pupil candidates
+        n_pupils = len(pupils)
     
-    # Find pupils in frame
-    pupils = cascade.detectMultiScale(frame,
-                                      minNeighbors=min_neighbors,
-                                      scaleFactor=scale_factor)
+        if n_pupils > 0:
+                
+            # Use largest pupil candidate (works most of the time)
+            # TODO: refine this selection somehow
+            sizes = np.sqrt(pupils[:,2] * pupils[:,3])
+            best_pupil = sizes.argmax()
         
-    # Count detected pupil candidates
-    n_pupils = len(pupils)
-    
-    if n_pupils > 0:
-        
-        # Unset blink flag
-        blink = False
-        
-        # Use largest pupil candidate (works most of the time)
-        # TODO: refine this selection somehow
-        sizes = np.sqrt(pupils[:,2] * pupils[:,3])
-        best_pupil = sizes.argmax()
-        
-        # Get ROI info for largest pupil
-        x, y, w, h = pupils[best_pupil,:]
-        x0, x1, y0, y1 = x, x+w, y, y+h
-        roi_rect = (x0,y0),(x1,y1)
-            
-        # Extract pupil ROI (note row,col indexing of image array)
-        pupil_roi = frame[y0:y1,x0:x1]
-        
-        # Segment pupil intelligently - also return glint
-        pupil_bw, glint = SegmentPupil(pupil_roi, cfg)
-            
-        # Fit ellipse to pupil boundary - returns ellipse ROI
-        eroi = FitPupil(pupil_bw, pupil_roi, cfg)
-            
-        # Add ROI offset to ellipse center
-        ellipse = (eroi[0][0]+x0, eroi[0][1]+y0),eroi[1], eroi[2]
-        
-        # Check for unusually high eccentricity
-        if fitellipse.Eccentricity(ellipse) > 0.8:
-            
-            # Convert to blink
+            # Get ROI info for largest pupil
+            x, y, w, h = pupils[best_pupil,:]
+            x0, x1, y0, y1 = x, x+w, y, y+h
+
+        else:
             blink = True
+
+    # If no pupil was found by LBP, or LBP is disabled
+    if not 'x0' in vars(): 
+        x0, x1, y0, y1 = 0, 0+frame.shape[0], 0, 0+frame.shape[1]
         
-    else:
+    # Define ROI rect
+    roi_rect = (x0,y0),(x1,y1)
+        
+    # Extract pupil ROI (note row,col indexing of image array)
+    pupil_roi = frame[y0:y1,x0:x1]
+    
+    # Segment pupil intelligently - also return glint
+    pupil_bw, glint = SegmentPupil(pupil_roi, cfg)
             
-        # Set blink flag - fill remaining parameters with NaNs
+    # Fit ellipse to pupil boundary - returns ellipse ROI
+    eroi = FitPupil(pupil_bw, pupil_roi, cfg)
+            
+    # Add ROI offset to ellipse center
+    ellipse = (eroi[0][0]+x0, eroi[0][1]+y0),eroi[1], eroi[2]
+        
+    # Check for unusually high eccentricity
+    if fitellipse.Eccentricity(ellipse) > 0.8:
+            
+        # Convert to blink
         blink = True
+        
     
     # Fill return values with NaNs if blink detected
     if blink:
