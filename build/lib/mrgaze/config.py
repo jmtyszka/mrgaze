@@ -91,7 +91,7 @@ def InitConfig(config):
     config.add_section('PUPILSEG')
     config.set('PUPILSEG','method','otsu')
     config.set('PUPILSEG','percmin','0')
-    config.set('PUPILSEG','percmax','50')
+    config.set('PUPILSEG','percmax','40')
     
     config.add_section('RANSAC')
     config.set('RANSAC','maxiterations','5')
@@ -99,6 +99,7 @@ def InitConfig(config):
     config.set('RANSAC','maxinlierperc','95')
     
     config.add_section('LBP')
+    config.set('LBP','enabled','True')
     config.set('LBP','minneighbors','40')
     config.set('LBP','scalefactor','1.05')
     

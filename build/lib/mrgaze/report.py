@@ -70,10 +70,10 @@ td {
 <table>
 
   <tr><td><h2>Calibrated Gaze Results</h2></tr>
-  <tr><td valign="top"><img src=gaze_calibrated.png /></tr>
+  <tr><td valign="top">$cal_gaze_res</tr>
 
   <tr><td><h2>Calibration</h2></tr>
-  <tr><td valign="top"><img src=cal_fix_space.png /></tr>
+  <tr><td valign="top">$cal_heatmap</tr>
   <tr><td valign="top"><img src=cal_pupils.png /></tr>
 
   <tr><td><h2>Gaze Pupilometry</h2></tr>
@@ -87,7 +87,7 @@ td {
 """
 
 # Main function
-def WriteReport(ss_dir):
+def WriteReport(ss_dir, cfg):
     
     # Results subdirectoy
     ss_res_dir = os.path.join(ss_dir, 'results')
@@ -120,6 +120,14 @@ def WriteReport(ss_dir):
     print('  Locating artifact start time')
     art_t0 = ArtifactStartTime(gaze_pupils_csv)
     
+    # Handle disabled calibration
+    if cfg.getboolean('CALIBRATION','calibrate'):
+        cal_gaze_res = '<img src=gaze_calibrated.png />'
+        cal_heatmap = '<img src=cal_fix_space.png />'
+    else:
+        cal_gaze_res = 'Calibration disabled - no calibrated gaze results generated<p>'
+        cal_heatmap  = 'Calibration disabled - no calibration heatmap generated<p>'
+        
     #
     # HTML report generation
     #
@@ -128,8 +136,10 @@ def WriteReport(ss_dir):
 
     # Create substitution dictionary for HTML report
     qa_dict = dict([
-        ('subj_sess',  "%s"    % (subj_sess)),
-        ('art_t0',     "%0.1f" % (art_t0))        
+        ('subj_sess',    "%s"    % (subj_sess)),
+        ('art_t0',       "%0.1f" % (art_t0)),
+        ('cal_gaze_res', "%s"    % (cal_gaze_res)),
+        ('cal_heatmap', "%s"     % (cal_heatmap))      
     ])
 
     # Generate HTML report from template (see above)

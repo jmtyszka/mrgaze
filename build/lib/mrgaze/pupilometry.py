@@ -59,7 +59,6 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, cfg):
     
     # Output flags
     verbose   = cfg.getboolean('OUTPUT', 'verbose')
-    graphics  = cfg.getboolean('OUTPUT', 'graphics')
     overwrite = cfg.getboolean('OUTPUT','overwrite')
     
     # Video information
@@ -182,10 +181,10 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, cfg):
         # -------------------------------------
         # Pass this frame to pupilometry engine
         # -------------------------------------
-        ellipse, roi_rect, blink, glint = PupilometryEngine(frame, cascade, cfg)
+        pupil_ellipse, roi_rect, blink, glint, frame_rgb = PupilometryEngine(frame, cascade, cfg)
         
         # Derive pupilometry parameters
-        px, py, area = PupilometryPars(ellipse, glint)
+        px, py, area = PupilometryPars(pupil_ellipse, glint)
         
         # Write data line to pupilometry CSV file
         pupils_stream.write(
@@ -193,18 +192,6 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, cfg):
             (t, area, px, py, blink, art_power)
         )
             
-        # RGB version of preprocessed frame for output video
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
-            
-        # Overlay ROI, pupil ellipse and pseudo-glint on RGB frame
-        if not blink:
-            frame_rgb = OverlayPupil(frame_rgb, ellipse, roi_rect, glint)
-
-        if graphics:
-            cv2.imshow('Tracking', frame_rgb)
-            if cv2.waitKey(5) > 0:
-                break
-        
         # Write output video frame
         vout_stream.write(frame_rgb)
 
@@ -247,7 +234,7 @@ def PupilometryEngine(frame, cascade, cfg):
         
     Returns
     ----
-    ellipse : float tuple
+    pupil_ellipse : float tuple
         Ellipse parameters (x0, y0), (a, b), phi
     roi_rect : float tuple
         Pupil ROI rectangle (x0, y0), (x1, y1)
@@ -255,63 +242,88 @@ def PupilometryEngine(frame, cascade, cfg):
         Blink flag (no pupil detected)
     """
     
-    min_neighbors = cfg.getint('LBP','minneighbors')
-    scale_factor  = cfg.getfloat('LBP','scalefactor')
+    # Unset blink flag
+    blink = False
     
-    # Find pupils in frame
-    pupils = cascade.detectMultiScale(frame,
-                                      minNeighbors=min_neighbors,
-                                      scaleFactor=scale_factor)
+    # Init ROI to whole frame
+    # Note (col, row) = (x, y) for shape
+    x0, x1, y0, y1 = 0, frame.shape[1], 0, frame.shape[0]
+
+    # Shall we use the classifier at all, or whole frame?
+    if cfg.getboolean('LBP', 'enabled'):
         
-    # Count detected pupil candidates
-    n_pupils = len(pupils)
+        min_neighbors = cfg.getint('LBP','minneighbors')
+        scale_factor  = cfg.getfloat('LBP','scalefactor')
+        
+        # Find pupils in frame
+        pupils = cascade.detectMultiScale(image=frame,
+                                      scaleFactor=scale_factor,
+                                      minNeighbors=min_neighbors)
+        
+        # Count detected pupil candidates
+        n_pupils = len(pupils)
     
-    if n_pupils > 0:
+        if n_pupils > 0:
+                
+            # Use largest pupil candidate (works most of the time)
+            # TODO: refine this selection somehow
+            sizes = np.sqrt(pupils[:,2] * pupils[:,3])
+            best_pupil = sizes.argmax()
         
-        # Unset blink flag
-        blink = False
-        
-        # Use largest pupil candidate (works most of the time)
-        # TODO: refine this selection somehow
-        sizes = np.sqrt(pupils[:,2] * pupils[:,3])
-        best_pupil = sizes.argmax()
-        
-        # Get ROI info for largest pupil
-        x, y, w, h = pupils[best_pupil,:]
-        x0, x1, y0, y1 = x, x+w, y, y+h
-        roi_rect = (x0,y0),(x1,y1)
+            # Get ROI info for largest pupil
+            x, y, w, h = pupils[best_pupil,:]
+            x0, x1, y0, y1 = x, x+w, y, y+h
+
+        else:
             
-        # Extract pupil ROI (note row,col indexing of image array)
-        pupil_roi = frame[y0:y1,x0:x1]
-        
-        # Segment pupil intelligently - also return glint
-        pupil_bw, glint = SegmentPupil(pupil_roi, cfg)
-            
-        # Fit ellipse to pupil boundary - returns ellipse ROI
-        eroi = FitPupil(pupil_bw, pupil_roi, cfg)
-            
-        # Add ROI offset to ellipse center
-        ellipse = (eroi[0][0]+x0, eroi[0][1]+y0),eroi[1], eroi[2]
-        
-        # Check for unusually high eccentricity
-        if fitellipse.Eccentricity(ellipse) > 0.8:
-            
-            # Convert to blink
             blink = True
+
+    # Define ROI rect
+    roi_rect = (x0,y0),(x1,y1)
         
-    else:
-            
-        # Set blink flag - fill remaining parameters with NaNs
-        blink = True
+    # Extract pupil ROI (note row,col indexing of image array)
+    pupil_roi = frame[y0:y1,x0:x1]
     
+    # Segment pupil intelligently - also return glint mask
+    pupil_bw, glint_mask = SegmentPupil(pupil_roi, cfg)
+            
+    # Fit ellipse to pupil boundary - returns ellipse ROI
+    eroi = FitPupil(pupil_bw, pupil_roi, cfg)
+            
+    # Add ROI offset to ellipse center
+    pupil_ellipse = (eroi[0][0]+x0, eroi[0][1]+y0),eroi[1], eroi[2]
+        
+    # Check for unusually high eccentricity
+    if fitellipse.Eccentricity(pupil_ellipse) > 0.8:
+        blink = True  # Convert to blink
+        
     # Fill return values with NaNs if blink detected
     if blink:
-        
-        ellipse = ((np.nan, np.nan), (np.nan, np.nan), np.nan)
+        pupil_ellipse = ((np.nan, np.nan), (np.nan, np.nan), np.nan)
         roi_rect = (np.nan, np.nan), (np.nan, np.nan)
         glint = (np.nan, np.nan)
+        
+    # TODO: find best glint candidate in glint mask
+    glint = FindBestGlint(glint_mask, pupil_ellipse)
+    
+    # RGB version of preprocessed frame for output video
+    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
+            
+    # Overlay ROI, pupil ellipse and pseudo-glint on RGB frame
+    if not blink:
 
-    return ellipse, roi_rect, blink, glint            
+        # Create RGB overlay of pupilometry on ROI
+        frame_rgb = OverlayPupil(frame_rgb, pupil_ellipse, roi_rect, glint)
+
+        if cfg.getboolean('OUTPUT', 'graphics'):
+        
+            # Create composite image of various stages of pupil detection
+            seg_gray = np.hstack((pupil_roi, pupil_bw * 255, glint_mask * 255))
+            cv2.imshow('Segmentation', seg_gray)
+            cv2.imshow('Pupilometry', frame_rgb)
+            cv2.waitKey(5)
+
+    return pupil_ellipse, roi_rect, blink, glint, frame_rgb      
 
 
 def SegmentPupil(roi, cfg):
@@ -329,7 +341,8 @@ def SegmentPupil(roi, cfg):
     ----
     pupil_bw : 2D numpy uint8 array
         Binary thresholded version of ROI image
-    
+    glint_mask : 2D numpy uint8 array
+        Bright region mask used by glint removal
     """
 
     # Get config parameters
@@ -337,8 +350,7 @@ def SegmentPupil(roi, cfg):
     perclims = cfg.getfloat('PUPILSEG','percmin'), cfg.getfloat('PUPILSEG','percmax')
     
     # Remove glints if present - helps RANSAC stability
-    # TODO: find and return best glint candidate
-    roi, glint = RemoveGlint(roi)
+    roi, glint_mask = RemoveGlint(roi)
     
     # Intensity rescale to emphasize pupil
     # If pupil occupies about 25% of ROI, then setting an upper percentile
@@ -388,14 +400,15 @@ def SegmentPupil(roi, cfg):
     # Extract blob with largest area
     pupil_bw = np.uint8(labels == pupil_label)
         
-    return pupil_bw, glint
+    return pupil_bw, glint_mask
     
 
 def RemoveGlint(roi, plim=99):
     '''
-    [INACTIVE] Remove small bright areas from pupil/iris ROI
+    Remove small bright areas from pupil/iris ROI
     
-    Arguments:
+    Arguments
+    ----
     roi : 2D numpy uint8 array
         Pupil/iris ROI image
     plim : float
@@ -403,13 +416,15 @@ def RemoveGlint(roi, plim=99):
     k : odd integer
         Kernel size for mask dilation and inpainting
     
-    Returns:
+    Returns
+    ----
     roi_noglint : 2D numpy uint8 array
         Pupil/iris ROI without small bright areas
+    glint_mask : 2D numpy uint8 array
+        Bright region mask used by glint removal
     '''
 
-    # Operational flags
-    debug = False
+    # Flag for glint removal by inpainting
     inpaint = True
     
     # Kernel sizes
@@ -424,26 +439,28 @@ def RemoveGlint(roi, plim=99):
     
     # Dilate
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(k_dil,k_dil))
-    mask = cv2.morphologyEx(mask, cv2.MORPH_DILATE, kernel)
+    glint_mask = cv2.morphologyEx(mask, cv2.MORPH_DILATE, kernel)
     
     # Remove bright regions
     if inpaint:
         # Inpaint bright regions - higher quality glint removal
-        roi_noglint = cv2.inpaint(roi, mask, k_inpaint, cv2.INPAINT_NS)
+        roi_noglint = cv2.inpaint(roi, glint_mask, k_inpaint, cv2.INPAINT_NS)
     else:
-        # Zero out bright regions - prepare for edge artifacts
-        roi_noglint = roi * (1-mask)
+        # Zero out bright regions
+        # Note: this will introduce edge artifacts around glints
+        roi_noglint = roi * (1 - glint_mask)
         
-    # TODO: estimate best glint candidate center
-    # Return dummy for now
+    return roi_noglint, glint_mask
+
+
+def FindBestGlint(glint_mask, pupil_ellipse):
+    '''
+    TODO: Find closest glint to pupil center
+    '''    
+    
     glint = (0.0, 0.0)
     
-    if debug:
-        img = np.hstack((roi, mask * 255, roi_noglint))
-        cv2.imshow('Glint Removal', img)
-        cv2.waitKey(5)
-    
-    return roi_noglint, glint
+    return glint
 
 
 def FitPupil(bw, roi, cfg):
