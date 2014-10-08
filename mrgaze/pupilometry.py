@@ -278,26 +278,14 @@ def PupilometryEngine(frame, cascade, cfg):
             
             blink = True
 
-<<<<<<< HEAD
-    # If no pupil was found by LBP, or LBP is disabled
-    if not 'x0' in vars(): 
-        x0, x1, y0, y1 = 0, frame.shape[1] - 1 , 0, frame.shape[0] - 1 
-=======
->>>>>>> fd6513977980621ebf6e4de89923695fba7bb537
     # Define ROI rect
     roi_rect = (x0,y0),(x1,y1)
         
     # Extract pupil ROI (note row,col indexing of image array)
     pupil_roi = frame[y0:y1,x0:x1]
-<<<<<<< HEAD
-
-    # Segment pupil intelligently - also return glint
-    pupil_bw, glint = SegmentPupil(pupil_roi, cfg)
-=======
     
     # Segment pupil intelligently - also return glint mask
     pupil_bw, glint_mask = SegmentPupil(pupil_roi, cfg)
->>>>>>> fd6513977980621ebf6e4de89923695fba7bb537
             
     # Fit ellipse to pupil boundary - returns ellipse ROI
     eroi = FitPupil(pupil_bw, pupil_roi, cfg)
@@ -368,12 +356,7 @@ def SegmentPupil(roi, cfg):
     # If pupil occupies about 25% of ROI, then setting an upper percentile
     # limit of about 30% might work well.
     roi = ip.RobustRescale(roi, perclims)
-
-    debug = True
-    if debug:
-        cv2.imshow('Robust Rescale', roi)
-        cv2.waitKey(5)
-
+    
     if method == 'otsu':
 
         # Binary threshold of ROI using Ostu's method
@@ -441,12 +424,7 @@ def RemoveGlint(roi, plim=99):
         Bright region mask used by glint removal
     '''
 
-<<<<<<< HEAD
-    # Operational flags
-    debug = True
-=======
     # Flag for glint removal by inpainting
->>>>>>> fd6513977980621ebf6e4de89923695fba7bb537
     inpaint = True
     
     # Kernel sizes
@@ -455,7 +433,6 @@ def RemoveGlint(roi, plim=99):
 
     # Determine threshold for brightest pixels
     imax = np.percentile(roi, plim)
-
     
     # Inpainting mask
     mask = np.uint8(roi >= imax)
