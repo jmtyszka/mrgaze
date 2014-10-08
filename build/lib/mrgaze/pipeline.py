@@ -123,7 +123,7 @@ def RunSingle(data_dir, subj_sess):
         print('')
         print('  Generate Report')
         print('  ---------------')
-        report.WriteReport(ss_dir)
+        report.WriteReport(ss_dir, cfg)
 
     else:
             
