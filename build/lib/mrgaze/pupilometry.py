@@ -349,7 +349,7 @@ def SegmentPupil(roi, cfg):
     method = cfg.get('PUPILSEG','method')
     
     # Remove glints if present - helps RANSAC stability
-    roi, glint_mask = RemoveGlint(roi, cfg.getfloat('PUPILSEG','glint_percmin'))
+    roi, glint_mask = RemoveGlint(roi, cfg.getfloat('PUPILSEG','glint_percmax'))
     
     # Set the rescale percentile threshold about 25% larger than maximum percent
     # of ROI estimated to be occupied by pupil
@@ -411,7 +411,7 @@ def SegmentPupil(roi, cfg):
     return pupil_bw, glint_mask
     
 
-def RemoveGlint(roi, percmin=99):
+def RemoveGlint(roi, percmax=1.0):
     '''
     Remove small bright areas from pupil/iris ROI
     
@@ -419,8 +419,8 @@ def RemoveGlint(roi, percmin=99):
     ----
     roi : 2D numpy uint8 array
         Pupil/iris ROI image
-    percmin : float
-        Prcentile lower bound for brightest pixels
+    percmax : float
+        Maximum ROI area occupied by glints in percent
     k : odd integer
         Kernel size for mask dilation and inpainting
     
@@ -439,8 +439,8 @@ def RemoveGlint(roi, percmin=99):
     k_dil = 5
     k_inpaint = 5
 
-    # Determine threshold for brightest pixels
-    glint_thresh = np.percentile(roi, percmin)
+    # Determine lower threshold for brightest pixels
+    glint_thresh = np.percentile(roi, 100.0 - percmax)
     
     # Inpainting mask
     mask = np.uint8(roi >= glint_thresh)
