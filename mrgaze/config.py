@@ -90,8 +90,9 @@ def InitConfig(config):
     
     config.add_section('PUPILSEG')
     config.set('PUPILSEG','method','otsu')
-    config.set('PUPILSEG','percmin','0')
-    config.set('PUPILSEG','percmax','40')
+    config.set('PUPILSEG','pupil_percmax','25')
+    config.set('PUPILSEG','glint_percmin','99')
+    config.set('PUPILSEG','pupil_threshold','20')
     
     config.add_section('RANSAC')
     config.set('RANSAC','maxiterations','5')

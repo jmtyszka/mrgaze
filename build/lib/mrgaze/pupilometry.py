@@ -347,17 +347,25 @@ def SegmentPupil(roi, cfg):
 
     # Get config parameters
     method = cfg.get('PUPILSEG','method')
-    perclims = cfg.getfloat('PUPILSEG','percmin'), cfg.getfloat('PUPILSEG','percmax')
     
     # Remove glints if present - helps RANSAC stability
-    roi, glint_mask = RemoveGlint(roi)
+    roi, glint_mask = RemoveGlint(roi, cfg.getfloat('PUPILSEG','glint_percmin'))
     
-    # Intensity rescale to emphasize pupil
-    # If pupil occupies about 25% of ROI, then setting an upper percentile
-    # limit of about 30% might work well.
-    roi = ip.RobustRescale(roi, perclims)
+    # Set the rescale percentile threshold about 25% larger than maximum percent
+    # of ROI estimated to be occupied by pupil
+    rescale_thresh = cfg.getfloat('PUPILSEG','pupil_percmax') * 1.25
+
+    # Clamp bright regions to emphasize pupil
+    roi = ip.RobustRescale(roi, (0, rescale_thresh))
     
-    if method == 'otsu':
+    if method == 'manual':
+        
+        # Manual thresholding - ideal for real time ET with UI thresh control
+        
+        thresh = cfg.getint('PUPILSEG','pupil_threshold')
+        _, blobs = cv2.threshold(roi, thresh, 255, cv2.THRESH_BINARY_INV) 
+    
+    elif method == 'otsu':
 
         # Binary threshold of ROI using Ostu's method
         thresh, blobs = cv2.threshold(roi, 128, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
@@ -382,7 +390,7 @@ def SegmentPupil(roi, cfg):
         idx = np.reshape(idx, roi.shape)
         
         # Create mask for minimum centroid pixels
-        blobs = np.uint8(idx == pupil_idx)
+        blobs = np.uint8(idx == pupil_idx) * 255
         
     # Morphological opening (circle 5 pixels diameter)
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(5,5))
@@ -403,7 +411,7 @@ def SegmentPupil(roi, cfg):
     return pupil_bw, glint_mask
     
 
-def RemoveGlint(roi, plim=99):
+def RemoveGlint(roi, percmin=99):
     '''
     Remove small bright areas from pupil/iris ROI
     
@@ -411,7 +419,7 @@ def RemoveGlint(roi, plim=99):
     ----
     roi : 2D numpy uint8 array
         Pupil/iris ROI image
-    plim : float
+    percmin : float
         Prcentile lower bound for brightest pixels
     k : odd integer
         Kernel size for mask dilation and inpainting
@@ -432,10 +440,10 @@ def RemoveGlint(roi, plim=99):
     k_inpaint = 5
 
     # Determine threshold for brightest pixels
-    imax = np.percentile(roi, plim)
+    glint_thresh = np.percentile(roi, percmin)
     
     # Inpainting mask
-    mask = np.uint8(roi >= imax)
+    mask = np.uint8(roi >= glint_thresh)
     
     # Dilate
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(k_dil,k_dil))
@@ -443,9 +451,12 @@ def RemoveGlint(roi, plim=99):
     
     # Remove bright regions
     if inpaint:
+        
         # Inpaint bright regions - higher quality glint removal
         roi_noglint = cv2.inpaint(roi, glint_mask, k_inpaint, cv2.INPAINT_NS)
+
     else:
+
         # Zero out bright regions
         # Note: this will introduce edge artifacts around glints
         roi_noglint = roi * (1 - glint_mask)
