@@ -428,10 +428,8 @@ def RemoveGlint(roi, cfg):
     ----
     roi : 2D numpy uint8 array
         Pupil/iris ROI image
-    percmax : float
-        Maximum ROI area occupied by glints in percent
-    k : odd integer
-        Kernel size for mask dilation and inpainting
+    cfg : configuration object
+        Configuration parameters
     
     Returns
     ----
@@ -444,6 +442,8 @@ def RemoveGlint(roi, cfg):
     # Flag for glint removal by inpainting
     inpaint = True
     
+    # Maximum percent area of ROI occupied by glint(s)
+    # Typically around 1%
     percmax = cfg.getfloat('PUPILSEG','glint_percmax')
 
     # Kernel sizes
@@ -451,7 +451,8 @@ def RemoveGlint(roi, cfg):
     k_inpaint = cfg.getint('PUPILSEG','k_inpaint')
 
     # Determine lower threshold for brightest pixels
-    glint_thresh = np.percentile(roi, percmax)
+    # Note inversion of glint fractional area for percentile mapping
+    glint_thresh = np.percentile(roi, 100-percmax)
     
     # Inpainting mask
     mask = np.uint8(roi >= glint_thresh)
