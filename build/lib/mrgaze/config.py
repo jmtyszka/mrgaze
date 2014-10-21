@@ -24,7 +24,7 @@ import os
 import ConfigParser
 
 
-def LoadConfig(data_dir, subjsess):
+def LoadConfig(data_dir, subjsess=''):
     """
     Load ET pipeline configuration parameters
     
@@ -77,6 +77,23 @@ def LoadConfig(data_dir, subjsess):
     return config
    
 
+def SaveConfig(config, data_dir):
+    """ Save configuration 
+
+    Arguments
+    ----
+    config : Configuration settings
+    data_dir : Directory to store the settings in 
+
+    """
+
+    # Root config filename
+    root_cfg_file = os.path.join(data_dir, 'mrgaze.cfg')
+    
+    with open(root_cfg_file,'wb') as cfg_stream:
+        config.write(cfg_stream)
+        cfg_stream.close()
+    
 def InitConfig(config):
     
     # Add video defaults
@@ -91,9 +108,13 @@ def InitConfig(config):
     config.add_section('PUPILSEG')
     config.set('PUPILSEG','method','otsu')
     config.set('PUPILSEG','pupil_percmax','25')
-    config.set('PUPILSEG','glint_percmin','99')
+    config.set('PUPILSEG','glint_percmax','1')
     config.set('PUPILSEG','pupil_threshold','20')
-    
+    config.set('PUPILSEG','k_inpaint', '5')
+    config.set('PUPILSEG','k_dil','5')
+    config.set('PUPILSEG','gauss_sd','0')
+    config.set('PUPILSEG','histogram_equalization','False')
+
     config.add_section('RANSAC')
     config.set('RANSAC','maxiterations','5')
     config.set('RANSAC','maxrefinements','3')
