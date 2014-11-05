@@ -108,7 +108,7 @@ def InitConfig(config):
     config.add_section('PUPILSEG')
     config.set('PUPILSEG','method','otsu')
     config.set('PUPILSEG','pupil_percmax','25')
-    config.set('PUPILSEG','glint_percmax','99')
+    config.set('PUPILSEG','glint_percmax','1')
     config.set('PUPILSEG','pupil_threshold','20')
     config.set('PUPILSEG','k_inpaint', '5')
     config.set('PUPILSEG','k_dil','5')

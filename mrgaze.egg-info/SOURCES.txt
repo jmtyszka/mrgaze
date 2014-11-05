@@ -13,7 +13,6 @@ mrgaze/mrclean.py
 mrgaze/pipeline.py
 mrgaze/pupilometry.py
 mrgaze/report.py
-mrgaze/thread_test.py
 mrgaze/utils.py
 mrgaze.egg-info/PKG-INFO
 mrgaze.egg-info/SOURCES.txt

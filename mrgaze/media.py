@@ -115,6 +115,7 @@ def Downsample(frame, factor):
     frame = cv2.resize(frame, (nxd, nyd))
 
     return frame
+    
 
 
 def LoadImage(image_file, border=0):

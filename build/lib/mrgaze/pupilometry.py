@@ -285,7 +285,7 @@ def PupilometryEngine(frame, cascade, cfg):
     pupil_roi = frame[y0:y1,x0:x1]
     
     # Segment pupil intelligently - also return glint mask
-    pupil_bw, glint_mask = SegmentPupil(pupil_roi, cfg)
+    pupil_bw, glint_mask, roi_rescaled = SegmentPupil(pupil_roi, cfg)
             
     # Fit ellipse to pupil boundary - returns ellipse ROI
     eroi = FitPupil(pupil_bw, pupil_roi, cfg)
@@ -318,7 +318,7 @@ def PupilometryEngine(frame, cascade, cfg):
         if cfg.getboolean('OUTPUT', 'graphics'):
         
             # Create composite image of various stages of pupil detection
-            seg_gray = np.hstack((pupil_roi, pupil_bw * 255, glint_mask * 255))
+            seg_gray = np.hstack((pupil_roi, pupil_bw * 255, glint_mask * 255, roi_rescaled))
             cv2.imshow('Segmentation', seg_gray)
             cv2.imshow('Pupilometry', frame_rgb)
             cv2.waitKey(5)
@@ -347,17 +347,26 @@ def SegmentPupil(roi, cfg):
 
     # Get config parameters
     method = cfg.get('PUPILSEG','method')
-    
+
     # Remove glints if present - helps RANSAC stability
-    roi, glint_mask = RemoveGlint(roi, cfg.getfloat('PUPILSEG','glint_percmax'))
+    roi, glint_mask = RemoveGlint(roi, cfg)
     
     # Set the rescale percentile threshold about 25% larger than maximum percent
     # of ROI estimated to be occupied by pupil
-    rescale_thresh = cfg.getfloat('PUPILSEG','pupil_percmax') * 1.25
+    rescale_thresh = min(100.0, cfg.getfloat('PUPILSEG','pupil_percmax') * 1.25)
+
+    # perform histrogram equalization if desired
+    if cfg.getboolean('PUPILSEG','histogram_equalization'):
+        roi = cv2.equalizeHist(roi)
 
     # Clamp bright regions to emphasize pupil
     roi = ip.RobustRescale(roi, (0, rescale_thresh))
-    
+
+    # perform another gaussian blur if rescaling and histogram equalization caused too much noise
+    gauss_sd = cfg.getint('PUPILSEG','gauss_sd')
+    if gauss_sd > 0:
+        roi = cv2.GaussianBlur(roi, (3,3), gauss_sd)
+
     if method == 'manual':
         
         # Manual thresholding - ideal for real time ET with UI thresh control
@@ -408,10 +417,10 @@ def SegmentPupil(roi, cfg):
     # Extract blob with largest area
     pupil_bw = np.uint8(labels == pupil_label)
         
-    return pupil_bw, glint_mask
+    return pupil_bw, glint_mask, roi
     
 
-def RemoveGlint(roi, percmax=1.0):
+def RemoveGlint(roi, cfg):
     '''
     Remove small bright areas from pupil/iris ROI
     
@@ -419,10 +428,8 @@ def RemoveGlint(roi, percmax=1.0):
     ----
     roi : 2D numpy uint8 array
         Pupil/iris ROI image
-    percmax : float
-        Maximum ROI area occupied by glints in percent
-    k : odd integer
-        Kernel size for mask dilation and inpainting
+    cfg : configuration object
+        Configuration parameters
     
     Returns
     ----
@@ -435,12 +442,17 @@ def RemoveGlint(roi, percmax=1.0):
     # Flag for glint removal by inpainting
     inpaint = True
     
+    # Maximum percent area of ROI occupied by glint(s)
+    # Typically around 1%
+    percmax = cfg.getfloat('PUPILSEG','glint_percmax')
+
     # Kernel sizes
-    k_dil = 5
-    k_inpaint = 5
+    k_dil = cfg.getint('PUPILSEG','k_dil')
+    k_inpaint = cfg.getint('PUPILSEG','k_inpaint')
 
     # Determine lower threshold for brightest pixels
-    glint_thresh = np.percentile(roi, 100.0 - percmax)
+    # Note inversion of glint fractional area for percentile mapping
+    glint_thresh = np.percentile(roi, 100-percmax)
     
     # Inpainting mask
     mask = np.uint8(roi >= glint_thresh)

@@ -60,7 +60,7 @@ def LoadVideoFrame(v_in, cfg):
     z_thresh     = cfg.getfloat('ARTIFACTS', 'zthresh')
     
     # Preprocesing flags
-    gauss_sd = 1.0
+    gauss_sd = 0.0
     perc_range = (1, 99)
     bias_correct = False
     
@@ -82,14 +82,8 @@ def LoadVideoFrame(v_in, cfg):
         if do_mrclean:
             fr, art_power = mrc.MRClean(fr, z_thresh)
 
-        # Get trimmed frame size
-        nx, ny = fr.shape[1], fr.shape[0]
-        
-        # Calculate downsampled matrix
-        nxd, nyd = int(nx/downsampling), int(ny/downsampling)
-        
-        # Downsample
-        fr = cv2.resize(fr, (nxd, nyd))
+        if downsampling > 1:
+            fr = Downsample(fr, downsampling)
         
         # Gaussian blur
         if gauss_sd > 0.0:
@@ -109,6 +103,19 @@ def LoadVideoFrame(v_in, cfg):
     
     return status, fr, art_power
 
+
+def Downsample(frame, factor):
+    # Get trimmed frame size
+    nx, ny = frame.shape[1], frame.shape[0]
+    
+    # Calculate downsampled matrix
+    nxd, nyd = int(nx/factor), int(ny/factor)
+    
+    # Downsample
+    frame = cv2.resize(frame, (nxd, nyd))
+
+    return frame
+    
 
 def LoadImage(image_file, border=0):
     """
