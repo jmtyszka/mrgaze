@@ -83,7 +83,7 @@ def LoadVideoFrame(v_in, cfg):
             fr, art_power = mrc.MRClean(fr, z_thresh)
 
         if downsampling > 1:
-            fr = DownSample(fr, downsampling)
+            fr = Downsample(fr, downsampling)
         
         # Gaussian blur
         if gauss_sd > 0.0:
@@ -115,6 +115,7 @@ def Downsample(frame, factor):
     frame = cv2.resize(frame, (nxd, nyd))
 
     return frame
+
 
 def LoadImage(image_file, border=0):
     """
