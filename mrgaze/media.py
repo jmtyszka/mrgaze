@@ -34,6 +34,8 @@ def LoadVideoFrame(v_in, cfg):
     if status:
         fr, art_power = Preproc(fr, cfg)
 
+    return status, fr, art_power
+
 
 def ReadVideoFrame(v_in):
     """ Load a single frame from video stream 
