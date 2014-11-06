@@ -104,6 +104,7 @@ def InitConfig(config):
     config.set('VIDEO','downsampling','4')
     config.set('VIDEO','border','16')
     config.set('VIDEO','rotate','0')
+    config.set('VIDEO','gauss_sd','0')
     
     config.add_section('PUPILSEG')
     config.set('PUPILSEG','method','otsu')
@@ -112,7 +113,6 @@ def InitConfig(config):
     config.set('PUPILSEG','pupil_threshold','20')
     config.set('PUPILSEG','k_inpaint', '5')
     config.set('PUPILSEG','k_dil','5')
-    config.set('PUPILSEG','gauss_sd','0')
     config.set('PUPILSEG','histogram_equalization','False')
 
     config.add_section('RANSAC')

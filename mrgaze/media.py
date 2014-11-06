@@ -102,9 +102,9 @@ def Preproc(fr, cfg):
     rotate       = cfg.getint('VIDEO', 'rotate')
     do_mrclean   = cfg.getboolean('ARTIFACTS', 'mrclean')
     z_thresh     = cfg.getfloat('ARTIFACTS', 'zthresh')
-    
+    gauss_sd     = cfg.getfloat('VIDEO', 'gauss_sd')
+
     # Preprocesing flags
-    gauss_sd = 0.0
     perc_range = (1, 99)
     bias_correct = False
     
