@@ -46,6 +46,8 @@ def LoadVideoFrame(v_in, cfg):
         Artifact power in frame.
     """
 
+    art_power = 0.0
+
     status, fr = ReadVideoFrame(v_in)
     
     if status:
