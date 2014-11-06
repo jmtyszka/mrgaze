@@ -28,6 +28,23 @@ from skimage.transform import rotate
 
 
 def LoadVideoFrame(v_in, cfg):
+    """ Load and preprocess a single frame from video stream 
+
+    Parameters
+    ----------
+    v_in : opencv video stream
+        video input stream
+    cfg : border/rotate/mrclean/zthresh/downsampling
+
+    Returns
+    ----
+    status : boolean
+        Completion status.
+    fr : numpy uint8 array
+        Preprocessed video frame.
+    art_power : float
+        Artifact power in frame.
+    """
 
     status, fr = ReadVideoFrame(v_in)
     
@@ -35,7 +52,7 @@ def LoadVideoFrame(v_in, cfg):
         fr, art_power = Preproc(fr, cfg)
 
     return status, fr, art_power
-
+    
 
 def ReadVideoFrame(v_in):
     """ Load a single frame from video stream 
@@ -61,7 +78,7 @@ def ReadVideoFrame(v_in):
 
 def Preproc(fr, cfg):
     """
-    Preprocess a single frame from a video stream
+    Preprocess a single frame 
     
     Parameters
     ----------
