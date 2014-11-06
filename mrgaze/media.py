@@ -28,24 +28,47 @@ from skimage.transform import rotate
 
 
 def LoadVideoFrame(v_in, cfg):
-    """
-    Load and preprocess a single frame from a video stream
+
+    status, fr = ReadVideoFrame(v_in)
     
+    if status:
+        fr, art_power = Preproc(fr, cfg)
+
+
+def ReadVideoFrame(v_in):
+    """ Load a single frame from video stream 
+
     Parameters
     ----------
     v_in : opencv video stream
         video input stream
-    scale : float
-        downsampling scale factor [1.0]
-    border : int
-        pixel border width to strip
-    rotate : int
-        rotation in
-        
+
     Returns
     ----
     status : boolean
         Completion status.
+    fr : numpy uint8 array
+        Preprocessed video frame.
+    """
+
+    # Read one frame from stream    
+    status, fr = v_in.read()
+
+    return status, fr
+
+
+def Preproc(fr, cfg):
+    """
+    Preprocess a single frame from a video stream
+    
+    Parameters
+    ----------
+    fr : numpy uint8 array
+        raw video frame.
+    cfg : border/rotate/mrclean/zthresh/downsampling
+        
+    Returns
+    ----
     fr : numpy uint8 array
         Preprocessed video frame.
     art_power : float
@@ -66,42 +89,37 @@ def LoadVideoFrame(v_in, cfg):
     
     # Init returned artifact power
     art_power = 0.0    
-    
-    # Read one frame from stream    
-    status, fr = v_in.read()
-    
-    if status:
         
-        # Convert to grayscale
-        fr = cv2.cvtColor(fr, cv2.COLOR_RGB2GRAY)
+    # Convert to grayscale
+    fr = cv2.cvtColor(fr, cv2.COLOR_RGB2GRAY)
         
-        # Trim border first
-        fr = TrimBorder(fr, border)
+    # Trim border first
+    fr = TrimBorder(fr, border)
         
-        # Apply optional MR artifact suppression
-        if do_mrclean:
-            fr, art_power = mrc.MRClean(fr, z_thresh)
+    # Apply optional MR artifact suppression
+    if do_mrclean:
+        fr, art_power = mrc.MRClean(fr, z_thresh)
 
-        if downsampling > 1:
-            fr = Downsample(fr, downsampling)
+    if downsampling > 1:
+        fr = Downsample(fr, downsampling)
         
-        # Gaussian blur
-        if gauss_sd > 0.0:
-            fr = cv2.GaussianBlur(fr, (3,3), gauss_sd)
+    # Gaussian blur
+    if gauss_sd > 0.0:
+        fr = cv2.GaussianBlur(fr, (3,3), gauss_sd)
             
-        # Correct for illumination bias
-        if bias_correct:
-            bias_field = ip.EstimateBias(fr)
-            fr = ip.Unbias(fr, bias_field)
+    # Correct for illumination bias
+    if bias_correct:
+        bias_field = ip.EstimateBias(fr)
+        fr = ip.Unbias(fr, bias_field)
 
-        # Robust rescale to [0,50] percentile
-        # Emphasize darker areas such as pupil
-        fr = ip.RobustRescale(fr, perc_range)
+    # Robust rescale to [0,50] percentile
+    # Emphasize darker areas such as pupil
+    fr = ip.RobustRescale(fr, perc_range)
         
-        # Finally rotate frame
-        fr = RotateFrame(fr, rotate)
+    # Finally rotate frame
+    fr = RotateFrame(fr, rotate)
     
-    return status, fr, art_power
+    return fr, art_power
 
 
 def Downsample(frame, factor):
