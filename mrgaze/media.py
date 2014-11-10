@@ -88,7 +88,7 @@ def Preproc(fr, cfg):
     fr = TrimBorder(fr, border)
         
     # Gaussian blur
-    if gauss_sd > 0.0:
+    if gauss_sd > 0.0 and fr is not None:
         fr = cv2.GaussianBlur(fr.astype(np.float32), (0,0), gauss_sd).astype(np.uint8)
         
     # Downsample
