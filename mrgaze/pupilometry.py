@@ -521,14 +521,23 @@ def FitPupil(bw, roi, cfg):
     max_perc_inliers = cfg.getfloat('RANSAC','maxinlierperc')
 
     if method == 'RANSAC':
+        
         ellipse = fitellipse.FitEllipse_RANSAC(pnts, max_itts, max_refines, max_perc_inliers, roi)
+
     elif method == 'RANSAC_SUPPORT':
+
         ellipse = fitellipse.FitEllipse_RANSAC_Support(pnts, max_itts, max_refines, max_perc_inliers, roi)        
+
     elif method == 'LSQ':
+
         ellipse = fitellipse.FitEllipse_LeastSquares(pnts, roi)                
+
     elif method == 'HOUGH':
+
         ellipse = fitellipse.FitEllipse_Hough(roi_edges, roi)                
+
     else:
+
         print('* Unknown ellipse fitting method: %s' % method)
         ellipse = ((0,0),(0,0),0)
     
