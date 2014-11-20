@@ -508,8 +508,29 @@ def FitPupil(bw, roi, cfg):
     # Swap columns - pnts are (row, col) and need to be (x,y)
     pnts[:,[0,1]] = pnts[:,[1,0]]
     
-    # RANSAC ellipse fitting to edge points
-    ellipse = fitellipse.FitEllipse_RANSAC(pnts, roi, cfg)
+    # Ellipse fitting to edge points
+    # Three methods supported:
+    # 1. RANSAC with image support (requires grascale ROI)
+    # 2. RANSAC without image support
+    # 3. Least-squares boundary fitting (requires clean segmentation)
+
+    # Extract ellipse fitting parameters
+    method = cfg.get('RANSAC','method')
+    max_itts = cfg.getint('RANSAC','maxiterations')
+    max_refines = cfg.getint('RANSAC','maxrefinements')
+    max_perc_inliers = cfg.getfloat('RANSAC','maxinlierperc')
+
+    if method == 'RANSAC':
+        ellipse = fitellipse.FitEllipse_RANSAC(pnts, max_itts, max_refines, max_perc_inliers, roi)
+    elif method == 'RANSAC_SUPPORT':
+        ellipse = fitellipse.FitEllipse_RANSAC_Support(pnts, max_itts, max_refines, max_perc_inliers, roi)        
+    elif method == 'LSQ':
+        ellipse = fitellipse.FitEllipse_LeastSquares(pnts, roi)                
+    elif method == 'HOUGH':
+        ellipse = fitellipse.FitEllipse_Hough(roi_edges, roi)                
+    else:
+        print('* Unknown ellipse fitting method: %s' % method)
+        ellipse = ((0,0),(0,0),0)
     
     return ellipse
         

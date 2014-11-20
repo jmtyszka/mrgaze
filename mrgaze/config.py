@@ -116,9 +116,10 @@ def InitConfig(config):
     config.set('PUPILSEG','histogram_equalization','False')
 
     config.add_section('RANSAC')
+    config.set('RANSAC','method','RANSAC')
     config.set('RANSAC','maxiterations','5')
     config.set('RANSAC','maxrefinements','3')
-    config.set('RANSAC','maxinlierperc','95')
+    config.set('RANSAC','maxinlierperc','95.0')
     
     config.add_section('LBP')
     config.set('LBP','enabled','True')
