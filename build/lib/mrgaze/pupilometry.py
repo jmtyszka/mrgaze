@@ -362,11 +362,6 @@ def SegmentPupil(roi, cfg):
     # Clamp bright regions to emphasize pupil
     roi = ip.RobustRescale(roi, (0, rescale_thresh))
 
-    # perform another gaussian blur if rescaling and histogram equalization caused too much noise
-    gauss_sd = cfg.getint('PUPILSEG','gauss_sd')
-    if gauss_sd > 0:
-        roi = cv2.GaussianBlur(roi, (3,3), gauss_sd)
-
     if method == 'manual':
         
         # Manual thresholding - ideal for real time ET with UI thresh control
