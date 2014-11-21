@@ -290,7 +290,7 @@ def PupilometryEngine(frame, cascade, cfg):
     glints, glints_mask, roi_noglints = FindGlints(roi, cfg)
     
     # Segment pupil region
-    pupil_bw, roi_rescaled = SegmentPupil(roi_noglints, cfg)
+    pupil_bw, roi_rescaled = SegmentPupil(roi, cfg)
             
     # Fit ellipse to pupil boundary - returns ellipse ROI
     eroi = FitPupil(pupil_bw, roi, cfg)
@@ -360,7 +360,6 @@ def SegmentPupil(roi, cfg):
     
     # Apply Gaussian smoothing
     if sigma > 0.0:
-        print('Gauss blur')
         roi = cv2.GaussianBlur(roi, (0,0), sigma, sigma)
     
     # Estimate pupil diameter in pixels
@@ -376,8 +375,6 @@ def SegmentPupil(roi, cfg):
 
         # Convert percent threshold to pixel intensity threshold
         thresh = int(cfg.getfloat('PUPILSEG','pupilthresholdperc') / 100.0 * 255.0)
-        
-        print('Manual threshold : %d' % thresh)
         
         # Manual thresholding - ideal for real time ET with UI thresh control
         _, blobs = cv2.threshold(roi_rescaled, thresh, 255, cv2.THRESH_BINARY_INV) 
@@ -486,6 +483,7 @@ def FitPupil(bw, roi, cfg):
     pnts[:,[0,1]] = pnts[:,[1,0]]
     
     # Ellipse fitting to edge points
+
     # Methods supported:
     # 1. RANSAC with image support (requires grascale ROI)
     # 2. RANSAC without image support

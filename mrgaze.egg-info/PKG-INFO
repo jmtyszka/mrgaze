@@ -1,7 +1,7 @@
 Metadata-Version: 1.0
 Name: mrgaze
-Version: 0.1.1
-Summary: Real-time pupilometry module
+Version: 0.6
+Summary: Video pupilometry and gaze tracking library
 Home-page: ['https://github.com/jmtyszka/mrgaze']
 Author: ['Mike Tyszka']
 Author-email: ['jmt@caltech.edu']

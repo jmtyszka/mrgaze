@@ -23,7 +23,7 @@ def main():
 
     # Load test eye tracking frame
     print('Loading test frame')
-    test_frame = '/Users/jmt/GitHub/mrgaze/testing/CBIC_Example_1.png'
+    test_frame = '/Users/jmt/GitHub/mrgaze/testing/CBIC_Example_2.png'
     frame = media.LoadImage(test_frame, cfg)
     
     # Init ROI to whole frame

@@ -290,7 +290,7 @@ def PupilometryEngine(frame, cascade, cfg):
     glints, glints_mask, roi_noglints = FindGlints(roi, cfg)
     
     # Segment pupil region
-    pupil_bw, roi_rescaled = SegmentPupil(roi_noglints, cfg)
+    pupil_bw, roi_rescaled = SegmentPupil(roi, cfg)
             
     # Fit ellipse to pupil boundary - returns ellipse ROI
     eroi = FitPupil(pupil_bw, roi, cfg)
@@ -360,7 +360,6 @@ def SegmentPupil(roi, cfg):
     
     # Apply Gaussian smoothing
     if sigma > 0.0:
-        print('Gauss blur')
         roi = cv2.GaussianBlur(roi, (0,0), sigma, sigma)
     
     # Estimate pupil diameter in pixels
@@ -372,26 +371,10 @@ def SegmentPupil(roi, cfg):
     # Saturate all but pupil bounding box area
     roi_rescaled = improc.RobustRescale(roi, (0, pupil_bb_area_perc))
     
-<<<<<<< HEAD
-    # Set the rescale percentile threshold about 25% larger than maximum percent
-    # of ROI estimated to be occupied by pupil
-    rescale_thresh = min(100.0, cfg.getfloat('PUPILSEG','pupil_percmax') * 1.25)
-
-    # perform histrogram equalization if desired
-    if cfg.getboolean('PUPILSEG','histogram_equalization'):
-        roi = cv2.equalizeHist(roi)
-
-    # Clamp bright regions to emphasize pupil
-    roi = ip.RobustRescale(roi, (0, rescale_thresh))
-
-=======
->>>>>>> real-time
     if method == 'manual':
 
         # Convert percent threshold to pixel intensity threshold
         thresh = int(cfg.getfloat('PUPILSEG','pupilthresholdperc') / 100.0 * 255.0)
-        
-        print('Manual threshold : %d' % thresh)
         
         # Manual thresholding - ideal for real time ET with UI thresh control
         _, blobs = cv2.threshold(roi_rescaled, thresh, 255, cv2.THRESH_BINARY_INV) 
@@ -500,37 +483,7 @@ def FitPupil(bw, roi, cfg):
     pnts[:,[0,1]] = pnts[:,[1,0]]
     
     # Ellipse fitting to edge points
-<<<<<<< HEAD
-    # Three methods supported:
-    # 1. RANSAC with image support (requires grascale ROI)
-    # 2. RANSAC without image support
-    # 3. Least-squares boundary fitting (requires clean segmentation)
 
-    # Extract ellipse fitting parameters
-    method = cfg.get('RANSAC','method')
-    max_itts = cfg.getint('RANSAC','maxiterations')
-    max_refines = cfg.getint('RANSAC','maxrefinements')
-    max_perc_inliers = cfg.getfloat('RANSAC','maxinlierperc')
-
-    if method == 'RANSAC':
-        
-        ellipse = fitellipse.FitEllipse_RANSAC(pnts, max_itts, max_refines, max_perc_inliers, roi)
-
-    elif method == 'RANSAC_SUPPORT':
-
-        ellipse = fitellipse.FitEllipse_RANSAC_Support(pnts, max_itts, max_refines, max_perc_inliers, roi)        
-
-    elif method == 'LSQ':
-
-        ellipse = fitellipse.FitEllipse_LeastSquares(pnts, roi)                
-
-    elif method == 'HOUGH':
-
-        ellipse = fitellipse.FitEllipse_Hough(roi_edges, roi)                
-
-    else:
-
-=======
     # Methods supported:
     # 1. RANSAC with image support (requires grascale ROI)
     # 2. RANSAC without image support
@@ -556,7 +509,6 @@ def FitPupil(bw, roi, cfg):
         ellipse = fitellipse.FitEllipse_LeastSquares(pnts, roi)                
 
     else:
->>>>>>> real-time
         print('* Unknown ellipse fitting method: %s' % method)
         ellipse = ((0,0),(0,0),0)
     

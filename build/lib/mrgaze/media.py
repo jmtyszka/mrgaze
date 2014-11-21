@@ -22,17 +22,18 @@ Copyright 2014 California Institute of Technology.
 
 import cv2
 import numpy as np
-from mrgaze import improc as ip
+from mrgaze import improc, mrclean
 from skimage.transform import rotate
 
 
-def ReadVideoFrame(v_in):
-    """ Load a single frame from video stream 
+def LoadVideoFrame(v_in, cfg):
+    """ Load and preprocess a single frame from video stream 
 
     Parameters
     ----------
     v_in : opencv video stream
         video input stream
+    cfg : border/rotate/mrclean/zthresh/downsampling
 
     Returns
     ----
@@ -40,13 +41,21 @@ def ReadVideoFrame(v_in):
         Completion status.
     fr : numpy uint8 array
         Preprocessed video frame.
+    art_power : float
+        Artifact power in frame.
     """
 
-    # Read one frame from stream    
+    # Load one frame
     status, fr = v_in.read()
+    
+    # If frame loaded successfully, preprocess
+    if status:
+        fr, art_power = Preproc(fr, cfg)
+    else:
+        art_power = 0.0
 
-    return status, fr
-
+    return status, fr, art_power
+    
 
 def Preproc(fr, cfg):
     """
@@ -70,6 +79,8 @@ def Preproc(fr, cfg):
     downsampling = cfg.getfloat('VIDEO', 'downsampling')
     border       = cfg.getint('VIDEO', 'border')
     rotate       = cfg.getint('VIDEO', 'rotate')
+    do_mrclean   = cfg.getboolean('ARTIFACTS', 'mrclean')
+    z_thresh     = cfg.getfloat('ARTIFACTS', 'zthresh')
 
     # Preprocesing flags
     perc_range = (1, 99)
@@ -84,18 +95,22 @@ def Preproc(fr, cfg):
     # Trim border first
     fr = TrimBorder(fr, border)
         
+    # Apply optional MR artifact suppression
+    if do_mrclean:
+        fr, art_power = mrclean.MRClean(fr, z_thresh)
+
     # Downsample
     if downsampling > 1:
         fr = Downsample(fr, downsampling)
         
     # Correct for illumination bias
     if bias_correct:
-        bias_field = ip.EstimateBias(fr)
-        fr = ip.Unbias(fr, bias_field)
+        bias_field = improc.EstimateBias(fr)
+        fr = improc.Unbias(fr, bias_field)
 
     # Robust rescale to [0,50] percentile
     # Emphasize darker areas such as pupil
-    fr = ip.RobustRescale(fr, perc_range)
+    fr = improc.RobustRescale(fr, perc_range)
         
     # Finally rotate frame
     fr = RotateFrame(fr, rotate)

@@ -26,14 +26,12 @@ Copyright 2014 California Institute of Technology.
 import numpy as np
 import random
 import cv2
-from skimage.transform import hough_ellipse
 
 #---------------------------------------------
 # Ellipse Fitting Functions
 #---------------------------------------------
 
 def FitEllipse_RANSAC_Support(pnts, roi, max_itts=5, max_refines=3, max_perc_inliers=95.0):
-    
     '''
     Robust ellipse fitting to segmented boundary with image support
     
@@ -162,7 +160,6 @@ def FitEllipse_RANSAC_Support(pnts, roi, max_itts=5, max_refines=3, max_perc_inl
 
 
 def FitEllipse_RANSAC(pnts, roi, max_itts=5, max_refines=3, max_perc_inliers=95.0):
-    
     '''
     Robust ellipse fitting to segmented boundary points
     
@@ -178,7 +175,6 @@ def FitEllipse_RANSAC(pnts, roi, max_itts=5, max_refines=3, max_perc_inliers=95.
         Maximum RANSAC ellipse inlier refinements
     max_perc_inliers : float
         Maximum inlier percentage of total points for convergence
-
         
     Returns
     ----
@@ -261,15 +257,15 @@ def FitEllipse_RANSAC(pnts, roi, max_itts=5, max_refines=3, max_perc_inliers=95.
     
     return best_ellipse
 
-   
+    
 def FitEllipse_RobustLSQ(pnts, roi, max_refines=5, max_perc_inliers=95.0):
     '''
     Iterate ellipse fit on inliers
     
     Parameters
     ----
-    roi_edges : 2D binary image
-        Canny detected edge image
+    pnts : n x 2 array of integers
+        Candidate pupil-iris boundary points from edge detection
     roi : 2D scalar array
         Grayscale image of pupil-iris region for display only
     max_refines : integer
@@ -347,6 +343,7 @@ def FitEllipse_LeastSquares(pnts, roi):
     ----
     pnts : n x 2 array of integers
         Candidate pupil-iris boundary points from edge detection
+>>>>>>> real-time
     roi : 2D scalar array
         Grayscale image of pupil-iris region for display only
         

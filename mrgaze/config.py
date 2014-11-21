@@ -104,29 +104,6 @@ def InitConfig(config):
     config.set('VIDEO','downsampling','1')
     config.set('VIDEO','border','0')
     config.set('VIDEO','rotate','0')
-<<<<<<< HEAD
-    config.set('VIDEO','gauss_sd','0')
-    
-    config.add_section('PUPILSEG')
-    config.set('PUPILSEG','method','otsu')
-    config.set('PUPILSEG','pupil_percmax','25')
-    config.set('PUPILSEG','glint_percmax','1')
-    config.set('PUPILSEG','pupil_threshold','20')
-    config.set('PUPILSEG','k_inpaint', '5')
-    config.set('PUPILSEG','k_dil','5')
-    config.set('PUPILSEG','histogram_equalization','False')
-
-    config.add_section('RANSAC')
-    config.set('RANSAC','method','RANSAC')
-    config.set('RANSAC','maxiterations','5')
-    config.set('RANSAC','maxrefinements','3')
-    config.set('RANSAC','maxinlierperc','95.0')
-    
-    config.add_section('LBP')
-    config.set('LBP','enabled','True')
-    config.set('LBP','minneighbors','40')
-    config.set('LBP','scalefactor','1.05')
-=======
         
     config.add_section('PUPILDETECT')
     config.set('PUPILDETECT','enabled','True')
@@ -145,7 +122,6 @@ def InitConfig(config):
     config.set('PUPILFIT','maxiterations','5')
     config.set('PUPILFIT','maxrefinements','5')
     config.set('PUPILFIT','maxinlierperc','95.0')
->>>>>>> real-time
     
     config.add_section('ARTIFACTS')
     config.set('ARTIFACTS','mrclean','True')

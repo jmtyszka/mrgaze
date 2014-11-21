@@ -22,11 +22,10 @@ Copyright 2014 California Institute of Technology.
 
 import cv2
 import numpy as np
-from mrgaze import improc as ip
+from mrgaze import improc, mrclean
 from skimage.transform import rotate
 
 
-<<<<<<< HEAD
 def LoadVideoFrame(v_in, cfg):
     """ Load and preprocess a single frame from video stream 
 
@@ -46,39 +45,17 @@ def LoadVideoFrame(v_in, cfg):
         Artifact power in frame.
     """
 
-    art_power = 0.0
-
-    status, fr = ReadVideoFrame(v_in)
+    # Load one frame
+    status, fr = v_in.read()
     
+    # If frame loaded successfully, preprocess
     if status:
         fr, art_power = Preproc(fr, cfg)
+    else:
+        art_power = 0.0
 
     return status, fr, art_power
     
-
-=======
->>>>>>> real-time
-def ReadVideoFrame(v_in):
-    """ Load a single frame from video stream 
-
-    Parameters
-    ----------
-    v_in : opencv video stream
-        video input stream
-
-    Returns
-    ----
-    status : boolean
-        Completion status.
-    fr : numpy uint8 array
-        Preprocessed video frame.
-    """
-
-    # Read one frame from stream    
-    status, fr = v_in.read()
-
-    return status, fr
-
 
 def Preproc(fr, cfg):
     """
@@ -102,12 +79,8 @@ def Preproc(fr, cfg):
     downsampling = cfg.getfloat('VIDEO', 'downsampling')
     border       = cfg.getint('VIDEO', 'border')
     rotate       = cfg.getint('VIDEO', 'rotate')
-<<<<<<< HEAD
     do_mrclean   = cfg.getboolean('ARTIFACTS', 'mrclean')
     z_thresh     = cfg.getfloat('ARTIFACTS', 'zthresh')
-    gauss_sd     = cfg.getfloat('VIDEO', 'gauss_sd')
-=======
->>>>>>> real-time
 
     # Preprocesing flags
     perc_range = (1, 99)
@@ -122,32 +95,22 @@ def Preproc(fr, cfg):
     # Trim border first
     fr = TrimBorder(fr, border)
         
-<<<<<<< HEAD
     # Apply optional MR artifact suppression
     if do_mrclean:
-        fr, art_power = mrc.MRClean(fr, z_thresh)
+        fr, art_power = mrclean.MRClean(fr, z_thresh)
 
-    if downsampling > 1:
-        fr = Downsample(fr, downsampling)
-        
-    # Gaussian blur
-    if gauss_sd > 0.0:
-        fr = cv2.GaussianBlur(fr, (3,3), gauss_sd)
-            
-=======
     # Downsample
     if downsampling > 1:
         fr = Downsample(fr, downsampling)
         
->>>>>>> real-time
     # Correct for illumination bias
     if bias_correct:
-        bias_field = ip.EstimateBias(fr)
-        fr = ip.Unbias(fr, bias_field)
+        bias_field = improc.EstimateBias(fr)
+        fr = improc.Unbias(fr, bias_field)
 
     # Robust rescale to [0,50] percentile
     # Emphasize darker areas such as pupil
-    fr = ip.RobustRescale(fr, perc_range)
+    fr = improc.RobustRescale(fr, perc_range)
         
     # Finally rotate frame
     fr = RotateFrame(fr, rotate)
@@ -168,12 +131,7 @@ def Downsample(frame, factor):
     return frame
     
 
-<<<<<<< HEAD
-
-def LoadImage(image_file, border=0):
-=======
 def LoadImage(image_file, cfg):
->>>>>>> real-time
     """
     Load an image from a file and strip the border.
 
