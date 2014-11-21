@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup ( name = 'mrgaze',
-        version = '0.1.1',
+        version = '0.2',
         description = 'Real-time pupilometry module',
         author = ['Mike Tyszka'],
         author_email = ['jmt@caltech.edu'],
