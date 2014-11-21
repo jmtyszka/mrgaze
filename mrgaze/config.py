@@ -101,9 +101,10 @@ def InitConfig(config):
     config.set('VIDEO','inputextension','.mpg')
     config.set('VIDEO','outputextension','.mov')
     config.set('VIDEO','inputfps','29.97')
-    config.set('VIDEO','downsampling','4')
-    config.set('VIDEO','border','16')
+    config.set('VIDEO','downsampling','1')
+    config.set('VIDEO','border','0')
     config.set('VIDEO','rotate','0')
+<<<<<<< HEAD
     config.set('VIDEO','gauss_sd','0')
     
     config.add_section('PUPILSEG')
@@ -125,6 +126,26 @@ def InitConfig(config):
     config.set('LBP','enabled','True')
     config.set('LBP','minneighbors','40')
     config.set('LBP','scalefactor','1.05')
+=======
+        
+    config.add_section('PUPILDETECT')
+    config.set('PUPILDETECT','enabled','True')
+    config.set('PUPILDETECT','specificity','40')
+    config.set('PUPILDETECT','scalefactor','1.05')
+    
+    config.add_section('PUPILSEG')
+    config.set('PUPILSEG','method','manual')
+    config.set('PUPILSEG','pupildiameterperc','25.0')
+    config.set('PUPILSEG','glintdiameterperc','2.0')
+    config.set('PUPILSEG','pupilthresholdperc','50.0')
+    config.set('PUPILSEG','sigma','0.0')
+
+    config.add_section('PUPILFIT')
+    config.set('PUPILFIT','method','ROBUST_LSQ')
+    config.set('PUPILFIT','maxiterations','5')
+    config.set('PUPILFIT','maxrefinements','5')
+    config.set('PUPILFIT','maxinlierperc','95.0')
+>>>>>>> real-time
     
     config.add_section('ARTIFACTS')
     config.set('ARTIFACTS','mrclean','True')
@@ -136,7 +157,7 @@ def InitConfig(config):
     config.set('CALIBRATION','calibrate','False')
     config.set('CALIBRATION','targetx','[0.5, 0.1, 0.9, 0.1, 0.1, 0.5, 0.1, 0.9, 0.5]')
     config.set('CALIBRATION','targety','[0.5, 0.9, 0.9, 0.1, 0.9, 0.9, 0.5, 0.5, 0.1]')
-    config.set('CALIBRATION','heatpercmin','5')
+    config.set('CALIBRATION','heatpercmin','5.0')
     config.set('CALIBRATION','heatpercmax','95')
     config.set('CALIBRATION','heatsigma','2.0')
 

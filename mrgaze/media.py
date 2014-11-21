@@ -22,11 +22,11 @@ Copyright 2014 California Institute of Technology.
 
 import cv2
 import numpy as np
-from mrgaze import mrclean as mrc
 from mrgaze import improc as ip
 from skimage.transform import rotate
 
 
+<<<<<<< HEAD
 def LoadVideoFrame(v_in, cfg):
     """ Load and preprocess a single frame from video stream 
 
@@ -56,6 +56,8 @@ def LoadVideoFrame(v_in, cfg):
     return status, fr, art_power
     
 
+=======
+>>>>>>> real-time
 def ReadVideoFrame(v_in):
     """ Load a single frame from video stream 
 
@@ -96,13 +98,16 @@ def Preproc(fr, cfg):
         Artifact power in frame.
     """
     
-    # Extract config parameters
+    # Extract video processing parameters
     downsampling = cfg.getfloat('VIDEO', 'downsampling')
     border       = cfg.getint('VIDEO', 'border')
     rotate       = cfg.getint('VIDEO', 'rotate')
+<<<<<<< HEAD
     do_mrclean   = cfg.getboolean('ARTIFACTS', 'mrclean')
     z_thresh     = cfg.getfloat('ARTIFACTS', 'zthresh')
     gauss_sd     = cfg.getfloat('VIDEO', 'gauss_sd')
+=======
+>>>>>>> real-time
 
     # Preprocesing flags
     perc_range = (1, 99)
@@ -117,6 +122,7 @@ def Preproc(fr, cfg):
     # Trim border first
     fr = TrimBorder(fr, border)
         
+<<<<<<< HEAD
     # Apply optional MR artifact suppression
     if do_mrclean:
         fr, art_power = mrc.MRClean(fr, z_thresh)
@@ -128,6 +134,12 @@ def Preproc(fr, cfg):
     if gauss_sd > 0.0:
         fr = cv2.GaussianBlur(fr, (3,3), gauss_sd)
             
+=======
+    # Downsample
+    if downsampling > 1:
+        fr = Downsample(fr, downsampling)
+        
+>>>>>>> real-time
     # Correct for illumination bias
     if bias_correct:
         bias_field = ip.EstimateBias(fr)
@@ -150,14 +162,18 @@ def Downsample(frame, factor):
     # Calculate downsampled matrix
     nxd, nyd = int(nx/factor), int(ny/factor)
     
-    # Downsample
-    frame = cv2.resize(frame, (nxd, nyd))
+    # Downsample with area averaging
+    frame = cv2.resize(frame, (nxd, nyd), interpolation=cv2.cv.CV_INTER_AREA)
 
     return frame
     
 
+<<<<<<< HEAD
 
 def LoadImage(image_file, border=0):
+=======
+def LoadImage(image_file, cfg):
+>>>>>>> real-time
     """
     Load an image from a file and strip the border.
 
@@ -165,8 +181,7 @@ def LoadImage(image_file, border=0):
     ----------
     image_file : string
         File name of image
-    border : integer
-        Pixel width of border to strip [0].
+    cfg : 
         
 
     Returns
@@ -183,18 +198,14 @@ def LoadImage(image_file, border=0):
     frame = np.array([])
 
     # load test frame image
-    try:
-        frame = cv2.imread(image_file)
-    except:
+    frame = cv2.imread(image_file)
+
+    if frame.size == 0:    
         print('Problem opening %s to read' % image_file)
         return frame
-        
-    # Convert to grayscale image if necessary
-    if frame.shape[2] == 3:
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     
-    # Trim border (if requested)
-    frame = TrimBorder(frame, border)
+    # Preprocess frame
+    frame, _ = Preproc(frame, cfg)
     
     return frame
 

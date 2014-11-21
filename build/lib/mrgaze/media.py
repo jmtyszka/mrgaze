@@ -22,86 +22,85 @@ Copyright 2014 California Institute of Technology.
 
 import cv2
 import numpy as np
-from mrgaze import mrclean as mrc
 from mrgaze import improc as ip
 from skimage.transform import rotate
 
 
-def LoadVideoFrame(v_in, cfg):
-    """
-    Load and preprocess a single frame from a video stream
-    
+def ReadVideoFrame(v_in):
+    """ Load a single frame from video stream 
+
     Parameters
     ----------
     v_in : opencv video stream
         video input stream
-    scale : float
-        downsampling scale factor [1.0]
-    border : int
-        pixel border width to strip
-    rotate : int
-        rotation in
-        
+
     Returns
     ----
     status : boolean
         Completion status.
     fr : numpy uint8 array
         Preprocessed video frame.
+    """
+
+    # Read one frame from stream    
+    status, fr = v_in.read()
+
+    return status, fr
+
+
+def Preproc(fr, cfg):
+    """
+    Preprocess a single frame 
+    
+    Parameters
+    ----------
+    fr : numpy uint8 array
+        raw video frame.
+    cfg : border/rotate/mrclean/zthresh/downsampling
+        
+    Returns
+    ----
+    fr : numpy uint8 array
+        Preprocessed video frame.
     art_power : float
         Artifact power in frame.
     """
     
-    # Extract config parameters
+    # Extract video processing parameters
     downsampling = cfg.getfloat('VIDEO', 'downsampling')
     border       = cfg.getint('VIDEO', 'border')
     rotate       = cfg.getint('VIDEO', 'rotate')
-    do_mrclean   = cfg.getboolean('ARTIFACTS', 'mrclean')
-    z_thresh     = cfg.getfloat('ARTIFACTS', 'zthresh')
-    
+
     # Preprocesing flags
-    gauss_sd = 0.0
     perc_range = (1, 99)
     bias_correct = False
     
     # Init returned artifact power
     art_power = 0.0    
-    
-    # Read one frame from stream    
-    status, fr = v_in.read()
-    
-    if status:
         
-        # Convert to grayscale
-        fr = cv2.cvtColor(fr, cv2.COLOR_RGB2GRAY)
+    # Convert to grayscale
+    fr = cv2.cvtColor(fr, cv2.COLOR_RGB2GRAY)
         
-        # Trim border first
-        fr = TrimBorder(fr, border)
+    # Trim border first
+    fr = TrimBorder(fr, border)
         
-        # Apply optional MR artifact suppression
-        if do_mrclean:
-            fr, art_power = mrc.MRClean(fr, z_thresh)
+    # Downsample
+    if downsampling > 1:
+        fr = Downsample(fr, downsampling)
+        
+    # Correct for illumination bias
+    if bias_correct:
+        bias_field = ip.EstimateBias(fr)
+        fr = ip.Unbias(fr, bias_field)
 
-        if downsampling > 1:
-            fr = Downsample(fr, downsampling)
+    # Robust rescale to [0,50] percentile
+    # Emphasize darker areas such as pupil
+    fr = ip.RobustRescale(fr, perc_range)
         
-        # Gaussian blur
-        if gauss_sd > 0.0:
-            fr = cv2.GaussianBlur(fr, (3,3), gauss_sd)
-            
-        # Correct for illumination bias
-        if bias_correct:
-            bias_field = ip.EstimateBias(fr)
-            fr = ip.Unbias(fr, bias_field)
-
-        # Robust rescale to [0,50] percentile
-        # Emphasize darker areas such as pupil
-        fr = ip.RobustRescale(fr, perc_range)
-        
-        # Finally rotate frame
-        fr = RotateFrame(fr, rotate)
+    # Finally rotate frame
+    fr = RotateFrame(fr, rotate)
     
-    return status, fr, art_power
+    return fr, art_power
 
 
 def Downsample(frame, factor):
@@ -111,13 +110,13 @@ def Downsample(frame, factor):
     # Calculate downsampled matrix
     nxd, nyd = int(nx/factor), int(ny/factor)
     
-    # Downsample
-    frame = cv2.resize(frame, (nxd, nyd))
+    # Downsample with area averaging
+    frame = cv2.resize(frame, (nxd, nyd), interpolation=cv2.cv.CV_INTER_AREA)
 
     return frame
     
 
-def LoadImage(image_file, border=0):
+def LoadImage(image_file, cfg):
     """
     Load an image from a file and strip the border.
 
@@ -125,8 +124,7 @@ def LoadImage(image_file, border=0):
     ----------
     image_file : string
         File name of image
-    border : integer
-        Pixel width of border to strip [0].
+    cfg : 
         
 
     Returns
@@ -143,18 +141,14 @@ def LoadImage(image_file, border=0):
     frame = np.array([])
 
     # load test frame image
-    try:
-        frame = cv2.imread(image_file)
-    except:
+    frame = cv2.imread(image_file)
+
+    if frame.size == 0:    
         print('Problem opening %s to read' % image_file)
         return frame
-        
-    # Convert to grayscale image if necessary
-    if frame.shape[2] == 3:
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     
-    # Trim border (if requested)
-    frame = TrimBorder(frame, border)
+    # Preprocess frame
+    frame, _ = Preproc(frame, cfg)
     
     return frame
 

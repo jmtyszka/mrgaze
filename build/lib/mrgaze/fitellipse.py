@@ -26,22 +26,29 @@ Copyright 2014 California Institute of Technology.
 import numpy as np
 import random
 import cv2
+from skimage.transform import hough_ellipse
 
 #---------------------------------------------
-# RANSACE Ellipse Fitting Functions
+# Ellipse Fitting Functions
 #---------------------------------------------
 
-def FitEllipse_RANSAC(pnts, roi, cfg):
+def FitEllipse_RANSAC_Support(pnts, roi, max_itts=5, max_refines=3, max_perc_inliers=95.0):
     
     '''
-    Robust ellipse fitting to pupil-iris boundary
+    Robust ellipse fitting to segmented boundary with image support
     
     Parameters
     ----
     pnts : n x 2 array of integers
         Candidate pupil-iris boundary points from edge detection
     roi : 2D scalar array
-        Grayscale image of pupil-iris region
+        Grayscale image of pupil-iris region for support calculation.
+    max_itts : integer
+        Maximum RANSAC ellipse candidate iterations
+    max_refines : integer
+        Maximum RANSAC ellipse inlier refinements
+    max_perc_inliers : float
+        Maximum inlier percentage of total points for convergence
         
     Returns
     ----
@@ -55,19 +62,6 @@ def FitEllipse_RANSAC(pnts, roi, cfg):
     
     # Suppress invalid values
     np.seterr(invalid='ignore')
-    
-    #
-    # RANSAC parameters
-    #
-    
-    # Maximum number of main iterations (random samples of 5 points)
-    max_itts = cfg.getint('RANSAC','maxiterations')
-    
-    # Maximum number of refinements
-    max_refines = cfg.getint('RANSAC','maxrefinements')
-    
-    # Maximum percentage of inlier points
-    max_perc_inliers = cfg.getfloat('RANSAC','maxinlierperc')
     
     # Maximum normalized error squared for inliers
     max_norm_err_sq = 4.0
@@ -102,7 +96,7 @@ def FitEllipse_RANSAC(pnts, roi, cfg):
         # Fit ellipse to points        
         ellipse = cv2.fitEllipse(sample_pnts)
         
-        # Dot product of ellipse and image gradients
+        # Dot product of ellipse and image gradients for support calculation
         grad_dot = EllipseImageGradDot(sample_pnts, ellipse, dIdx, dIdy)
         
         # Skip this iteration if one or more dot products are <= 0
@@ -157,8 +151,8 @@ def FitEllipse_RANSAC(pnts, roi, cfg):
         else:
             
             # Ellipse gradients did not match image gradients
-            support = 0
-            perc_inliers = 0
+            support = 0.0
+            perc_inliers = 0.0
 
         if perc_inliers > max_perc_inliers:
             if verbose: print('Break Max Perc Inliers')
@@ -167,6 +161,214 @@ def FitEllipse_RANSAC(pnts, roi, cfg):
     return best_ellipse
 
 
+def FitEllipse_RANSAC(pnts, roi, max_itts=5, max_refines=3, max_perc_inliers=95.0):
+    
+    '''
+    Robust ellipse fitting to segmented boundary points
+    
+    Parameters
+    ----
+    pnts : n x 2 array of integers
+        Candidate pupil-iris boundary points from edge detection
+    roi : 2D scalar array
+        Grayscale image of pupil-iris region for display only
+    max_itts : integer
+        Maximum RANSAC ellipse candidate iterations
+    max_refines : integer
+        Maximum RANSAC ellipse inlier refinements
+    max_perc_inliers : float
+        Maximum inlier percentage of total points for convergence
+
+        
+    Returns
+    ----
+    best_ellipse : tuple of tuples
+        Best fitted ellipse parameters ((x0, y0), (a,b), theta)
+    '''
+    
+    # Output flags
+    do_graphic = False
+    verbose    = False
+    
+    # Suppress invalid values
+    np.seterr(invalid='ignore')
+    
+    # Maximum normalized error squared for inliers
+    max_norm_err_sq = 4.0
+    
+    # Tiny circle init
+    best_ellipse = ((0,0),(1e-6,1e-6),0)
+
+    # Create display window and init overlay image
+    if do_graphic:
+        cv2.namedWindow('RANSAC', cv2.WINDOW_AUTOSIZE)
+    
+    # Count pnts (n x 2)
+    n_pnts = pnts.shape[0]
+    
+    # Break if too few points to fit ellipse (RARE)
+    if n_pnts < 5:
+        return best_ellipse
+    
+    # Ransac iterations
+    for itt in range(0,max_itts):
+        
+        # Select 5 points at random
+        sample_pnts = np.asarray(random.sample(pnts, 5))
+
+        # Fit ellipse to points        
+        ellipse = cv2.fitEllipse(sample_pnts)
+        
+        # Refine inliers iteratively
+        for refine in range(0,max_refines):
+            
+            # Calculate normalized errors for all points
+            norm_err = EllipseNormError(pnts, ellipse)
+            
+            # Identify inliers
+            inliers = np.nonzero(norm_err**2 < max_norm_err_sq)[0]
+            
+            # Update inliers set
+            inlier_pnts = pnts[inliers]            
+            
+            # Protect ellipse fitting from too few points
+            if inliers.size < 5:
+                if verbose: print('Break < 5 Inliers (During Refine)')
+                break
+            
+            # Fit ellipse to refined inlier set
+            ellipse = cv2.fitEllipse(inlier_pnts)
+            
+        # End refinement            
+            
+        # Count inliers (n x 2)
+        n_inliers    = inliers.size
+        perc_inliers = (n_inliers * 100.0) / n_pnts
+
+        # Update overlay image and display
+        if do_graphic:
+            overlay = cv2.cvtColor(roi/2,cv2.COLOR_GRAY2RGB)
+            OverlayRANSACFit(overlay, pnts, inlier_pnts, ellipse)
+            cv2.imshow('RANSAC', overlay)
+            cv2.waitKey(5)        
+
+        # Update best ellipse
+        best_ellipse = ellipse
+        
+        if perc_inliers > max_perc_inliers:
+            if verbose: print('Break Max Perc Inliers')
+            break
+    
+    return best_ellipse
+
+   
+def FitEllipse_RobustLSQ(pnts, roi, max_refines=5, max_perc_inliers=95.0):
+    '''
+    Iterate ellipse fit on inliers
+    
+    Parameters
+    ----
+    roi_edges : 2D binary image
+        Canny detected edge image
+    roi : 2D scalar array
+        Grayscale image of pupil-iris region for display only
+    max_refines : integer
+        Maximum number of inlier refinements
+    max_perc_inliers : float
+        Maximum inlier percentage of total points for convergence
+        
+    Returns
+    ----
+    best_ellipse : tuple of tuples
+        Best fitted ellipse parameters ((x0, y0), (a,b), theta)
+    '''
+    
+    # Output flags
+    verbose = True
+    
+    # Suppress invalid values
+    np.seterr(invalid='ignore')
+    
+    # Maximum normalized error squared for inliers
+    max_norm_err_sq = 4.0
+    
+    # Tiny circle init
+    best_ellipse = ((0,0),(1e-6,1e-6),0)
+
+    # Count edge points    
+    n_pnts = pnts.shape[0]
+
+    # Break if too few points to fit ellipse (RARE)
+    if n_pnts < 5:
+        return best_ellipse
+        
+    # Fit ellipse to points        
+    ellipse = cv2.fitEllipse(pnts)
+        
+    # Refine inliers iteratively
+    for refine in range(0, max_refines):
+            
+        # Calculate normalized errors for all points
+        norm_err = EllipseNormError(pnts, ellipse)
+            
+        # Identify inliers
+        inliers = np.nonzero(norm_err**2 < max_norm_err_sq)[0]
+            
+        # Update inliers set
+        inlier_pnts = pnts[inliers]            
+            
+        # Protect ellipse fitting from too few points
+        if inliers.size < 5:
+            if verbose: print('Break < 5 Inliers (During Refine)')
+            break
+            
+        # Fit ellipse to refined inlier set
+        ellipse = cv2.fitEllipse(inlier_pnts)
+            
+        # Count inliers (n x 2)
+        n_inliers    = inliers.size
+        perc_inliers = (n_inliers * 100.0) / n_pnts
+
+        # Update best ellipse
+        best_ellipse = ellipse
+        
+        if perc_inliers > max_perc_inliers:
+            if verbose: print('Break > maximum inlier percentage')
+            break
+    
+    return best_ellipse
+   
+    
+def FitEllipse_LeastSquares(pnts, roi):
+    '''
+    Simple least-squares ellipse fit to boundary points
+    
+    Parameters
+    ----
+    pnts : n x 2 array of integers
+        Candidate pupil-iris boundary points from edge detection
+    roi : 2D scalar array
+        Grayscale image of pupil-iris region for display only
+        
+    Returns
+    ----
+    best_ellipse : tuple of tuples
+        Best fitted ellipse parameters ((x0, y0), (a,b), theta)
+    '''
+    
+    # Tiny circle init
+    best_ellipse = ((0,0),(1e-6,1e-6),0)
+
+    # Break if too few points to fit ellipse (RARE)
+    if pnts.shape[0] < 5:
+        return best_ellipse
+    
+    # Call OpenCV ellipse fitting
+    best_ellipse = cv2.fitEllipse(pnts)
+ 
+    return best_ellipse
+ 
+    
 def EllipseError(pnts, ellipse):
     """
     Ellipse fit error function

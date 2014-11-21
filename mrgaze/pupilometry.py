@@ -32,9 +32,8 @@ import time
 import cv2
 import numpy as np
 import scipy.ndimage as spi
-from scipy.cluster.vq import kmeans, whiten, vq
-from mrgaze import media, utils, fitellipse
-from mrgaze import improc as ip
+from mrgaze import media, utils, fitellipse, improc
+
 
 def VideoPupilometry(data_dir, subj_sess, v_stub, cfg):
     """
@@ -250,10 +249,10 @@ def PupilometryEngine(frame, cascade, cfg):
     x0, x1, y0, y1 = 0, frame.shape[1], 0, frame.shape[0]
 
     # Shall we use the classifier at all, or whole frame?
-    if cfg.getboolean('LBP', 'enabled'):
+    if cfg.getboolean('PUPILDETECT', 'enabled'):
         
-        min_neighbors = cfg.getint('LBP','minneighbors')
-        scale_factor  = cfg.getfloat('LBP','scalefactor')
+        min_neighbors = cfg.getint('PUPILDETECT','specificity')
+        scale_factor  = cfg.getfloat('PUPILDETECT','scalefactor')
         
         # Find pupils in frame
         pupils = cascade.detectMultiScale(image=frame,
@@ -282,16 +281,28 @@ def PupilometryEngine(frame, cascade, cfg):
     roi_rect = (x0,y0),(x1,y1)
         
     # Extract pupil ROI (note row,col indexing of image array)
-    pupil_roi = frame[y0:y1,x0:x1]
+    roi = frame[y0:y1,x0:x1]
     
-    # Segment pupil intelligently - also return glint mask
-    pupil_bw, glint_mask, roi_rescaled = SegmentPupil(pupil_roi, cfg)
+    ###################
+    # BEGIN ENGINE CORE
+    
+    # Find glint(s) in frame
+    glints, glints_mask, roi_noglints = FindGlints(roi, cfg)
+    
+    # Segment pupil region
+    pupil_bw, roi_rescaled = SegmentPupil(roi_noglints, cfg)
             
     # Fit ellipse to pupil boundary - returns ellipse ROI
-    eroi = FitPupil(pupil_bw, pupil_roi, cfg)
+    eroi = FitPupil(pupil_bw, roi, cfg)
             
     # Add ROI offset to ellipse center
     pupil_ellipse = (eroi[0][0]+x0, eroi[0][1]+y0),eroi[1], eroi[2]
+    
+    # Identify best single glint
+    glint = FindBestGlint(glints, pupil_ellipse)
+    
+    # END ENGINE CORE
+    ##################
         
     # Check for unusually high eccentricity
     if fitellipse.Eccentricity(pupil_ellipse) > 0.8:
@@ -302,9 +313,6 @@ def PupilometryEngine(frame, cascade, cfg):
         pupil_ellipse = ((np.nan, np.nan), (np.nan, np.nan), np.nan)
         roi_rect = (np.nan, np.nan), (np.nan, np.nan)
         glint = (np.nan, np.nan)
-        
-    # TODO: find best glint candidate in glint mask
-    glint = FindBestGlint(glint_mask, pupil_ellipse)
     
     # RGB version of preprocessed frame for output video
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
@@ -318,7 +326,7 @@ def PupilometryEngine(frame, cascade, cfg):
         if cfg.getboolean('OUTPUT', 'graphics'):
         
             # Create composite image of various stages of pupil detection
-            seg_gray = np.hstack((pupil_roi, pupil_bw * 255, glint_mask * 255, roi_rescaled))
+            seg_gray = np.hstack((roi, pupil_bw * 255, glints_mask * 255, roi_rescaled))
             cv2.imshow('Segmentation', seg_gray)
             cv2.imshow('Pupilometry', frame_rgb)
             cv2.waitKey(5)
@@ -329,6 +337,7 @@ def PupilometryEngine(frame, cascade, cfg):
 def SegmentPupil(roi, cfg):
     """
     Segment pupil within pupil-iris ROI
+    ROI should have been rescaled 
     
     Arguments
     ----
@@ -341,16 +350,29 @@ def SegmentPupil(roi, cfg):
     ----
     pupil_bw : 2D numpy uint8 array
         Binary thresholded version of ROI image
-    glint_mask : 2D numpy uint8 array
-        Bright region mask used by glint removal
+    roi_rescaled : 2D numpy uint8 array
+        Rescaled version of ROI with bright regions saturated
     """
 
-    # Get config parameters
+    # Get segmentation parameters
     method = cfg.get('PUPILSEG','method')
-
-    # Remove glints if present - helps RANSAC stability
-    roi, glint_mask = RemoveGlint(roi, cfg)
+    sigma = cfg.getfloat('PUPILSEG','sigma')
     
+    # Apply Gaussian smoothing
+    if sigma > 0.0:
+        print('Gauss blur')
+        roi = cv2.GaussianBlur(roi, (0,0), sigma, sigma)
+    
+    # Estimate pupil diameter in pixels
+    pupil_d = int(cfg.getfloat('PUPILSEG','pupildiameterperc') * roi.shape[0] / 100.0)
+    
+    # Estimate pupil bounding box area in pixels
+    pupil_bb_area_perc = pupil_d * pupil_d / float(roi.size) * 100.0
+    
+    # Saturate all but pupil bounding box area
+    roi_rescaled = improc.RobustRescale(roi, (0, pupil_bb_area_perc))
+    
+<<<<<<< HEAD
     # Set the rescale percentile threshold about 25% larger than maximum percent
     # of ROI estimated to be occupied by pupil
     rescale_thresh = min(100.0, cfg.getfloat('PUPILSEG','pupil_percmax') * 1.25)
@@ -362,43 +384,26 @@ def SegmentPupil(roi, cfg):
     # Clamp bright regions to emphasize pupil
     roi = ip.RobustRescale(roi, (0, rescale_thresh))
 
+=======
+>>>>>>> real-time
     if method == 'manual':
+
+        # Convert percent threshold to pixel intensity threshold
+        thresh = int(cfg.getfloat('PUPILSEG','pupilthresholdperc') / 100.0 * 255.0)
+        
+        print('Manual threshold : %d' % thresh)
         
         # Manual thresholding - ideal for real time ET with UI thresh control
-        
-        thresh = cfg.getint('PUPILSEG','pupil_threshold')
-        _, blobs = cv2.threshold(roi, thresh, 255, cv2.THRESH_BINARY_INV) 
+        _, blobs = cv2.threshold(roi_rescaled, thresh, 255, cv2.THRESH_BINARY_INV) 
     
     elif method == 'otsu':
-
-        # Binary threshold of ROI using Ostu's method
-        thresh, blobs = cv2.threshold(roi, 128, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
-    
-    elif method == 'kmeans':
         
-        # Number of clusters to shoot for
-        K = 4
-        
-        # Flatten and whiten ROI pixels
-        data = whiten(roi.flatten())
-        
-        # 1D k-means clustering of intensity values
-        centroids, _ = kmeans(data, K)
-        
-        # Assume minimum valued centroid represents pupil pixels
-        pupil_idx = np.argmin(centroids)
-        
-        # Assign all pixels to a cluster
-        idx, _ = vq(data, centroids)
-        
-        idx = np.reshape(idx, roi.shape)
-        
-        # Create mask for minimum centroid pixels
-        blobs = np.uint8(idx == pupil_idx) * 255
+        # Binary threshold of rescaled ROI using Ostu's method
+        thresh, blobs = cv2.threshold(roi_rescaled, 128, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
         
     # Morphological opening (circle 5 pixels diameter)
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(5,5))
-    blobs = cv2.morphologyEx(blobs, cv2.MORPH_OPEN, kernel)
+    # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(5,5))
+    # blobs = cv2.morphologyEx(blobs, cv2.MORPH_OPEN, kernel)
         
     # Label connected components - one should be the pupil
     labels, n_labels = spi.measurements.label(blobs)
@@ -412,63 +417,49 @@ def SegmentPupil(roi, cfg):
     # Extract blob with largest area
     pupil_bw = np.uint8(labels == pupil_label)
         
-    return pupil_bw, glint_mask, roi
+    return pupil_bw, roi_rescaled
     
 
-def RemoveGlint(roi, cfg):
+def FindGlints(roi, cfg):
     '''
-    Remove small bright areas from pupil/iris ROI
+    Identify small bright objects in ROI
+    ROI should be unscaled and unblurred, since we assume glints
+    are saturated and have maximum intensity (255 in uint8)
     
     Arguments
     ----
     roi : 2D numpy uint8 array
         Pupil/iris ROI image
     cfg : configuration object
-        Configuration parameters
+        Configuration parameters including fractional glint diameter estimate
     
     Returns
     ----
-    roi_noglint : 2D numpy uint8 array
-        Pupil/iris ROI without small bright areas
-    glint_mask : 2D numpy uint8 array
+    glints : float array
+        N x 2 array of glint centroids
+    glints_mask : 2D numpy uint8 array
         Bright region mask used by glint removal
+    roi_noglints : 2D numpy uint8 array
+        Pupil/iris ROI without small bright areas
     '''
 
-    # Flag for glint removal by inpainting
-    inpaint = True
-    
-    # Maximum percent area of ROI occupied by glint(s)
-    # Typically around 1%
-    percmax = cfg.getfloat('PUPILSEG','glint_percmax')
+    # Estimated glint diameters in pixels
+    glint_d = int(cfg.getfloat('PUPILSEG','glintdiameterperc') * roi.shape[0] / 100.0)
+    if glint_d < 1: glint_d = 1
 
-    # Kernel sizes
-    k_dil = cfg.getint('PUPILSEG','k_dil')
-    k_inpaint = cfg.getint('PUPILSEG','k_inpaint')
+    # Structuring element on scale of glint    
+    # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(glint_d, glint_d))
 
-    # Determine lower threshold for brightest pixels
-    # Note inversion of glint fractional area for percentile mapping
-    glint_thresh = np.percentile(roi, 100-percmax)
-    
-    # Inpainting mask
-    mask = np.uint8(roi >= glint_thresh)
-    
-    # Dilate
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(k_dil,k_dil))
-    glint_mask = cv2.morphologyEx(mask, cv2.MORPH_DILATE, kernel)
-    
-    # Remove bright regions
-    if inpaint:
-        
-        # Inpaint bright regions - higher quality glint removal
-        roi_noglint = cv2.inpaint(roi, glint_mask, k_inpaint, cv2.INPAINT_NS)
+    # Binarize maximum intensity pixels
+    glints_mask = np.uint8(roi == 255)
 
-    else:
-
-        # Zero out bright regions
-        # Note: this will introduce edge artifacts around glints
-        roi_noglint = roi * (1 - glint_mask)
-        
-    return roi_noglint, glint_mask
+    # Identify glint regions and return centroids
+    glints = np.array([[0.0, 0.0]])
+    
+    # Remove glints from ROI
+    roi_noglints = roi * (1 - glints_mask)
+    
+    return glints, glints_mask, roi_noglints
 
 
 def FindBestGlint(glint_mask, pupil_ellipse):
@@ -509,6 +500,7 @@ def FitPupil(bw, roi, cfg):
     pnts[:,[0,1]] = pnts[:,[1,0]]
     
     # Ellipse fitting to edge points
+<<<<<<< HEAD
     # Three methods supported:
     # 1. RANSAC with image support (requires grascale ROI)
     # 2. RANSAC without image support
@@ -538,6 +530,33 @@ def FitPupil(bw, roi, cfg):
 
     else:
 
+=======
+    # Methods supported:
+    # 1. RANSAC with image support (requires grascale ROI)
+    # 2. RANSAC without image support
+    # 3. Robust least-squares
+    # 4. Least-squares (requires clean segmentation)
+
+    # Extract ellipse fitting parameters
+    method = cfg.get('PUPILFIT','method')
+    max_itts = cfg.getint('PUPILFIT','maxiterations')
+    max_refines = cfg.getint('PUPILFIT','maxrefinements')
+    max_perc_inliers = cfg.getfloat('PUPILFIT','maxinlierperc')
+
+    if method == 'RANSAC_SUPPORT':
+        ellipse = fitellipse.FitEllipse_RANSAC_Support(pnts, roi, max_itts, max_refines, max_perc_inliers)        
+    
+    elif method == 'RANSAC':
+        ellipse = fitellipse.FitEllipse_RANSAC(pnts, roi, max_itts, max_refines, max_perc_inliers)
+
+    elif method == 'ROBUST_LSQ':
+        ellipse = fitellipse.FitEllipse_RobustLSQ(pnts, roi, max_refines, max_perc_inliers)
+        
+    elif method == 'LSQ':
+        ellipse = fitellipse.FitEllipse_LeastSquares(pnts, roi)                
+
+    else:
+>>>>>>> real-time
         print('* Unknown ellipse fitting method: %s' % method)
         ellipse = ((0,0),(0,0),0)
     
