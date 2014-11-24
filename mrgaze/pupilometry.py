@@ -250,7 +250,6 @@ def PupilometryEngine(frame, cascade, cfg):
 
     # Shall we use the classifier at all, or whole frame?
     if cfg.getboolean('PUPILDETECT', 'enabled'):
-        
         min_neighbors = cfg.getint('PUPILDETECT','specificity')
         scale_factor  = cfg.getfloat('PUPILDETECT','scalefactor')
         
@@ -288,7 +287,7 @@ def PupilometryEngine(frame, cascade, cfg):
     
     # Find glint(s) in frame
     glints, glints_mask, roi_noglints = FindGlints(roi, cfg)
-    
+
     # Segment pupil region
     pupil_bw, roi_rescaled = SegmentPupil(roi, cfg)
             
@@ -496,16 +495,16 @@ def FitPupil(bw, roi, cfg):
     max_perc_inliers = cfg.getfloat('PUPILFIT','maxinlierperc')
 
     if method == 'RANSAC_SUPPORT':
-        ellipse = fitellipse.FitEllipse_RANSAC_Support(pnts, roi, max_itts, max_refines, max_perc_inliers)        
+        ellipse = fitellipse.FitEllipse_RANSAC_Support(pnts, roi, cfg, max_itts, max_refines, max_perc_inliers)        
     
     elif method == 'RANSAC':
-        ellipse = fitellipse.FitEllipse_RANSAC(pnts, roi, max_itts, max_refines, max_perc_inliers)
+        ellipse = fitellipse.FitEllipse_RANSAC(pnts, roi, cfg, max_itts, max_refines, max_perc_inliers)
 
     elif method == 'ROBUST_LSQ':
-        ellipse = fitellipse.FitEllipse_RobustLSQ(pnts, roi, max_refines, max_perc_inliers)
+        ellipse = fitellipse.FitEllipse_RobustLSQ(pnts, roi, cfg, max_refines, max_perc_inliers)
         
     elif method == 'LSQ':
-        ellipse = fitellipse.FitEllipse_LeastSquares(pnts, roi)                
+        ellipse = fitellipse.FitEllipse_LeastSquares(pnts, roi, cfg)                
 
     else:
         print('* Unknown ellipse fitting method: %s' % method)
