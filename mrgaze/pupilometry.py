@@ -323,13 +323,12 @@ def PupilometryEngine(frame, cascade, cfg):
         # Create RGB overlay of pupilometry on ROI
         frame_rgb = OverlayPupil(frame_rgb, pupil_ellipse, roi_rect, glint)
 
-        if cfg.getboolean('OUTPUT', 'graphics'):
-        
-            # Create composite image of various stages of pupil detection
-            seg_gray = np.hstack((roi, pupil_bw * 255, glints_mask * 255, roi_rescaled))
-            cv2.imshow('Segmentation', seg_gray)
-            cv2.imshow('Pupilometry', frame_rgb)
-            cv2.waitKey(5)
+    if cfg.getboolean('OUTPUT', 'graphics'):
+        # Create composite image of various stages of pupil detection
+        seg_gray = np.hstack((roi, pupil_bw * 255, glints_mask * 255, roi_rescaled))
+        cv2.imshow('Segmentation', seg_gray)
+        cv2.imshow('Pupilometry', frame_rgb)
+        cv2.waitKey(5)
 
     return pupil_ellipse, roi_rect, blink, glint, frame_rgb      
 

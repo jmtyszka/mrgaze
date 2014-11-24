@@ -280,7 +280,7 @@ def FitEllipse_RobustLSQ(pnts, roi, max_refines=5, max_perc_inliers=95.0):
     '''
     
     # Output flags
-    verbose = True
+    verbose = False
     
     # Suppress invalid values
     np.seterr(invalid='ignore')
