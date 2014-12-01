@@ -54,9 +54,11 @@ def FitEllipse_RANSAC_Support(pnts, roi, cfg, max_itts=5, max_refines=3, max_per
         Best fitted ellipse parameters ((x0, y0), (a,b), theta)
     '''
     
+    # Debug flag
+    DEBUG = False       
+    
     # Output flags
     graphics   = cfg.getboolean('OUTPUT', 'graphics')
-    verbose   = cfg.getboolean('OUTPUT', 'verbose')
     
     # Suppress invalid values
     np.seterr(invalid='ignore')
@@ -115,7 +117,7 @@ def FitEllipse_RANSAC_Support(pnts, roi, cfg, max_itts=5, max_refines=3, max_per
             
                 # Protect ellipse fitting from too few points
                 if inliers.size < 5:
-                    if verbose: print('Break < 5 Inliers (During Refine)')
+                    if DEBUG: print('Break < 5 Inliers (During Refine)')
                     break
             
                 # Fit ellipse to refined inlier set
@@ -131,7 +133,7 @@ def FitEllipse_RANSAC_Support(pnts, roi, cfg, max_itts=5, max_refines=3, max_per
             support = EllipseSupport(inlier_pnts, ellipse, dIdx, dIdy)
 
             # Report on RANSAC progress
-            if verbose:
+            if DEBUG:
                 print('RANSAC %d,%d : %0.3f (%0.1f)' % (itt, refine, support, best_support))
 
             # Update overlay image and display
@@ -153,7 +155,7 @@ def FitEllipse_RANSAC_Support(pnts, roi, cfg, max_itts=5, max_refines=3, max_per
             perc_inliers = 0.0
 
         if perc_inliers > max_perc_inliers:
-            if verbose: print('Break Max Perc Inliers')
+            if DEBUG: print('Break Max Perc Inliers')
             break
     
     return best_ellipse
@@ -182,9 +184,11 @@ def FitEllipse_RANSAC(pnts, roi, cfg, max_itts=5, max_refines=3, max_perc_inlier
         Best fitted ellipse parameters ((x0, y0), (a,b), theta)
     '''
     
+    # Debug flag
+    DEBUG = False    
+    
     # Output flags
     graphics = cfg.getboolean('OUTPUT', 'graphics')
-    verbose   = cfg.getboolean('OUTPUT', 'verbose')
     
     # Suppress invalid values
     np.seterr(invalid='ignore')
@@ -229,7 +233,7 @@ def FitEllipse_RANSAC(pnts, roi, cfg, max_itts=5, max_refines=3, max_perc_inlier
             
             # Protect ellipse fitting from too few points
             if inliers.size < 5:
-                if verbose: print('Break < 5 Inliers (During Refine)')
+                if DEBUG: print('Break < 5 Inliers (During Refine)')
                 break
             
             # Fit ellipse to refined inlier set
@@ -252,7 +256,7 @@ def FitEllipse_RANSAC(pnts, roi, cfg, max_itts=5, max_refines=3, max_perc_inlier
         best_ellipse = ellipse
         
         if perc_inliers > max_perc_inliers:
-            if verbose: print('Break Max Perc Inliers')
+            if DEBUG: print('Break Max Perc Inliers')
             break
     
     return best_ellipse
@@ -279,12 +283,8 @@ def FitEllipse_RobustLSQ(pnts, roi, cfg, max_refines=5, max_perc_inliers=95.0):
         Best fitted ellipse parameters ((x0, y0), (a,b), theta)
     '''
     
-    # Output flags
-<<<<<<< HEAD
-    verbose = False
-=======
-    verbose   = cfg.getboolean('OUTPUT', 'verbose')
->>>>>>> FETCH_HEAD
+    # Debug flag
+    DEBUG = False      
     
     # Suppress invalid values
     np.seterr(invalid='ignore')
@@ -319,7 +319,7 @@ def FitEllipse_RobustLSQ(pnts, roi, cfg, max_refines=5, max_perc_inliers=95.0):
             
         # Protect ellipse fitting from too few points
         if inliers.size < 5:
-            if verbose: print('Break < 5 Inliers (During Refine)')
+            if DEBUG: print('Break < 5 Inliers (During Refine)')
             break
             
         # Fit ellipse to refined inlier set
@@ -333,7 +333,7 @@ def FitEllipse_RobustLSQ(pnts, roi, cfg, max_refines=5, max_perc_inliers=95.0):
         best_ellipse = ellipse
         
         if perc_inliers > max_perc_inliers:
-            if verbose: print('Break > maximum inlier percentage')
+            if DEBUG: print('Break > maximum inlier percentage')
             break
     
     return best_ellipse
