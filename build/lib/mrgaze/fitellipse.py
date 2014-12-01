@@ -31,7 +31,7 @@ import cv2
 # Ellipse Fitting Functions
 #---------------------------------------------
 
-def FitEllipse_RANSAC_Support(pnts, roi, max_itts=5, max_refines=3, max_perc_inliers=95.0):
+def FitEllipse_RANSAC_Support(pnts, roi, cfg, max_itts=5, max_refines=3, max_perc_inliers=95.0):
     '''
     Robust ellipse fitting to segmented boundary with image support
     
@@ -54,9 +54,11 @@ def FitEllipse_RANSAC_Support(pnts, roi, max_itts=5, max_refines=3, max_perc_inl
         Best fitted ellipse parameters ((x0, y0), (a,b), theta)
     '''
     
+    # Debug flag
+    DEBUG = False       
+    
     # Output flags
-    do_graphic = False
-    verbose    = False
+    graphics   = cfg.getboolean('OUTPUT', 'graphics')
     
     # Suppress invalid values
     np.seterr(invalid='ignore')
@@ -71,7 +73,7 @@ def FitEllipse_RANSAC_Support(pnts, roi, max_itts=5, max_refines=3, max_perc_inl
     best_support = -np.inf
     
     # Create display window and init overlay image
-    if do_graphic:
+    if graphics:
         cv2.namedWindow('RANSAC', cv2.WINDOW_AUTOSIZE)
     
     # Count pnts (n x 2)
@@ -115,7 +117,7 @@ def FitEllipse_RANSAC_Support(pnts, roi, max_itts=5, max_refines=3, max_perc_inl
             
                 # Protect ellipse fitting from too few points
                 if inliers.size < 5:
-                    if verbose: print('Break < 5 Inliers (During Refine)')
+                    if DEBUG: print('Break < 5 Inliers (During Refine)')
                     break
             
                 # Fit ellipse to refined inlier set
@@ -131,11 +133,11 @@ def FitEllipse_RANSAC_Support(pnts, roi, max_itts=5, max_refines=3, max_perc_inl
             support = EllipseSupport(inlier_pnts, ellipse, dIdx, dIdy)
 
             # Report on RANSAC progress
-            if verbose:
+            if DEBUG:
                 print('RANSAC %d,%d : %0.3f (%0.1f)' % (itt, refine, support, best_support))
 
             # Update overlay image and display
-            if do_graphic:
+            if graphics:
                 overlay = cv2.cvtColor(roi/2,cv2.COLOR_GRAY2RGB)
                 OverlayRANSACFit(overlay, pnts, inlier_pnts, ellipse)
                 cv2.imshow('RANSAC', overlay)
@@ -153,13 +155,13 @@ def FitEllipse_RANSAC_Support(pnts, roi, max_itts=5, max_refines=3, max_perc_inl
             perc_inliers = 0.0
 
         if perc_inliers > max_perc_inliers:
-            if verbose: print('Break Max Perc Inliers')
+            if DEBUG: print('Break Max Perc Inliers')
             break
     
     return best_ellipse
 
 
-def FitEllipse_RANSAC(pnts, roi, max_itts=5, max_refines=3, max_perc_inliers=95.0):
+def FitEllipse_RANSAC(pnts, roi, cfg, max_itts=5, max_refines=3, max_perc_inliers=95.0):
     '''
     Robust ellipse fitting to segmented boundary points
     
@@ -182,9 +184,11 @@ def FitEllipse_RANSAC(pnts, roi, max_itts=5, max_refines=3, max_perc_inliers=95.
         Best fitted ellipse parameters ((x0, y0), (a,b), theta)
     '''
     
+    # Debug flag
+    DEBUG = False    
+    
     # Output flags
-    do_graphic = False
-    verbose    = False
+    graphics = cfg.getboolean('OUTPUT', 'graphics')
     
     # Suppress invalid values
     np.seterr(invalid='ignore')
@@ -196,7 +200,7 @@ def FitEllipse_RANSAC(pnts, roi, max_itts=5, max_refines=3, max_perc_inliers=95.
     best_ellipse = ((0,0),(1e-6,1e-6),0)
 
     # Create display window and init overlay image
-    if do_graphic:
+    if graphics:
         cv2.namedWindow('RANSAC', cv2.WINDOW_AUTOSIZE)
     
     # Count pnts (n x 2)
@@ -229,7 +233,7 @@ def FitEllipse_RANSAC(pnts, roi, max_itts=5, max_refines=3, max_perc_inliers=95.
             
             # Protect ellipse fitting from too few points
             if inliers.size < 5:
-                if verbose: print('Break < 5 Inliers (During Refine)')
+                if DEBUG: print('Break < 5 Inliers (During Refine)')
                 break
             
             # Fit ellipse to refined inlier set
@@ -242,7 +246,7 @@ def FitEllipse_RANSAC(pnts, roi, max_itts=5, max_refines=3, max_perc_inliers=95.
         perc_inliers = (n_inliers * 100.0) / n_pnts
 
         # Update overlay image and display
-        if do_graphic:
+        if graphics:
             overlay = cv2.cvtColor(roi/2,cv2.COLOR_GRAY2RGB)
             OverlayRANSACFit(overlay, pnts, inlier_pnts, ellipse)
             cv2.imshow('RANSAC', overlay)
@@ -252,13 +256,13 @@ def FitEllipse_RANSAC(pnts, roi, max_itts=5, max_refines=3, max_perc_inliers=95.
         best_ellipse = ellipse
         
         if perc_inliers > max_perc_inliers:
-            if verbose: print('Break Max Perc Inliers')
+            if DEBUG: print('Break Max Perc Inliers')
             break
     
     return best_ellipse
 
     
-def FitEllipse_RobustLSQ(pnts, roi, max_refines=5, max_perc_inliers=95.0):
+def FitEllipse_RobustLSQ(pnts, roi, cfg, max_refines=5, max_perc_inliers=95.0):
     '''
     Iterate ellipse fit on inliers
     
@@ -279,8 +283,8 @@ def FitEllipse_RobustLSQ(pnts, roi, max_refines=5, max_perc_inliers=95.0):
         Best fitted ellipse parameters ((x0, y0), (a,b), theta)
     '''
     
-    # Output flags
-    verbose = True
+    # Debug flag
+    DEBUG = False      
     
     # Suppress invalid values
     np.seterr(invalid='ignore')
@@ -315,7 +319,7 @@ def FitEllipse_RobustLSQ(pnts, roi, max_refines=5, max_perc_inliers=95.0):
             
         # Protect ellipse fitting from too few points
         if inliers.size < 5:
-            if verbose: print('Break < 5 Inliers (During Refine)')
+            # if DEBUG: print('Break < 5 Inliers (During Refine)')
             break
             
         # Fit ellipse to refined inlier set
@@ -329,13 +333,13 @@ def FitEllipse_RobustLSQ(pnts, roi, max_refines=5, max_perc_inliers=95.0):
         best_ellipse = ellipse
         
         if perc_inliers > max_perc_inliers:
-            if verbose: print('Break > maximum inlier percentage')
+            # if DEBUG: print('Break > maximum inlier percentage')
             break
     
     return best_ellipse
    
     
-def FitEllipse_LeastSquares(pnts, roi):
+def FitEllipse_LeastSquares(pnts, roi, cfg):
     '''
     Simple least-squares ellipse fit to boundary points
     
@@ -352,7 +356,7 @@ def FitEllipse_LeastSquares(pnts, roi):
     best_ellipse : tuple of tuples
         Best fitted ellipse parameters ((x0, y0), (a,b), theta)
     '''
-    
+
     # Tiny circle init
     best_ellipse = ((0,0),(1e-6,1e-6),0)
 
@@ -362,7 +366,7 @@ def FitEllipse_LeastSquares(pnts, roi):
     
     # Call OpenCV ellipse fitting
     best_ellipse = cv2.fitEllipse(pnts)
- 
+    
     return best_ellipse
  
     
