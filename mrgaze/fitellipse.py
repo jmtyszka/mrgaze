@@ -319,7 +319,7 @@ def FitEllipse_RobustLSQ(pnts, roi, cfg, max_refines=5, max_perc_inliers=95.0):
             
         # Protect ellipse fitting from too few points
         if inliers.size < 5:
-            if DEBUG: print('Break < 5 Inliers (During Refine)')
+            # if DEBUG: print('Break < 5 Inliers (During Refine)')
             break
             
         # Fit ellipse to refined inlier set
@@ -333,7 +333,7 @@ def FitEllipse_RobustLSQ(pnts, roi, cfg, max_refines=5, max_perc_inliers=95.0):
         best_ellipse = ellipse
         
         if perc_inliers > max_perc_inliers:
-            if DEBUG: print('Break > maximum inlier percentage')
+            # if DEBUG: print('Break > maximum inlier percentage')
             break
     
     return best_ellipse
