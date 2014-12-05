@@ -244,12 +244,16 @@ def PupilometryEngine(frame, cascade, cfg):
     # Unset blink flag
     blink = False
     
+    # RGB version of preprocessed frame for later use
+    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
+    
     # Init ROI to whole frame
     # Note (col, row) = (x, y) for shape
     x0, x1, y0, y1 = 0, frame.shape[1], 0, frame.shape[0]
 
     # Shall we use the classifier at all, or whole frame?
     if cfg.getboolean('PUPILDETECT', 'enabled'):
+        
         min_neighbors = cfg.getint('PUPILDETECT','specificity')
         scale_factor  = cfg.getfloat('PUPILDETECT','scalefactor')
         
@@ -275,54 +279,56 @@ def PupilometryEngine(frame, cascade, cfg):
         else:
             
             blink = True
-
-    # Define ROI rect
-    roi_rect = (x0,y0),(x1,y1)
-        
-    # Extract pupil ROI (note row,col indexing of image array)
-    roi = frame[y0:y1,x0:x1]
-    
-    ###################
-    # BEGIN ENGINE CORE
-    
-    # Find glint(s) in frame
-    glints, glints_mask, roi_noglints = FindGlints(roi, cfg)
-
-    # Segment pupil region
-    pupil_bw, roi_rescaled = SegmentPupil(roi, cfg)
             
-    # Fit ellipse to pupil boundary - returns ellipse ROI
-    eroi = FitPupil(pupil_bw, roi, cfg)
+    if not blink:
+
+        # Define ROI rect
+        roi_rect = (x0,y0), (x1,y1)
+        
+        # Extract pupil ROI (note row,col indexing of image array)
+        roi = frame[y0:y1,x0:x1]
+    
+        ###################
+        # BEGIN ENGINE CORE
+    
+        # Find glint(s) in frame
+        glints, glints_mask, roi_noglints = FindGlints(roi, cfg)
+
+        # Segment pupil region
+        pupil_bw, roi_rescaled = SegmentPupil(roi, cfg)
+     
+        # Fit ellipse to pupil boundary - returns ellipse ROI
+        eroi = FitPupil(pupil_bw, roi, cfg)
             
-    # Add ROI offset to ellipse center
-    pupil_ellipse = (eroi[0][0]+x0, eroi[0][1]+y0),eroi[1], eroi[2]
+        # Add ROI offset to ellipse center
+        pupil_ellipse = (eroi[0][0]+x0, eroi[0][1]+y0),eroi[1], eroi[2]
     
-    # Identify best single glint
-    glint = FindBestGlint(glints, pupil_ellipse)
+        # Identify best single glint
+        glint = FindBestGlint(glints, pupil_ellipse)
     
-    # END ENGINE CORE
-    ##################
+        # END ENGINE CORE
+        ##################
         
-    # Check for unusually high eccentricity
-    if fitellipse.Eccentricity(pupil_ellipse) > 0.8:
-        blink = True  # Convert to blink
+        # Check for unusually high eccentricity
+        if fitellipse.Eccentricity(pupil_ellipse) > 0.8:
         
-    # Fill return values with NaNs if blink detected
-    if blink:
+            # Convert to blink
+            blink = True
+        
+    else:
+        
+        # Fill return values with NaNs if blink detected
         pupil_ellipse = ((np.nan, np.nan), (np.nan, np.nan), np.nan)
         roi_rect = (np.nan, np.nan), (np.nan, np.nan)
         glint = (np.nan, np.nan)
-    
-    # RGB version of preprocessed frame for output video
-    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
-            
+
     # Overlay ROI, pupil ellipse and pseudo-glint on RGB frame
     if not blink:
-
-        # Create RGB overlay of pupilometry on ROI
+        
         frame_rgb = OverlayPupil(frame_rgb, pupil_ellipse, roi_rect, glint)
 
     if cfg.getboolean('OUTPUT', 'graphics'):
+        
         # Create composite image of various stages of pupil detection
         seg_gray = np.hstack((roi, pupil_bw * 255, glints_mask * 255, roi_rescaled))
         cv2.imshow('Segmentation', seg_gray)

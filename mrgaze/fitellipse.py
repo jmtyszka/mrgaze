@@ -272,6 +272,8 @@ def FitEllipse_RobustLSQ(pnts, roi, cfg, max_refines=5, max_perc_inliers=95.0):
         Candidate pupil-iris boundary points from edge detection
     roi : 2D scalar array
         Grayscale image of pupil-iris region for display only
+    cfg : configuration structure
+        Configuration parameters
     max_refines : integer
         Maximum number of inlier refinements
     max_perc_inliers : float
@@ -319,7 +321,7 @@ def FitEllipse_RobustLSQ(pnts, roi, cfg, max_refines=5, max_perc_inliers=95.0):
             
         # Protect ellipse fitting from too few points
         if inliers.size < 5:
-            # if DEBUG: print('Break < 5 Inliers (During Refine)')
+            if DEBUG: print('Break < 5 Inliers (During Refine)')
             break
             
         # Fit ellipse to refined inlier set
@@ -333,7 +335,7 @@ def FitEllipse_RobustLSQ(pnts, roi, cfg, max_refines=5, max_perc_inliers=95.0):
         best_ellipse = ellipse
         
         if perc_inliers > max_perc_inliers:
-            # if DEBUG: print('Break > maximum inlier percentage')
+            if DEBUG: print('Break > maximum inlier percentage')
             break
     
     return best_ellipse
@@ -347,9 +349,10 @@ def FitEllipse_LeastSquares(pnts, roi, cfg):
     ----
     pnts : n x 2 array of integers
         Candidate pupil-iris boundary points from edge detection
->>>>>>> real-time
     roi : 2D scalar array
         Grayscale image of pupil-iris region for display only
+    cfg : configuration structure
+        Configuration parameters
         
     Returns
     ----
