@@ -36,6 +36,8 @@ Copyright
 2014 California Institute of Technology.
 """
 
+__version__ = '0.6.4'
+
 import os
 import sys
 import datetime as dt
@@ -49,7 +51,7 @@ def main():
         ss_dir = sys.argv[1]
     else:
         # ss_dir = os.getcwd()
-        ss_dir = '/Users/jmt/Data/Eye_Tracking/Groups/Jaron/data/04axa_cal1_choice1'
+        ss_dir = '/Users/jmt/sandbox/RA0077_Gaze1'
        
     # Split subj/session directory path into data_dir and subj/sess name
     data_dir, subj_sess = os.path.split(os.path.abspath(ss_dir))
@@ -59,7 +61,7 @@ def main():
     print('--------------------------------------------------')
     print('mrgaze Single Session Gaze Tracking Video Analysis')
     print('--------------------------------------------------')
-    print('Version   : %s' % '0.1')
+    print('Version   : %s' % __version__)
     print('Date      : %s' % dt.datetime.now())
     print('Data dir  : %s' % data_dir)
     print('Subj/Sess : %s' % subj_sess)

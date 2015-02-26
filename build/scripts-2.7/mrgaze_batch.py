@@ -36,6 +36,8 @@ Copyright
 2014 California Institute of Technology.
 """
 
+__version__ = '0.6.4'
+
 import os
 import sys
 import datetime as dt
@@ -55,7 +57,7 @@ def main():
     print('--------------------------------------------------')
     print('mrgaze Batch Gaze Tracking Video Analysis')
     print('--------------------------------------------------')
-    print('Version   : %s' % '0.1')
+    print('Version   : %s' % __version__)
     print('Date      : %s' % dt.datetime.now())
     print('Data dir  : %s' % data_dir)
 
