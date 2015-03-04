@@ -36,7 +36,7 @@ Copyright
 2014 California Institute of Technology.
 """
 
-__version__ = '0.6.4'
+__version__ = '0.6.5'
 
 import os
 import sys
@@ -51,7 +51,7 @@ def main():
         ss_dir = sys.argv[1]
     else:
         # ss_dir = os.getcwd()
-        ss_dir = '/Users/jmt/sandbox/RA0077_Gaze1'
+        ss_dir = '/Users/jmt/Data/Eye_Tracking/Hardware/Thorlabs/Gaze_Test'
        
     # Split subj/session directory path into data_dir and subj/sess name
     data_dir, subj_sess = os.path.split(os.path.abspath(ss_dir))

@@ -32,6 +32,7 @@ import time
 import cv2
 import numpy as np
 import scipy.ndimage as spi
+from skimage.measure import label, regionprops
 from mrgaze import media, utils, fitellipse, improc
 
 
@@ -81,8 +82,7 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, cfg):
         return False
     
     # Set up the LBP cascade classifier
-    mrclean_root = utils._package_root()
-    LBP_path = os.path.join(mrclean_root, 'Cascade/cascade.xml')
+    LBP_path = os.path.join(utils._package_root(), 'Cascade/cascade.xml')
     
     print('  Loading LBP cascade')
     cascade = cv2.CascadeClassifier(LBP_path)
@@ -183,7 +183,7 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, cfg):
         pupil_ellipse, roi_rect, blink, glint, frame_rgb = PupilometryEngine(frame, cascade, cfg)
         
         # Derive pupilometry parameters
-        px, py, area = PupilometryPars(pupil_ellipse, glint)
+        px, py, area = PupilometryPars(pupil_ellipse, glint, cfg)
         
         # Write data line to pupilometry CSV file
         pupils_stream.write(
@@ -291,20 +291,21 @@ def PupilometryEngine(frame, cascade, cfg):
         ###################
         # BEGIN ENGINE CORE
     
-        # Find glint(s) in frame
+        # Find glint(s) in ROI
         glints, glints_mask, roi_noglints = FindGlints(roi, cfg)
 
-        # Segment pupil region
+        # Segment pupil within ROI
         pupil_bw, roi_rescaled = SegmentPupil(roi, cfg)
      
-        # Fit ellipse to pupil boundary - returns ellipse ROI
-        eroi = FitPupil(pupil_bw, roi, cfg)
+        # Fit ellipse to pupil boundary - returns ellipse parameter tuple
+        ell = FitPupil(pupil_bw, roi, cfg)
+        
+        # Identify glint closest to pupil center.
+        gl = FindBestGlint(glints, ell[0])
             
-        # Add ROI offset to ellipse center
-        pupil_ellipse = (eroi[0][0]+x0, eroi[0][1]+y0),eroi[1], eroi[2]
-    
-        # Identify best single glint
-        glint = FindBestGlint(glints, pupil_ellipse)
+        # Add ROI offset to ellipse center and glint
+        pupil_ellipse = (ell[0][0]+x0, ell[0][1]+y0),ell[1], ell[2]
+        glint_center = (gl[0]+x0, gl[1]+y0)
     
         # END ENGINE CORE
         ##################
@@ -320,12 +321,12 @@ def PupilometryEngine(frame, cascade, cfg):
         # Fill return values with NaNs if blink detected
         pupil_ellipse = ((np.nan, np.nan), (np.nan, np.nan), np.nan)
         roi_rect = (np.nan, np.nan), (np.nan, np.nan)
-        glint = (np.nan, np.nan)
+        glint_center = (np.nan, np.nan)
 
     # Overlay ROI, pupil ellipse and pseudo-glint on RGB frame
     if not blink:
         
-        frame_rgb = OverlayPupil(frame_rgb, pupil_ellipse, roi_rect, glint)
+        frame_rgb = OverlayPupil(frame_rgb, pupil_ellipse, roi_rect, glint_center)
 
         if cfg.getboolean('OUTPUT', 'graphics'):
         
@@ -335,7 +336,7 @@ def PupilometryEngine(frame, cascade, cfg):
             cv2.imshow('Pupilometry', frame_rgb)
             cv2.waitKey(5)
 
-    return pupil_ellipse, roi_rect, blink, glint, frame_rgb      
+    return pupil_ellipse, roi_rect, blink, glint_center, frame_rgb      
 
 
 def SegmentPupil(roi, cfg):
@@ -434,14 +435,17 @@ def FindGlints(roi, cfg):
     glint_d = int(cfg.getfloat('PUPILSEG','glintdiameterperc') * roi.shape[0] / 100.0)
     if glint_d < 1: glint_d = 1
 
-    # Structuring element on scale of glint    
-    # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(glint_d, glint_d))
-
     # Binarize maximum intensity pixels
     glints_mask = np.uint8(roi == 255)
 
-    # Identify glint regions and return centroids
-    glints = np.array([[0.0, 0.0]])
+    # Get region properties for all glints in mask
+    glint_props = np.array(regionprops(label(glints_mask)))
+    
+    # Loop over all glints, finding minimum distance to pupil center
+    glints = np.zeros_like(glint_props)
+    for i, props in enumerate(glint_props):
+        gy, gx = props.centroid
+        glints[i] = gx, gy
     
     # Remove glints from ROI
     roi_noglints = roi * (1 - glints_mask)
@@ -449,14 +453,39 @@ def FindGlints(roi, cfg):
     return glints, glints_mask, roi_noglints
 
 
-def FindBestGlint(glint_mask, pupil_ellipse):
+def FindBestGlint(glints, pupil_center):
     '''
-    TODO: Find closest glint to pupil center
+    Find best/closest glint to pupil center
+    
+    Arguments
+    ----
+    glint_mask : 2D numpy int array
+        Mask for potential glints in frame
+    pupil_center : tuple
+        Fitted pupil center (px, py)
     '''    
     
-    glint = (0.0, 0.0)
+    # Unpack pupil center
+    px, py = pupil_center
     
-    return glint
+    # Init best glint
+    min_d = np.Inf
+    best_glint = (0.0, 0.0)
+    
+    # Loop over all glints
+    for glint in glints:
+        
+        # Unpack glint coordinate
+        gx,gy = glint
+    
+        # Glint pupil distance
+        d = np.sqrt((px-gx)**2 + (py-gy)**2)
+        
+        if d < min_d:
+            min_d = d
+            best_glint = (gx, gy)
+    
+    return best_glint
 
 
 def FitPupil(bw, roi, cfg):
@@ -533,8 +562,8 @@ def OverlayPupil(frame_rgb, ellipse, roi_rect, glint):
     # ROI rectangle color
     roi_color = (255,255,0)
     
-    # Pseudo-glint marker color
-    glint_color = (0,255,255)
+    # Glint marker color
+    glint_color = (0,0,255)
 
     # Pupil center cross hair
     (x0, y0), (a, b), phi = ellipse
@@ -558,7 +587,7 @@ def OverlayPupil(frame_rgb, ellipse, roi_rect, glint):
     # Overlay ROI rectangle
     cv2.rectangle(frame_rgb, roi_rect[0], roi_rect[1], roi_color, thickness)
     
-    # Overlay pseudoglint
+    # Overlay glint centroid
     px, py = int(glint[0]), int(glint[1])
     cv2.circle(frame_rgb, (px, py), 2, glint_color)
 
@@ -585,19 +614,35 @@ def ReadPupilometry(pupils_csv):
     return np.genfromtxt(pupils_csv, delimiter=',')
 
 
-def PupilometryPars(ellipse, glint):
+def PupilometryPars(ellipse, glint, cfg):
     """
-    Extract pupil center and corrected area
+    Extract pupil center and corrected area. Pupil center is reported
+    in voxels relative to top left of frame (video origin) or the glint
+    centroid (glint origin)
+    
+    Arguments
+    ----
+    ellipse : tuple
+        Ellipse parameter tuple
+    glint : tuple
+        Glint center in video frame coordinates
+    
+    Returns
+    ----
+    px, py : floats
+        Pupil center in video or glint frame of reference
+    area : float
+        Pupil area (sq voxels) corrected for viewing angle
     """
     
     # Unpack ellipse tuple
     (px, py), (bb, aa), phi_b_deg = ellipse
     
     # Adjust pupil center for glint location
-    # If glint correction is off, gx = gy = 0.0
-    gx, gy = glint
-    px = px - gx
-    py = py - gy
+    if cfg.get('ARTIFACTS','motioncorr') == 'glint':
+        gx, gy = glint
+        px = px - gx
+        py = py - gy
     
     # Pupil area corrected for viewing angle
     # Assumes semi-major axis is actual pupil radius

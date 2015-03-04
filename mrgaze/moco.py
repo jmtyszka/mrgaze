@@ -32,7 +32,6 @@ from scipy.ndimage.measurements import center_of_mass
 from scipy.signal import medfilt
 from mrgaze import utils
 
-
 def HighPassFilter(t, px, py, moco_kernel, central_fix):
     '''
     Slow drift correction by robust high-pass filtering
