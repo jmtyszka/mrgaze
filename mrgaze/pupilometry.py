@@ -35,7 +35,6 @@ import scipy.ndimage as spi
 from skimage.measure import label, regionprops
 from mrgaze import media, utils, fitellipse, improc
 
-
 def VideoPupilometry(data_dir, subj_sess, v_stub, cfg):
     """
     Perform pupil boundary ellipse fitting on entire video
@@ -433,6 +432,8 @@ def FindGlints(roi, cfg):
 
     # Estimated glint diameters in pixels
     glint_d = int(cfg.getfloat('PUPILSEG','glintdiameterperc') * roi.shape[0] / 100.0)
+
+    # Glint should at least be 1 pixel
     if glint_d < 1: glint_d = 1
 
     # Binarize maximum intensity pixels
@@ -441,11 +442,21 @@ def FindGlints(roi, cfg):
     # Get region properties for all glints in mask
     glint_props = np.array(regionprops(label(glints_mask)))
     
+    # Array for storing x,y coord of glints
+    tmp_glints = [] # Only contains the glints which are large enough
+    glints = np.zeros_like(glint_props) # 
+
     # Loop over all glints, finding minimum distance to pupil center
-    glints = np.zeros_like(glint_props)
     for i, props in enumerate(glint_props):
         gy, gx = props.centroid
         glints[i] = gx, gy
+        # Only include glints that are large enough
+        if np.sqrt(props.area / np.pi) > glint_d:
+            tmp_glints.append((gx,gy))
+
+    # If no glints were large enough, return them anyways
+    if len(glints) > 0:
+        glints = tmp_glints
     
     # Remove glints from ROI
     roi_noglints = roi * (1 - glints_mask)
