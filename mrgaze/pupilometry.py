@@ -450,8 +450,8 @@ def FindGlints(roi, cfg):
     for i, props in enumerate(glint_props):
         gy, gx = props.centroid
         glints[i] = gx, gy
-        # Only include glints that are large enough
-        if np.sqrt(props.area / np.pi) > glint_d:
+        # Only include glints that are about the right size
+        if np.sqrt(props.area / np.pi) > glint_d / 2 and np.sqrt(props.area / np.pi) < glint_d * 2:
             tmp_glints.append((gx,gy))
 
     # If no glints were large enough, return them anyways
