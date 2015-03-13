@@ -83,7 +83,7 @@ def HighPassFilter(t, px, py, moco_kernel, central_fix):
     px_filt = px - px_bline + central_fix[0]
     py_filt = py - py_bline + central_fix[1]
     
-    return px_filt, py_filt
+    return px_filt, py_filt, px_bline, py_bline
 
 
 def KnownFixations(t, px, py, fixations_txt, central_fix):
@@ -106,28 +106,29 @@ def KnownFixations(t, px, py, fixations_txt, central_fix):
     py_filt : 1D float array
         Drift corrected video space pupil center y
     '''
+
+    print('*** Motion correction by known fixations not yet implemented ***')
     
     # Load known central fixations from space-delimited text file into array
     # Columns : fixation number, start time (s), duration (s)
-    fix = np.genfromtxt(fixations_txt)
+    # fix = np.genfromtxt(fixations_txt)
     
     # Parse fixation timing array
-    t0 = fix[:,1]
-    t1 = t0 + fix[:,2]
+    # t0 = fix[:,1]
+    # t1 = t0 + fix[:,2]
     
     # TODO: Create central fixation mask for pupilometry
-    for (tc, _) in enumerate(t0):
-        print('  Fixation from %0.3f to %0.3f' % (t0[tc], t1[tc]))
+    # for (tc, _) in enumerate(t0):
+    #    print('  Fixation from %0.3f to %0.3f' % (t0[tc], t1[tc]))
 
     # TODO: Estimate linear trend during fixation
 
     # TODO: Interpolate gaps between fixation periods
 
     # TODO: Correct pupil center timeseries with estimated trends
-    px_filt = px.copy()
-    py_filt = py.copy()
     
-    return px_filt, py_filt
+    # Return unchanged pupil vectors and zero baseline    
+    return px.copy(), py.copy(), np.zeros_like(px), np.zeros_like(py)
     
 
 def PseudoGlint(frame, roi_rect):

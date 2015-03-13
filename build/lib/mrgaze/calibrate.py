@@ -384,7 +384,7 @@ def ApplyCalibration(ss_dir, C, central_fix, cfg):
     x      = p[:,2] # Pupil x
     y      = p[:,3] # Pupil y
     
-    # Motion correction - typically required for accurate gaze estimation
+    # Retrospective motion correction - only use when consistent glint is unavailable
     motioncorr = cfg.get('ARTIFACTS','motioncorr')
     mocokernel = cfg.getint('ARTIFACTS','mocokernel')
     
@@ -393,18 +393,21 @@ def ApplyCalibration(ss_dir, C, central_fix, cfg):
         print('  Motion correction using known fixations')
         print('  Central fixation at (%0.3f, %0.3f)' % (central_fix[0], central_fix[1]))
         
-        x, y = moco.KnownFixations(t, x, y, fixations_txt, central_fix)
+        x, y, bx, by = moco.KnownFixations(t, x, y, fixations_txt, central_fix)
         
     elif motioncorr == 'highpass':
         
         print('  Motion correction by high pass filtering (%d sample kernel)' % mocokernel)
         print('  Central fixation at (%0.3f, %0.3f)' % (central_fix[0], central_fix[1]))
         
-        x, y = moco.HighPassFilter(t, x, y, mocokernel, central_fix)
+        x, y, bx, by = moco.HighPassFilter(t, x, y, mocokernel, central_fix)
 
     else:
         
         print('* Unknown motion correction requested (%s) - skipping' % (motioncorr))
+        
+        # Return dummy x and y baseline estimates
+        bx, by = np.zeros_like(x), np.zeros_like(y)
     
     # Additional binomial coordinates
     xx = x * x
@@ -420,7 +423,7 @@ def ApplyCalibration(ss_dir, C, central_fix, cfg):
     
     # Write calibrated gaze to CSV file in results directory
     gaze_csv = os.path.join(ss_dir,'results','gaze_calibrated.csv')
-    WriteGaze(gaze_csv, t, gaze[0,:], gaze[1,:])
+    WriteGaze(gaze_csv, t, gaze[0,:], gaze[1,:], bx, by)
     
     return True
     
@@ -445,7 +448,7 @@ def CentralFixation(fixations, targets):
     return central_fix
 
 
-def WriteGaze(gaze_csv, t, gaze_x, gaze_y):
+def WriteGaze(gaze_csv, t, gaze_x, gaze_y, bline_x, bline_y):
     '''
     Write calibrated gaze to CSV file
     '''    
@@ -466,7 +469,8 @@ def WriteGaze(gaze_csv, t, gaze_x, gaze_y):
     '''
     
     for (tc,tt) in enumerate(t):
-        gaze_stream.write('%0.3f,%0.3f,%0.3f,\n' % (tt, gaze_x[tc], gaze_y[tc]))
+        gaze_stream.write('%0.3f,%0.3f,%0.3f,%0.3f,%0.3f\n' %
+            (tt, gaze_x[tc], gaze_y[tc], bline_x[tc], bline_y[tc]))
 
     # Close gaze CSV file
     gaze_stream.close()
