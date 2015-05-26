@@ -25,13 +25,6 @@ mrgaze/Cascade/stage1.xml
 mrgaze/Cascade/stage10.xml
 mrgaze/Cascade/stage11.xml
 mrgaze/Cascade/stage12.xml
-mrgaze/Cascade/stage13.xml
-mrgaze/Cascade/stage14.xml
-mrgaze/Cascade/stage15.xml
-mrgaze/Cascade/stage16.xml
-mrgaze/Cascade/stage17.xml
-mrgaze/Cascade/stage18.xml
-mrgaze/Cascade/stage19.xml
 mrgaze/Cascade/stage2.xml
 mrgaze/Cascade/stage3.xml
 mrgaze/Cascade/stage4.xml
