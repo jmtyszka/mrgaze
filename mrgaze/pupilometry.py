@@ -322,16 +322,20 @@ def PupilometryEngine(frame, cascade, cfg):
         roi_rect = (np.nan, np.nan), (np.nan, np.nan)
         glint_center = (np.nan, np.nan)
 
-    # Overlay ROI, pupil ellipse and pseudo-glint on RGB frame
-    if not blink:
-        
-        frame_rgb = OverlayPupil(frame_rgb, pupil_ellipse, roi_rect, glint_center)
 
-        if cfg.getboolean('OUTPUT', 'graphics'):
+    if not blink:
+
+        # Overlay ROI, pupil ellipse and pseudo-glint on background RGB frame
+        frame_rgb = OverlayPupil(frame_rgb, pupil_ellipse, roi_rect, glint_center)
         
-            # Create composite image of various stages of pupil detection
-            seg_gray = np.hstack((roi, pupil_bw * 255, glints_mask * 255, roi_rescaled))
-            cv2.imshow('Segmentation', seg_gray)
+
+    if cfg.getboolean('OUTPUT', 'graphics'):
+        
+            if not blink:
+                # Create composite image of various stages of pupil detection
+                seg_gray = np.hstack((roi, pupil_bw * 255, glints_mask * 255, roi_rescaled))
+                cv2.imshow('Segmentation', seg_gray)
+
             cv2.imshow('Pupilometry', frame_rgb)
             cv2.waitKey(5)
 
