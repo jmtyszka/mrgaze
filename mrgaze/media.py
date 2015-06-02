@@ -82,9 +82,9 @@ def Preproc(fr, cfg):
     do_mrclean   = cfg.getboolean('ARTIFACTS', 'mrclean')
     z_thresh     = cfg.getfloat('ARTIFACTS', 'zthresh')
 
-    # Preprocesing flags
-    perc_range = (1, 99)
-    bias_correct = False
+    # Preprocessing flags
+    perc_range = (0, 50)
+    bias_correct = True
     
     # Init returned artifact power
     art_power = 0.0    

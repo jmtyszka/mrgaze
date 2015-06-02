@@ -36,7 +36,7 @@ Copyright
 2014 California Institute of Technology.
 """
 
-__version__ = '0.6.6'
+__version__ = '0.6.8'
 
 import os
 import sys

@@ -95,27 +95,34 @@ def SaveConfig(config, data_dir):
         cfg_stream.close()
     
 def InitConfig(config):
+    '''
+    All the configuration parameters for the MrGaze engine
+    used in the config file, with defaults
+    '''
     
     # Add video defaults
     config.add_section('VIDEO')
-    config.set('VIDEO','inputextension','.mpg')
+    config.set('VIDEO','inputextension','.avi')
     config.set('VIDEO','outputextension','.mov')
     config.set('VIDEO','inputfps','29.97')
     config.set('VIDEO','downsampling','1')
     config.set('VIDEO','border','0')
     config.set('VIDEO','rotate','0')
+
+    config.add_section('PREPROC')
+    config.set('PREPROC','perclow','5.0')
+    config.set('PREPROC','perchigh','95.0')
         
     config.add_section('PUPILDETECT')
     config.set('PUPILDETECT','enabled','True')
-    config.set('PUPILDETECT','specificity','40')
+    config.set('PUPILDETECT','specificity','10')
     config.set('PUPILDETECT','scalefactor','1.05')
     
     config.add_section('PUPILSEG')
     config.set('PUPILSEG','method','manual')
-    config.set('PUPILSEG','pupildiameterperc','25.0')
-    config.set('PUPILSEG','glintdiameterperc','2.0')
-    config.set('PUPILSEG','pupilthresholdperc','50.0')
-    config.set('PUPILSEG','sigma','0.0')
+    config.set('PUPILSEG','pupilhigh','15.0')
+    config.set('PUPILSEG','glintlow','99.0')
+    config.set('PUPILSEG','sigma','1.0')
 
     config.add_section('PUPILFIT')
     config.set('PUPILFIT','method','ROBUST_LSQ')
@@ -139,7 +146,7 @@ def InitConfig(config):
 
     config.add_section('OUTPUT')
     config.set('OUTPUT','verbose','True')
-    config.set('OUTPUT','graphics','False')
+    config.set('OUTPUT','graphics','True')
     config.set('OUTPUT','overwrite','True')
     
     return config

@@ -1,6 +1,7 @@
 README.txt
 mrgaze_batch.py
 mrgaze_single.py
+mrgaze_tune.py
 setup.py
 mrgaze/__init__.py
 mrgaze/calibrate.py

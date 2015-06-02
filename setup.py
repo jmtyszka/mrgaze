@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup ( name = 'mrgaze',
-        version = '0.6.7',
+        version = '0.6.8',
         description = 'Video pupilometry and gaze tracking library',
         author = ['Mike Tyszka'],
         author_email = ['jmt@caltech.edu'],
@@ -9,5 +9,5 @@ setup ( name = 'mrgaze',
         license = 'LICENSE.txt',
         packages = find_packages(),
         package_data = {'mrgaze': ['Cascade/*']},
-        scripts = ['mrgaze_single.py','mrgaze_batch.py'],
+        scripts = ['mrgaze_single.py','mrgaze_batch.py','mrgaze_tune.py'],
       )
