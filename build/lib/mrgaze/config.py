@@ -120,8 +120,9 @@ def InitConfig(config):
     
     config.add_section('PUPILSEG')
     config.set('PUPILSEG','method','manual')
-    config.set('PUPILSEG','pupilhigh','15.0')
-    config.set('PUPILSEG','glintlow','99.0')
+    config.set('PUPILSEG','pupildiameterperc','25.0')
+    config.set('PUPILSEG','glintdiameterperc','2.0')
+    config.set('PUPILSEG','pupilthresholdperc','50.0')
     config.set('PUPILSEG','sigma','1.0')
 
     config.add_section('PUPILFIT')

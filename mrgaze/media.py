@@ -84,7 +84,7 @@ def Preproc(fr, cfg):
 
     # Preprocessing flags
     perc_range = (0, 50)
-    bias_correct = True
+    bias_correct = False
     
     # Init returned artifact power
     art_power = 0.0    

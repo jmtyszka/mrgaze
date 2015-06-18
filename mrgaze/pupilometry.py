@@ -294,7 +294,7 @@ def PupilometryEngine(frame, cascade, cfg):
         glints, glints_mask, roi_noglints = FindGlints(roi, cfg)
 
         # Segment pupil within ROI
-        pupil_bw = SegmentPupil(roi, cfg)
+        pupil_bw, roi_rescaled = SegmentPupil(roi, cfg)
      
         # Fit ellipse to pupil boundary - returns ellipse parameter tuple
         ell = FitPupil(pupil_bw, roi, cfg)
@@ -333,7 +333,7 @@ def PupilometryEngine(frame, cascade, cfg):
         
             if not blink:
                 # Create composite image of various stages of pupil detection
-                seg_gray = np.hstack((roi, pupil_bw * 255, glints_mask * 255))
+                seg_gray = np.hstack((roi, pupil_bw * 255, glints_mask * 255, roi_rescaled))
                 cv2.imshow('Segmentation', seg_gray)
 
             cv2.imshow('Pupilometry', frame_rgb)
@@ -369,19 +369,28 @@ def SegmentPupil(roi, cfg):
     # Apply Gaussian smoothing
     if sigma > 0.0:
         roi = cv2.GaussianBlur(roi, (0,0), sigma, sigma)
+        
+    # Estimate pupil diameter in pixels
+    pupil_d = int(cfg.getfloat('PUPILSEG','pupildiameterperc') * roi.shape[0] / 100.0)
+    
+    # Estimate pupil bounding box area in pixels
+    pupil_bb_area_perc = pupil_d * pupil_d / float(roi.size) * 100.0
+    
+    # Saturate all but pupil bounding box area
+    roi_rescaled = improc.RobustRescale(roi, (0, pupil_bb_area_perc))
     
     if method == 'manual':
 
         # Convert percent threshold to pixel intensity threshold
-        thresh = int(cfg.getfloat('PUPILSEG','pupilhigh') / 100.0 * 255.0)
+        thresh = int(cfg.getfloat('PUPILSEG','pupilthresholdperc') / 100.0 * 255.0)
         
         # Manual thresholding - ideal for real time ET with UI thresh control
-        _, blobs = cv2.threshold(roi, thresh, 255, cv2.THRESH_BINARY_INV) 
+        _, blobs = cv2.threshold(roi_rescaled, thresh, 255, cv2.THRESH_BINARY_INV) 
     
     elif method == 'otsu':
         
         # Binary threshold of rescaled ROI using Ostu's method
-        thresh, blobs = cv2.threshold(roi, 128, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
+        thresh, blobs = cv2.threshold(roi_rescaled, 128, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
         
     # Morphological opening (circle 5 pixels diameter)
     # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(5,5))
@@ -399,7 +408,7 @@ def SegmentPupil(roi, cfg):
     # Extract blob with largest area
     pupil_bw = np.uint8(labels == pupil_label)
         
-    return pupil_bw
+    return pupil_bw, roi_rescaled
     
 
 def FindGlints(roi, cfg):
@@ -425,11 +434,14 @@ def FindGlints(roi, cfg):
         Pupil/iris ROI without small bright areas
     '''
 
-    # Get lower intensity threshold for glints [0,255]
-    thresh = int(cfg.getfloat('PUPILSEG','glintlow') / 100.0 * 255.0)
+    # Estimated glint diameters in pixels
+    glint_d = int(cfg.getfloat('PUPILSEG','glintdiameterperc') * roi.shape[0] / 100.0)
+
+    # Glint should at least be 1 pixel
+    if glint_d < 1: glint_d = 1
 
     # Binarize maximum intensity pixels
-    glints_mask = np.uint8(roi >= thresh)
+    glints_mask = np.uint8(roi == 255)
 
     # Get region properties for all glints in mask
     glint_props = np.array(regionprops(label(glints_mask)))
@@ -444,12 +456,16 @@ def FindGlints(roi, cfg):
         glints[i] = gx, gy
         
         # Only include glints that are about the right size
-        # r_est = np.sqrt(props.area / np.pi)
-        # if r_est > r_min and r_est < r_max:
-        #    tmp_glints.append((gx,gy))
+        r_est = np.sqrt(props.area / np.pi)
+        r_min = glint_d / 2.0
+        r_max = glint_d * 2.0
 
-    # If no glints were large enough, return them anyways
-    if len(glints) > 0:
+        if r_est > r_min and r_est < r_max:
+            tmp_glints.append((gx,gy))
+
+    # If no glints were large enough, return them anyway
+    # TODO: Check logic here
+    if len(tmp_glints) > 0:
         glints = tmp_glints
     
     # Remove glints from ROI
