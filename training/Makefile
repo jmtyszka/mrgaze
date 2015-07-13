@@ -14,5 +14,8 @@ $(PUPIL_SAMPLES):
 train: $(PUPIL_SAMPLES)
 	opencv_traincascade -data $(PUPIL_CASCADE) -vec $(PUPIL_SAMPLES) -bg Negative.txt -numPos $(NUM_POS) -numNeg $(NUM_NEG)
 
+Negative.txt:
+	ls -1 Negative/* > Negative.txt
+
 clean:
 	rm -rf $(PUPIL_SAMPLES) ${PUPIL_CASCADE}/*

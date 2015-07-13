@@ -81,9 +81,11 @@ def Preproc(fr, cfg):
     rotate       = cfg.getint('VIDEO', 'rotate')
     do_mrclean   = cfg.getboolean('ARTIFACTS', 'mrclean')
     z_thresh     = cfg.getfloat('ARTIFACTS', 'zthresh')
+    perclow      = cfg.getfloat('PREPROC', 'perclow')
+    perchigh     = cfg.getfloat('PREPROC', 'perchigh')
 
     # Preprocessing flags
-    perc_range = (0, 50)
+    perc_range = (perclow, perchigh)
     bias_correct = False
     
     # Init returned artifact power
