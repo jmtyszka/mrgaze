@@ -117,6 +117,7 @@ def InitConfig(config):
     config.set('PUPILDETECT','enabled','True')
     config.set('PUPILDETECT','specificity','10')
     config.set('PUPILDETECT','scalefactor','1.05')
+    config.set('ROI','[0 0 0 0]')
     
     config.add_section('PUPILSEG')
     config.set('PUPILSEG','method','manual')
