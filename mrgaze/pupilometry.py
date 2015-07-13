@@ -30,6 +30,7 @@
 import os
 import time
 import cv2
+import json
 import numpy as np
 import scipy.ndimage as spi
 from skimage.measure import label, regionprops
@@ -247,8 +248,8 @@ def PupilometryEngine(frame, cascade, cfg):
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
     
     # Init ROI to whole frame
-    # Note (col, row) = (x, y) for shape
-    x0, x1, y0, y1 = 0, frame.shape[1], 0, frame.shape[0]
+    # Note (row, col) = (y, x) for shape
+    x, y, w, h = 0, 0, frame.shape[1], frame.shape[0]
 
     # Shall we use the classifier at all, or whole frame?
     if cfg.getboolean('PUPILDETECT', 'enabled'):
@@ -273,19 +274,32 @@ def PupilometryEngine(frame, cascade, cfg):
         
             # Get ROI info for largest pupil
             x, y, w, h = pupils[best_pupil,:]
-            x0, x1, y0, y1 = x, x+w, y, y+h
 
         else:
+
+            x, y, w, h = 0, 0, 0, 0            
+            blink = True
             
+    else:
+            
+        # LBP pupil detection is off
+        
+        # Load manual ROI origin and size from config file
+        x, y, w, h = json.loads(cfg.get('PUPILDETECT', 'targetx'))
+        
+        # Check for non-zero manual ROI definition
+        if w > 0 and h > 0:
+            blink = False
+        else:
             blink = True
             
     if not blink:
 
         # Define ROI rect
-        roi_rect = (x0,y0), (x1,y1)
+        roi_rect = (x,y), (x+w,y+h)
         
         # Extract pupil ROI (note row,col indexing of image array)
-        roi = frame[y0:y1,x0:x1]
+        roi = frame[y:y+h, x:x+w]
     
         ###################
         # BEGIN ENGINE CORE
@@ -303,8 +317,8 @@ def PupilometryEngine(frame, cascade, cfg):
         gl = FindBestGlint(glints, ell[0])
             
         # Add ROI offset to ellipse center and glint
-        pupil_ellipse = (ell[0][0]+x0, ell[0][1]+y0),ell[1], ell[2]
-        glint_center = (gl[0]+x0, gl[1]+y0)
+        pupil_ellipse = (x + ell[0][0], y + ell[0][1]),ell[1], ell[2]
+        glint_center = (x + gl[0], y + gl[1])
     
         # END ENGINE CORE
         ##################
