@@ -1,10 +1,10 @@
 #!/opt/local/Library/Frameworks/Python.framework/Versions/2.7/Resources/Python.app/Contents/MacOS/Python
 """
-Run gaze tracking pipeline on a single subject/session
+Run gaze tracking pipeline on all sessions within a data directory
 
 Example
 ----
->>> gt_single /Data/Subject_0001
+>>> gt_batch /Data
 
 Author
 ----
@@ -41,33 +41,36 @@ __version__ = '0.7.0'
 import os
 import sys
 import datetime as dt
-
 from mrgaze import pipeline
+
 
 def main():
     
     # Get single session directory from command line
     if len(sys.argv) > 1:
-        ss_dir = sys.argv[1]
+        data_dir = sys.argv[1]
     else:
-        # ss_dir = os.getcwd()
-        ss_dir = '/Users/jmt/Data/Eye_Tracking/Groups/Soyoung/Test'
-       
-    # Split subj/session directory path into data_dir and subj/sess name
-    data_dir, subj_sess = os.path.split(os.path.abspath(ss_dir))
-
+        data_dir = os.getcwd()
+        
     # Text splash
     print('')
     print('--------------------------------------------------')
-    print('mrgaze Single Session Gaze Tracking Video Analysis')
+    print('mrgaze Batch Gaze Tracking Video Analysis')
     print('--------------------------------------------------')
     print('Version   : %s' % __version__)
     print('Date      : %s' % dt.datetime.now())
     print('Data dir  : %s' % data_dir)
-    print('Subj/Sess : %s' % subj_sess)
+
+    print('')
+    print('Starting batch analysis')
     
-    # Run single-session pipeline
-    pipeline.RunSingle(data_dir, subj_sess)
+    pipeline.RunBatch(data_dir)
+    
+    print('')
+    print('Completed batch analysis')
+    
+    # Clean exit
+    sys.exit(0)
 
 
 # This is the standard boilerplate that calls the main() function.
