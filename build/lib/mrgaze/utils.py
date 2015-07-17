@@ -123,3 +123,17 @@ def _nanmedfilt(x, k):
     '''
     
     return generic_filter(x, nanmedian, k)
+
+
+def _touint8(x):
+    '''
+    Rescale and cast arbitrary number x to uint8
+    '''
+    
+    x = np.float32(x)
+    
+    x_min, x_max = x.min(), x.max()
+    
+    y = (x - x_min) / (x_max - x_min) * 255.0
+    
+    return np.uint8(y)

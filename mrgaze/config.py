@@ -117,14 +117,13 @@ def InitConfig(config):
     config.set('PUPILDETECT','enabled','True')
     config.set('PUPILDETECT','specificity','10')
     config.set('PUPILDETECT','scalefactor','1.05')
-    config.set('PUPILDETECT','manualroi','[0, 0, 0, 0]')
+    config.set('PUPILDETECT','manualroi','[0.5, 0.5, 0.5]')
     
     config.add_section('PUPILSEG')
     config.set('PUPILSEG','method','manual')
     config.set('PUPILSEG','pupildiameterperc','25.0')
     config.set('PUPILSEG','glintdiameterperc','2.0')
     config.set('PUPILSEG','pupilthresholdperc','50.0')
-    config.set('PUPILSEG','sigma','1.0')
 
     config.add_section('PUPILFIT')
     config.set('PUPILFIT','method','ROBUST_LSQ')
