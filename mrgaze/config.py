@@ -148,6 +148,9 @@ def InitConfig(config):
     config.set('OUTPUT','verbose','True')
     config.set('OUTPUT','graphics','True')
     config.set('OUTPUT','overwrite','True')
-    
+
+    config.add_section('CAMERA')
+    config.set('CAMERA','fps','30')
+
     return config
   

@@ -29,11 +29,232 @@
 
 import os
 import time
+import getpass
 import cv2
 import numpy as np
 import scipy.ndimage as spi
 from skimage.measure import label, regionprops
-from mrgaze import media, utils, fitellipse, improc
+from mrgaze import media, utils, fitellipse, improc, config
+
+def LivePupilometry(data_dir):
+    """
+    Perform pupil boundary ellipse fitting on camera feed
+    
+    Arguments
+    ----
+    data_dir : string
+        Root data directory path.
+    cfg : 
+        Analysis configuration parameters
+    
+    Returns
+    ----
+    pupils : boolean
+        Completion status (True = successful)
+    """
+
+    # Load Configuration
+    cfg = config.LoadConfig(data_dir)
+    cfg_ts = time.time()
+    
+    # Output flags
+    verbose   = cfg.getboolean('OUTPUT', 'verbose')
+    overwrite = cfg.getboolean('OUTPUT','overwrite')
+    
+    # Video information
+    # vin_ext = cfg.get('VIDEO', 'inputextension')
+    vout_ext = cfg.get('VIDEO' ,'outputextension')
+    # vin_fps = cfg.getfloat('VIDEO', 'inputfps')
+    
+    # Full video file paths
+    hostname = os.uname()[1]
+    username = getpass.getuser()
+    res_dir = os.path.join(data_dir, "%s_%s_%s" % (hostname, username, int(time.time())))
+    # vid_dir = os.path.join(ss_dir, 'videos')
+    # res_dir = os.path.join(ss_dir, 'results')
+    # vin_path = os.path.join(vid_dir, v_stub + vin_ext)
+    vout_path = os.path.join(res_dir, 'pupils' + vout_ext)
+    
+    # Raw and filtered pupilometry CSV file paths
+    pupils_csv = os.path.join(res_dir, 'pupils.csv')
+
+    
+    # Check that output directory exists
+    if not os.path.isdir(res_dir):
+        os.mkdir(res_dir)
+        print('* %s does not exist - creating' % res_dir)
+
+    
+    # Set up the LBP cascade classifier
+    LBP_path = os.path.join(utils._package_root(), 'Cascade/cascade.xml')
+    
+    print('  Loading LBP cascade')
+    cascade = cv2.CascadeClassifier(LBP_path)
+    
+    if cascade.empty():
+        print('* LBP cascade is empty - mrgaze installation problem')
+        return False
+        
+    # Check for output CSV existance and overwrite flag
+    if os.path.isfile(pupils_csv):
+        print('+ Pupilometry output already exists - checking overwrite flag')
+        if overwrite:
+            print('+ Overwrite allowed - continuing')
+        else:
+            print('+ Overwrite forbidden - skipping pupilometry')
+            return True
+    
+    #
+    # Camera Input
+    #
+    print('  Opening camera stream')
+        
+    try:
+        vin_stream = cv2.VideoCapture(0)
+    except:
+        print('* Problem opening input video stream - skipping pupilometry')        
+        return False
+
+    while not vin_stream.isOpened():
+        key = cv2.waitKey(500)
+        if key == 27:
+            break
+        
+    if not vin_stream.isOpened():
+        print('* Video input stream not opened - skipping pupilometry')
+        return False
+    
+    # Video FPS from metadata
+    # TODO: may not work with Quicktime videos
+    # fps = vin_stream.get(cv2.cv.CV_CAP_PROP_FPS)
+    fps = cfg.getfloat('CAMERA', 'fps')
+
+    # desired time between frames in milliseconds
+    time_bw_frames = 1000.0 / fps
+    
+    vin_stream.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH, 320)
+    vin_stream.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, 240)
+    vin_stream.set(cv2.cv.CV_CAP_PROP_FPS, 30)
+    
+    # Total number of frames in video file
+    # nf = vin_stream.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT)
+    
+    # print('  Video has %d frames at %0.3f fps' % (nf, vin_fps))
+    
+    # Read first preprocessed video frame from stream
+    keep_going, frame, art_power = media.LoadVideoFrame(vin_stream, cfg)
+     
+    # Get size of preprocessed frame for output video setup
+    nx, ny = frame.shape[1], frame.shape[0]
+
+    #
+    # Output video
+    #
+    print('  Opening output video stream')
+        
+    # Output video codec (MP4V - poor quality compression)
+    # TODO : Find a better multiplatform codec
+    fourcc = cv2.cv.CV_FOURCC('m','p','4','v')
+
+    try:
+        vout_stream = cv2.VideoWriter(vout_path, fourcc, 30, (nx, ny), True)
+    except:
+        print('* Problem creating output video stream - skipping pupilometry')
+        return False
+        
+    if not vout_stream.isOpened():
+        print('* Output video not opened - skipping pupilometry')
+        return False 
+
+    # Open pupilometry CSV file to write
+    try:
+        pupils_stream = open(pupils_csv, 'w')
+    except:
+        print('* Problem opening pupilometry CSV file - skipping pupilometry')
+        return False
+
+    #
+    # Main Video Frame Loop
+    #
+
+    # Print verbose column headers
+    if verbose:
+        print('')
+        print('  %10s %10s %10s %10s %10s' % (
+            'Time (s)', 'Area', 'Blink', 'Artifact', 'FPS'))
+
+    # Init frame counter
+    fc = 0
+    
+    # Init processing timer
+    t0 = time.time()
+    t = t0
+    
+    while keep_going:
+
+        # check whether config file has been updated, reload of that is the case
+        if fc % 30 == 0:
+            cfg_mtime = os.path.getmtime(os.path.join(data_dir, 'mrgaze.cfg'))
+            if cfg_mtime > cfg_ts:
+                print "Updating Configuration"
+                cfg = config.LoadConfig(data_dir)
+                cfg_ts = time.time()
+
+        # Current video time in seconds
+        t = time.time()
+        
+        # -------------------------------------
+        # Pass this frame to pupilometry engine
+        # -------------------------------------
+        # b4_engine = time.time()
+        pupil_ellipse, roi_rect, blink, glint, frame_rgb = PupilometryEngine(frame, cascade, cfg)
+        # print "Enging took %s ms" % (time.time() - b4_engine)
+        
+        # Derive pupilometry parameters
+        px, py, area = PupilometryPars(pupil_ellipse, glint, cfg)
+        
+        # Write data line to pupilometry CSV file
+        pupils_stream.write(
+            '%0.4f,%0.3f,%0.3f,%0.3f,%d,%0.3f,\n' %
+            (t, area, px, py, blink, art_power)
+        )
+                                
+        # Write output video frame
+        vout_stream.write(frame_rgb)
+
+        # Read next frame (if available)
+        # if verbose:
+        #     b4_frame = time.time()
+        keep_going, frame, art_power = media.LoadVideoFrame(vin_stream, cfg)
+        #if verbose:
+        # print "Time to load frame: %s" % (time.time() - b4_frame)
+        
+        # Increment frame counter
+        fc = fc + 1
+
+        # Report processing FPS
+        if verbose:
+            if fc % 100 == 0:
+                pfps = fc / (time.time() - t0)  
+                print('  %10.1f %10.1f %10d %10.3f %10.1f' % (
+                    t, area, blink, art_power, pfps))
+                t0 = time.time()
+                fc = 0
+
+        # wait whether user pressed esc to exit the experiment
+        key = cv2.waitKey(1)
+        if key == 27 or key == 1048603:
+            break
+        
+    # Clean up
+    cv2.destroyAllWindows()
+    vin_stream.release()
+    vout_stream.release()
+    pupils_stream.close()
+
+    # Return pupilometry timeseries
+    return t, px, py, area, blink, art_power
+
 
 def VideoPupilometry(data_dir, subj_sess, v_stub, cfg):
     """
@@ -128,7 +349,7 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, cfg):
      
     # Get size of preprocessed frame for output video setup
     nx, ny = frame.shape[1], frame.shape[0]
-    
+
     #
     # Output video
     #
@@ -206,6 +427,7 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, cfg):
                 pfps = fc / (time.time() - t0)  
                 print('  %10.1f %10.1f %10.1f %10d %10.3f %10.1f' % (
                     t, perc_done, area, blink, art_power, pfps))
+
 
     # Clean up
     cv2.destroyAllWindows()
