@@ -73,11 +73,13 @@ def LivePupilometry(data_dir):
     # vid_dir = os.path.join(ss_dir, 'videos')
     # res_dir = os.path.join(ss_dir, 'results')
     # vin_path = os.path.join(vid_dir, v_stub + vin_ext)
-    vout_path = os.path.join(res_dir, 'pupils' + vout_ext)
+    vout_path = os.path.join(res_dir, 'gaze_pupils' + vout_ext)
+    cal_vout_path = os.path.join(res_dir, 'cal_pupils' + vout_ext)
     
     # Raw and filtered pupilometry CSV file paths
-    pupils_csv = os.path.join(res_dir, 'pupils.csv')
-
+    cal_pupils_csv = os.path.join(res_dir, 'cal_pupils.csv')
+    pupils_csv = os.path.join(res_dir, 'gaze_pupils.csv')
+    
     
     # Check that output directory exists
     if not os.path.isdir(res_dir):
@@ -147,111 +149,234 @@ def LivePupilometry(data_dir):
     # Get size of preprocessed frame for output video setup
     nx, ny = frame.shape[1], frame.shape[0]
 
-    #
-    # Output video
-    #
-    print('  Opening output video stream')
-        
-    # Output video codec (MP4V - poor quality compression)
-    # TODO : Find a better multiplatform codec
-    fourcc = cv2.cv.CV_FOURCC('m','p','4','v')
-
-    try:
-        vout_stream = cv2.VideoWriter(vout_path, fourcc, 30, (nx, ny), True)
-    except:
-        print('* Problem creating output video stream - skipping pupilometry')
-        return False
-        
-    if not vout_stream.isOpened():
-        print('* Output video not opened - skipping pupilometry')
-        return False 
-
-    # Open pupilometry CSV file to write
-    try:
-        pupils_stream = open(pupils_csv, 'w')
-    except:
-        print('* Problem opening pupilometry CSV file - skipping pupilometry')
-        return False
-
-    #
-    # Main Video Frame Loop
-    #
-
-    # Print verbose column headers
-    if verbose:
-        print('')
-        print('  %10s %10s %10s %10s %10s' % (
-            'Time (s)', 'Area', 'Blink', 'Artifact', 'FPS'))
-
-    # Init frame counter
-    fc = 0
-    
-    # Init processing timer
-    t0 = time.time()
-    t = t0
-    
     while keep_going:
+        if do_cal == False:
+            #
+            # Output video
+            #
+            print('  Opening output video stream')
+        
+            # Output video codec (MP4V - poor quality compression)
+            # TODO : Find a better multiplatform codec
+            fourcc = cv2.cv.CV_FOURCC('m','p','4','v')
 
-        # check whether config file has been updated, reload of that is the case
-        if fc % 30 == 0:
-            cfg_mtime = os.path.getmtime(os.path.join(data_dir, 'mrgaze.cfg'))
-            if cfg_mtime > cfg_ts:
-                print "Updating Configuration"
-                cfg = config.LoadConfig(data_dir)
-                cfg_ts = time.time()
+            try:
+                vout_stream = cv2.VideoWriter(vout_path, fourcc, 30, (nx, ny), True)
+            except:
+                print('* Problem creating output video stream - skipping pupilometry')
+                return False
+        
+            if not vout_stream.isOpened():
+                print('* Output video not opened - skipping pupilometry')
+                return False 
 
-        # Current video time in seconds
-        t = time.time()
+            # Open pupilometry CSV file to write
+            try:
+                pupils_stream = open(pupils_csv, 'w')
+            except:
+                print('* Problem opening pupilometry CSV file - skipping pupilometry')
+                return False
+
+            #
+            # Main Video Frame Loop
+            #
+            
+            # Print verbose column headers
+            if verbose:
+                print('')
+                print('  %10s %10s %10s %10s %10s' % (
+                    'Time (s)', 'Area', 'Blink', 'Artifact', 'FPS'))
+
+            # Init frame counter
+            fc = 0
+    
+            # Init processing timer
+            t0 = time.time()
+            t = t0
+    
+            while keep_going:
+                # check whether config file has been updated, reload of that is the case
+                if fc % 30 == 0:
+                    cfg_mtime = os.path.getmtime(os.path.join(data_dir, 'mrgaze.cfg'))
+                    if cfg_mtime > cfg_ts:
+                        print "Updating Configuration"
+                        cfg = config.LoadConfig(data_dir)
+                        cfg_ts = time.time()
+
+                # Current video time in seconds
+                t = time.time()
         
-        # -------------------------------------
-        # Pass this frame to pupilometry engine
-        # -------------------------------------
-        # b4_engine = time.time()
-        pupil_ellipse, roi_rect, blink, glint, frame_rgb = PupilometryEngine(frame, cascade, cfg)
-        # print "Enging took %s ms" % (time.time() - b4_engine)
+                # -------------------------------------
+                # Pass this frame to pupilometry engine
+                # -------------------------------------
+                # b4_engine = time.time()
+                pupil_ellipse, roi_rect, blink, glint, frame_rgb = PupilometryEngine(frame, cascade, cfg)
+                # print "Enging took %s ms" % (time.time() - b4_engine)
         
-        # Derive pupilometry parameters
-        px, py, area = PupilometryPars(pupil_ellipse, glint, cfg)
+                # Derive pupilometry parameters
+                px, py, area = PupilometryPars(pupil_ellipse, glint, cfg)
         
-        # Write data line to pupilometry CSV file
-        pupils_stream.write(
-            '%0.4f,%0.3f,%0.3f,%0.3f,%d,%0.3f,\n' %
-            (t, area, px, py, blink, art_power)
-        )
+                # Write data line to pupilometry CSV file
+                pupils_stream.write(
+                    '%0.4f,%0.3f,%0.3f,%0.3f,%d,%0.3f,\n' %
+                    (t, area, px, py, blink, art_power)
+                )
                                 
-        # Write output video frame
-        vout_stream.write(frame_rgb)
+                # Write output video frame
+                vout_stream.write(cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB))
 
-        # Read next frame (if available)
-        # if verbose:
-        #     b4_frame = time.time()
-        keep_going, frame, art_power = media.LoadVideoFrame(vin_stream, cfg)
-        #if verbose:
-        # print "Time to load frame: %s" % (time.time() - b4_frame)
+                # Read next frame (if available)
+                # if verbose:
+                #     b4_frame = time.time()
+                keep_going, frame, art_power = media.LoadVideoFrame(vin_stream, cfg)
+                #if verbose:
+                # print "Time to load frame: %s" % (time.time() - b4_frame)
         
-        # Increment frame counter
-        fc = fc + 1
+                # Increment frame counter
+                fc = fc + 1
 
-        # Report processing FPS
-        if verbose:
-            if fc % 100 == 0:
-                pfps = fc / (time.time() - t0)  
-                print('  %10.1f %10.1f %10d %10.3f %10.1f' % (
-                    t, area, blink, art_power, pfps))
-                t0 = time.time()
-                fc = 0
+                # Report processing FPS
+                if verbose:
+                    if fc % 100 == 0:
+                        pfps = fc / (time.time() - t0)  
+                        print('  %10.1f %10.1f %10d %10.3f %10.1f' % (
+                            t, area, blink, art_power, pfps))
+                        t0 = time.time()
+                        fc = 0
 
-        # wait whether user pressed esc to exit the experiment
-        key = cv2.waitKey(1)
-        if key == 27 or key == 1048603:
-            break
+                # wait whether user pressed esc to exit the experiment
+                key = cv2.waitKey(1)
+                print key
+                if key == 27 or key == 1048603:
+                    # Clean up
+                    vout_stream.release()
+                    pupils_stream.close()
+                    break
+                elif key == 27 or key == 1048603:
+                    # Clean up
+                    vout_stream.release()
+                    pupils_stream.close()
+                    do_cal = True
+        else: # do calibration
+            #
+            # Output video
+            #
+            print('  Opening output video stream')
         
-    # Clean up
+            # Output video codec (MP4V - poor quality compression)
+            # TODO : Find a better multiplatform codec
+            fourcc = cv2.cv.CV_FOURCC('m','p','4','v')
+
+            try:
+                cal_vout_stream = cv2.VideoWriter(cal_vout_path, fourcc, 30, (nx, ny), True)
+            except:
+                print('* Problem creating output video stream - skipping pupilometry')
+                return False
+        
+            if not cal_vout_stream.isOpened():
+                print('* Output video not opened - skipping pupilometry')
+                return False 
+
+            # Open pupilometry CSV file to write
+            try:
+                cal_pupils_stream = open(cal_pupils_csv, 'w')
+            except:
+                print('* Problem opening pupilometry CSV file - skipping pupilometry')
+                return False
+
+            #
+            # Main Video Frame Loop
+            #
+            
+            # Print verbose column headers
+            if verbose:
+                print('')
+                print('  %10s %10s %10s %10s %10s' % (
+                    'Time (s)', 'Area', 'Blink', 'Artifact', 'FPS'))
+
+            # Init frame counter
+            fc = 0
+    
+            # Init processing timer
+            t0 = time.time()
+            t = t0
+            while keep_going:
+                # check whether config file has been updated, reload of that is the case
+                if fc % 30 == 0:
+                    cfg_mtime = os.path.getmtime(os.path.join(data_dir, 'mrgaze.cfg'))
+                    if cfg_mtime > cfg_ts:
+                        print "Updating Configuration"
+                        cfg = config.LoadConfig(data_dir)
+                        cfg_ts = time.time()
+
+                # Current video time in seconds
+                t = time.time()
+        
+                # -------------------------------------
+                # Pass this frame to pupilometry engine
+                # -------------------------------------
+                # b4_engine = time.time()
+                pupil_ellipse, roi_rect, blink, glint, frame_rgb = PupilometryEngine(frame, cascade, cfg)
+                # print "Engine took %s ms" % (time.time() - b4_engine)
+        
+                # Derive pupilometry parameters
+                px, py, area = PupilometryPars(pupil_ellipse, glint, cfg)
+        
+                # Write data line to pupilometry CSV file
+                cal_pupils_stream.write(
+                    '%0.4f,%0.3f,%0.3f,%0.3f,%d,%0.3f,\n' %
+                    (t, area, px, py, blink, art_power)
+                )
+                                
+                # Write output video frame
+                cal_vout_stream.write(cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB))
+
+                # Read next frame (if available)
+                # if verbose:
+                #     b4_frame = time.time()
+                keep_going, frame, art_power = media.LoadVideoFrame(vin_stream, cfg)
+                #if verbose:
+                # print "Time to load frame: %s" % (time.time() - b4_frame)
+        
+                # Increment frame counter
+                fc = fc + 1
+
+                # Report processing FPS
+                if verbose:
+                    if fc % 100 == 0:
+                        pfps = fc / (time.time() - t0)  
+                        print('  %10.1f %10.1f %10d %10.3f %10.1f' % (
+                            t, area, blink, art_power, pfps))
+                        t0 = time.time()
+                        fc = 0
+
+                # wait whether user pressed esc to exit the experiment
+                key = cv2.waitKey(1)
+                print key
+                if key == 27 or key == 1048603:
+                    keep_going = False
+                    # Clean up
+                    cal_vout_stream.release()
+                    cal_pupils_stream.close()
+                elif key == 27 or key == 1048603:
+                    do_cal = False
+                    # Clean up
+                    cal_vout_stream.release()
+                    cal_pupils_stream.close()
+                    break
+
+            print('  Create calibration model')
+            C, central_fix = calibrate.AutoCalibrate(res_dir, cfg)
+            
+            if not C.any():
+                print('* Empty calibration matrix detected - skipping')
+                return False
+                
+    print('  Calibrate pupilometry')
+    calibrate.ApplyCalibration(res_dir, C, central_fix, cfg)
+
     cv2.destroyAllWindows()
     vin_stream.release()
-    vout_stream.release()
-    pupils_stream.close()
-
     # Return pupilometry timeseries
     return t, px, py, area, blink, art_power
 
@@ -466,7 +591,7 @@ def PupilometryEngine(frame, cascade, cfg):
     blink = False
     
     # RGB version of preprocessed frame for later use
-    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
+    frame_rgb =  cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
     
     # Init ROI to whole frame
     # Note (col, row) = (x, y) for shape
