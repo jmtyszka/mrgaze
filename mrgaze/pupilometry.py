@@ -34,7 +34,7 @@ import cv2
 import numpy as np
 import scipy.ndimage as spi
 from skimage.measure import label, regionprops
-from mrgaze import media, utils, fitellipse, improc, config
+from mrgaze import media, utils, fitellipse, improc, config, calibrate, report
 
 def LivePupilometry(data_dir):
     """
@@ -69,12 +69,12 @@ def LivePupilometry(data_dir):
     # Full video file paths
     hostname = os.uname()[1]
     username = getpass.getuser()
-    res_dir = os.path.join(data_dir, "%s_%s_%s" % (hostname, username, int(time.time())))
-    # vid_dir = os.path.join(ss_dir, 'videos')
-    # res_dir = os.path.join(ss_dir, 'results')
+    ss_dir = os.path.join(data_dir, "%s_%s_%s" % (hostname, username, int(time.time())))
+    vid_dir = os.path.join(ss_dir, 'videos')
+    res_dir = os.path.join(ss_dir, 'results')
     # vin_path = os.path.join(vid_dir, v_stub + vin_ext)
-    vout_path = os.path.join(res_dir, 'gaze_pupils' + vout_ext)
-    cal_vout_path = os.path.join(res_dir, 'cal_pupils' + vout_ext)
+    vout_path = os.path.join(vid_dir, 'gaze_pupils' + vout_ext)
+    cal_vout_path = os.path.join(vid_dir, 'cal_pupils' + vout_ext)
     
     # Raw and filtered pupilometry CSV file paths
     cal_pupils_csv = os.path.join(res_dir, 'cal_pupils.csv')
@@ -83,8 +83,11 @@ def LivePupilometry(data_dir):
     
     # Check that output directory exists
     if not os.path.isdir(res_dir):
-        os.mkdir(res_dir)
+        os.makedirs(res_dir)
         print('* %s does not exist - creating' % res_dir)
+    if not os.path.isdir(vid_dir):
+        os.makedirs(vid_dir)
+        print('* %s does not exist - creating' % vid_dir)
 
     
     # Set up the LBP cascade classifier
@@ -114,14 +117,15 @@ def LivePupilometry(data_dir):
     try:
         vin_stream = cv2.VideoCapture(0)
     except:
-        print('* Problem opening input video stream - skipping pupilometry')        
+        print('* Problem opening input video stream - skipping pupilometry')    
         return False
 
     while not vin_stream.isOpened():
         key = cv2.waitKey(500)
         if key == 27:
+            print "User Abort."
             break
-        
+
     if not vin_stream.isOpened():
         print('* Video input stream not opened - skipping pupilometry')
         return False
@@ -148,6 +152,10 @@ def LivePupilometry(data_dir):
      
     # Get size of preprocessed frame for output video setup
     nx, ny = frame.shape[1], frame.shape[0]
+    
+    # By default we start in non-calibration mode
+    # switch between gaze/cal modes by pressing key "c"
+    do_cal = False
 
     while keep_going:
         if do_cal == False:
@@ -246,17 +254,18 @@ def LivePupilometry(data_dir):
 
                 # wait whether user pressed esc to exit the experiment
                 key = cv2.waitKey(1)
-                print key
                 if key == 27 or key == 1048603:
                     # Clean up
                     vout_stream.release()
                     pupils_stream.close()
-                    break
-                elif key == 27 or key == 1048603:
+                    keep_going = False
+                elif key == 99:
                     # Clean up
                     vout_stream.release()
                     pupils_stream.close()
                     do_cal = True
+                    print "Starting calibration."
+                    break
         else: # do calibration
             #
             # Output video
@@ -352,14 +361,14 @@ def LivePupilometry(data_dir):
 
                 # wait whether user pressed esc to exit the experiment
                 key = cv2.waitKey(1)
-                print key
                 if key == 27 or key == 1048603:
                     keep_going = False
                     # Clean up
                     cal_vout_stream.release()
                     cal_pupils_stream.close()
-                elif key == 27 or key == 1048603:
+                elif key == 118:
                     do_cal = False
+                    print "Stopping calibration."
                     # Clean up
                     cal_vout_stream.release()
                     cal_pupils_stream.close()
@@ -370,13 +379,20 @@ def LivePupilometry(data_dir):
             
             if not C.any():
                 print('* Empty calibration matrix detected - skipping')
-                return False
-                
-    print('  Calibrate pupilometry')
-    calibrate.ApplyCalibration(res_dir, C, central_fix, cfg)
+    try:
+        print('  Calibrate pupilometry')
+        calibrate.ApplyCalibration(ss_dir, C, central_fix, cfg)
+    except UnboundLocalError:
+        print('  No calibration data found')
 
     cv2.destroyAllWindows()
     vin_stream.release()
+
+    print('')
+    print('  Generate Report')
+    print('  ---------------')
+    report.WriteReport(ss_dir, cfg)
+
     # Return pupilometry timeseries
     return t, px, py, area, blink, art_power
 

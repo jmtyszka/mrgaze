@@ -29,8 +29,11 @@ import os
 import string
 import pylab as plt
 import numpy as np
-from mrgaze import pupilometry, calibrate
 
+try:
+    from mrgaze import pupilometry, calibrate
+except:
+    import pupilometry, calibrate
 
 # Define template
 TEMPLATE_FORMAT = """
