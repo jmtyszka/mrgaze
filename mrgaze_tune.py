@@ -118,8 +118,8 @@ class ExamplePanel(wx.Panel):
         self.logger.AppendText('EvtCheckBox: %d\n' % event.Checked())
 
 
-app = wx.App(False)
-frame = wx.Frame(False)
+app = wx.App(None)
+frame = wx.Frame(None)
 panel = ExamplePanel(frame)
 frame.Show()
 app.MainLoop()
