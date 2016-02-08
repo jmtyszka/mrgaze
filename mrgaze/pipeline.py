@@ -102,12 +102,6 @@ def RunSingle(data_dir, subj_sess):
      
         pupilometry.VideoPupilometry(data_dir, subj_sess, 'cal', cfg)
 
-        print('')            
-        print('  Gaze Pupilometry')
-        print('  -----------------------')
-        
-        pupilometry.VideoPupilometry(data_dir, subj_sess, 'gaze', cfg)
-        
         if do_cal:
             
             print('  Create calibration model')
@@ -116,7 +110,16 @@ def RunSingle(data_dir, subj_sess):
             if not C.any():
                 print('* Empty calibration matrix detected - skipping')
                 return False
+
+        print('')            
+        print('  Gaze Pupilometry')
+        print('  -----------------------')
+        
+        pupilometry.VideoPupilometry(data_dir, subj_sess, 'gaze', cfg)
+        
                 
+        if do_cal:
+
             print('  Calibrate pupilometry')
             calibrate.ApplyCalibration(ss_dir, C, central_fix, cfg)
         

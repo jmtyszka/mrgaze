@@ -31,7 +31,11 @@ import numpy as np
 import pylab as plt
 from skimage import filter, exposure
 from scipy import ndimage
-from mrgaze import pupilometry, moco
+try:
+    from mrgaze import moco, pupilometry
+except:
+    import pupilometry
+
 
 
 def AutoCalibrate(ss_res_dir, cfg):

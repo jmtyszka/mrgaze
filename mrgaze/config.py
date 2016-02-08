@@ -110,8 +110,8 @@ def InitConfig(config):
     config.set('VIDEO','rotate','0')
 
     config.add_section('PREPROC')
-    config.set('PREPROC','perclow','5.0')
-    config.set('PREPROC','perchigh','95.0')
+    config.set('PREPROC','perclow','0.0')
+    config.set('PREPROC','perchigh','50.0')
         
     config.add_section('PUPILDETECT')
     config.set('PUPILDETECT','enabled','True')
@@ -149,6 +149,9 @@ def InitConfig(config):
     config.set('OUTPUT','verbose','True')
     config.set('OUTPUT','graphics','True')
     config.set('OUTPUT','overwrite','True')
-    
+
+    config.add_section('CAMERA')
+    config.set('CAMERA','fps','30')
+
     return config
   
