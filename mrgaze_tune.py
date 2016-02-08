@@ -126,4 +126,7 @@ frame = wx.Frame(None)
 panel = ExamplePanel(frame)
 frame.Show()
 app.MainLoop()
+<<<<<<< HEAD
+>>>>>>> master
+=======
 >>>>>>> master
