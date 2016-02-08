@@ -1,2 +1,4 @@
 *.pyc
 mrgaze/*.pyc
+*~
+
