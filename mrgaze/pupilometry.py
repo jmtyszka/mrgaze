@@ -399,11 +399,6 @@ def LivePupilometry(data_dir):
     # Return pupilometry timeseries
     return t, px, py, area, blink, art_power
 
-<<<<<<< HEAD
->>>>>>> master
-=======
->>>>>>> master
-
 def VideoPupilometry(data_dir, subj_sess, v_stub, cfg):
     """
     Perform pupil boundary ellipse fitting on entire video
