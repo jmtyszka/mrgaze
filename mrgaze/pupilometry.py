@@ -33,10 +33,8 @@ import getpass
 import cv2
 import json
 import numpy as np
-<<<<<<< HEAD
 from skimage import measure, morphology
 from mrgaze import media, utils, fitellipse, improc
-=======
 import scipy.ndimage as spi
 from skimage.measure import label, regionprops
 from mrgaze import media, utils, fitellipse, improc, config, calibrate, report

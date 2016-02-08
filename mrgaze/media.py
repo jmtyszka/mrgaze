@@ -86,14 +86,8 @@ def Preproc(fr, cfg):
 
     # Preprocessing flags
     perc_range = (perclow, perchigh)
-<<<<<<< HEAD
-<<<<<<< HEAD
     bias_correct = False
-=======
-=======
->>>>>>> master
     bias_correct = True
->>>>>>> master
     
     # Init returned artifact power
     art_power = 0.0    
