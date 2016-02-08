@@ -36,6 +36,9 @@ Copyright
 2015 California Institute of Technology.
 """
 
+<<<<<<< HEAD
+__version__ = '0.7.0'
+=======
 __version__ = '0.6.8'
 
 import wx
@@ -123,3 +126,7 @@ frame = wx.Frame(None)
 panel = ExamplePanel(frame)
 frame.Show()
 app.MainLoop()
+<<<<<<< HEAD
+>>>>>>> master
+=======
+>>>>>>> master

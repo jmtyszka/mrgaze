@@ -103,9 +103,15 @@ def RobustRescale(gray, perc_range=(5, 95)):
     gray_rescale : numpy uint8 array
         Percentile rescaled image.
     """
-    
+
+    # Calculate intensity percentile range    
     pA, pB = np.percentile(gray, perc_range)
-    gray_rescale = exposure.rescale_intensity(gray, in_range=(pA, pB))
+    
+    # Only rescale if limits are different
+    if pB == pA:
+        gray_rescale = gray
+    else:
+        gray_rescale = exposure.rescale_intensity(gray, in_range=(pA, pB))
     
     return gray_rescale
 
@@ -130,3 +136,16 @@ def WaveletNoiseSD(x):
     sd_n = np.median(np.abs(cD)) * 1.48
     
     return sd_n
+    
+def ResizeImage(img, w_max=128, h_max=128):
+    '''
+    Resize image to a given maximum width and/or height with letterboxing
+    '''
+    
+    # Size of original image
+    ny,nx = img.shape    
+    
+    # Nearest neighbour interpolation
+    img_new = cv2.resize(img, dsize=(128,128), interpolation=cv2.INTER_NEAREST)
+    
+    return img_new    

@@ -86,7 +86,14 @@ def Preproc(fr, cfg):
 
     # Preprocessing flags
     perc_range = (perclow, perchigh)
+<<<<<<< HEAD
+<<<<<<< HEAD
+    bias_correct = False
+=======
+=======
+>>>>>>> master
     bias_correct = True
+>>>>>>> master
     
     # Init returned artifact power
     art_power = 0.0    
@@ -128,7 +135,7 @@ def Downsample(frame, factor):
     nxd, nyd = int(nx/factor), int(ny/factor)
     
     # Downsample with area averaging
-    frame = cv2.resize(frame, (nxd, nyd), interpolation=cv2.cv.CV_INTER_AREA)
+    frame = cv2.resize(frame, (nxd, nyd), interpolation=cv2.INTER_AREA)
 
     return frame
     
