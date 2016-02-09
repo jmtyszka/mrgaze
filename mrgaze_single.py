@@ -1,4 +1,4 @@
-#!/opt/local/Library/Frameworks/Python.framework/Versions/2.7/Resources/Python.app/Contents/MacOS/Python
+#!/usr/bin/env python
 """
 Run gaze tracking pipeline on a single subject/session
 
@@ -73,3 +73,4 @@ def main():
 # This is the standard boilerplate that calls the main() function.
 if __name__ == '__main__':
     main()
+
