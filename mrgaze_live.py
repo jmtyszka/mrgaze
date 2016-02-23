@@ -42,18 +42,27 @@ __version__ = '0.6.8'
 import os
 import sys
 import datetime as dt
+import argparse
 
 from mrgaze import pupilometry
 
 
 def main():
     
+    # Parse command line arguments                                                                                                                            
+    parser = argparse.ArgumentParser(description='Do real time Eye Tracking.')
+    parser.add_argument('--ss_dir', required=False, help="single session directory. This is either the location of previously recorded data, or the destination directory for live eye-tracking.")
+ 
+    # Parse command line arguments                                                                                                                         
+    args = parser.parse_args()
+
     # Get single session directory from command line
-    if len(sys.argv) > 1:
-        data_dir = sys.argv[1]
+    if args.ss_dir:
+        data_dir = args.ss_dir
     else:
         data_dir = os.path.join(os.getenv("HOME"), 'mrgaze')
 
+    # Create single session directory if it doesn't already exist.
     if not os.path.isdir(data_dir):
         os.mkdir(data_dir)
        

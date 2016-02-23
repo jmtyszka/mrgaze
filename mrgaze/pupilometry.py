@@ -71,9 +71,15 @@ def LivePupilometry(data_dir):
     ss_dir = os.path.join(data_dir, "%s_%s_%s" % (hostname, username, int(time.time())))
     vid_dir = os.path.join(ss_dir, 'videos')
     res_dir = os.path.join(ss_dir, 'results')
-    # vin_path = os.path.join(vid_dir, v_stub + vin_ext)
+
     vout_path = os.path.join(vid_dir, 'gaze_pupils' + vout_ext)
     cal_vout_path = os.path.join(vid_dir, 'cal_pupils' + vout_ext)
+
+    if os.path.isfile(vout_path):
+        vin_path = vout_path
+        cal_vin_path = cal_vout_path
+    else:
+        vin_path = 0
 
     # Raw and filtered pupilometry CSV file paths
     cal_pupils_csv = os.path.join(res_dir, 'cal_pupils.csv')
@@ -113,11 +119,18 @@ def LivePupilometry(data_dir):
     #
     print('  Opening camera stream')
 
-    try:
-        vin_stream = cv2.VideoCapture(0)
-    except:
-        print('* Problem opening input video stream - skipping pupilometry')
-        return False
+#    try:
+    if os.path.isfile(str(vin_path)):
+        vin_stream = cv2.VideoCapture(vin_path)
+        cal_vin_stream = cv2.VideoCapture(cal_vin_path)
+    else:
+        vin_stream = cv2.VideoCapture(vin_path)
+        cal_vin_stream = vin_stream
+#except:
+#        print('* Problem opening input video stream - skipping pupilometry')
+#        
+#        return False
+
 
     while not vin_stream.isOpened():
         key = cv2.waitKey(500)
@@ -127,6 +140,10 @@ def LivePupilometry(data_dir):
 
     if not vin_stream.isOpened():
         print('* Video input stream not opened - skipping pupilometry')
+        return False
+
+    if not cal_vin_stream.isOpened():
+        print('* Calibration video input stream not opened - skipping pupilometry')
         return False
 
     # Video FPS from metadata
@@ -161,21 +178,23 @@ def LivePupilometry(data_dir):
             #
             # Output video
             #
-            print('  Opening output video stream')
+            if not vout_path == vin_path:
+                print('  Opening output video stream')
 
-            # Output video codec (MP4V - poor quality compression)
-            # TODO : Find a better multiplatform codec
-            fourcc = cv2.cv.CV_FOURCC('m','p','4','v')
+                # Output video codec (MP4V - poor quality compression)
+                # TODO : Find a better multiplatform codec
+                fourcc = cv2.cv.CV_FOURCC('m','p','4','v')
 
-            try:
-                vout_stream = cv2.VideoWriter(vout_path, fourcc, 30, (nx, ny), True)
-            except:
-                print('* Problem creating output video stream - skipping pupilometry')
-                return False
 
-            if not vout_stream.isOpened():
-                print('* Output video not opened - skipping pupilometry')
-                return False
+                try:
+                    vout_stream = cv2.VideoWriter(vout_path, fourcc, 30, (nx, ny), True)
+                except:
+                    print('* Problem creating output video stream - skipping pupilometry')
+                    return False
+
+                if not vout_stream.isOpened():
+                    print('* Output video not opened - skipping pupilometry')
+                    return False
 
             # Open pupilometry CSV file to write
             try:
@@ -270,21 +289,22 @@ def LivePupilometry(data_dir):
             #
             # Output video
             #
-            print('  Opening output video stream')
+            if not vin_path == vout_path:
+                print('  Opening output video stream')
 
-            # Output video codec (MP4V - poor quality compression)
-            # TODO : Find a better multiplatform codec
-            fourcc = cv2.cv.CV_FOURCC('m','p','4','v')
+                # Output video codec (MP4V - poor quality compression)
+                # TODO : Find a better multiplatform codec
+                fourcc = cv2.cv.CV_FOURCC('m','p','4','v')
 
-            try:
-                cal_vout_stream = cv2.VideoWriter(cal_vout_path, fourcc, 30, (nx, ny), True)
-            except:
-                print('* Problem creating output video stream - skipping pupilometry')
-                return False
+                try:
+                    cal_vout_stream = cv2.VideoWriter(cal_vout_path, fourcc, 30, (nx, ny), True)
+                except:
+                    print('* Problem creating output video stream - skipping pupilometry')
+                    return False
 
-            if not cal_vout_stream.isOpened():
-                print('* Output video not opened - skipping pupilometry')
-                return False
+                if not cal_vout_stream.isOpened():
+                    print('* Output video not opened - skipping pupilometry')
+                    return False
 
             # Open pupilometry CSV file to write
             try:
@@ -343,7 +363,7 @@ def LivePupilometry(data_dir):
                 # Read next frame (if available)
                 # if verbose:
                 #     b4_frame = time.time()
-                keep_going, frame, art_power = media.LoadVideoFrame(vin_stream, cfg)
+                keep_going, frame, art_power = media.LoadVideoFrame(cal_vin_stream, cfg)
                 #if verbose:
                 # print "Time to load frame: %s" % (time.time() - b4_frame)
 
@@ -395,6 +415,7 @@ def LivePupilometry(data_dir):
 
     # Return pupilometry timeseries
     return t, px, py, area, blink, art_power
+
 
 def VideoPupilometry(data_dir, subj_sess, v_stub, cfg):
     """
