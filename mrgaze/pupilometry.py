@@ -68,7 +68,12 @@ def LivePupilometry(data_dir):
     # Full video file paths
     hostname = os.uname()[1]
     username = getpass.getuser()
-    ss_dir = os.path.join(data_dir, "%s_%s_%s" % (hostname, username, int(time.time())))
+
+    if os.path.isdir(data_dir):
+        ss_dir = data_dir
+    else:
+        ss_dir = os.path.join(data_dir, "%s_%s_%s" % (hostname, username, int(time.time())))
+
     vid_dir = os.path.join(ss_dir, 'videos')
     res_dir = os.path.join(ss_dir, 'results')
 
@@ -249,8 +254,9 @@ def LivePupilometry(data_dir):
                     (t, area, px, py, blink, art_power)
                 )
 
-                # Write output video frame
-                vout_stream.write(cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB))
+                if not vout_path == vin_path:
+                    # Write output video frame
+                    vout_stream.write(cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB))
 
                 # Read next frame (if available)
                 # if verbose:
@@ -275,12 +281,14 @@ def LivePupilometry(data_dir):
                 key = cv2.waitKey(1)
                 if key == 27 or key == 1048603:
                     # Clean up
-                    vout_stream.release()
+                    if not vout_path == vin_path:
+                        vout_stream.release()
                     pupils_stream.close()
                     keep_going = False
                 elif key == 99:
                     # Clean up
-                    vout_stream.release()
+                    if not vout_path == vin_path:
+                        vout_stream.release()
                     pupils_stream.close()
                     do_cal = True
                     print("Starting calibration.")
@@ -358,7 +366,8 @@ def LivePupilometry(data_dir):
                 )
 
                 # Write output video frame
-                cal_vout_stream.write(cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB))
+                if not vout_path == vin_path:
+                    cal_vout_stream.write(cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB))
 
                 # Read next frame (if available)
                 # if verbose:
@@ -384,13 +393,15 @@ def LivePupilometry(data_dir):
                 if key == 27 or key == 1048603:
                     keep_going = False
                     # Clean up
-                    cal_vout_stream.release()
+                    if not vout_path == vin_path:
+                        cal_vout_stream.release()
                     cal_pupils_stream.close()
                 elif key == 118:
                     do_cal = False
                     print("Stopping calibration.")
                     # Clean up
-                    cal_vout_stream.release()
+                    if not vout_path == vin_path:
+                        cal_vout_stream.release()
                     cal_pupils_stream.close()
                     break
 
