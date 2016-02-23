@@ -29,11 +29,7 @@ import os
 import string
 import pylab as plt
 import numpy as np
-
-try:
-    from mrgaze import pupilometry, calibrate
-except:
-    import pupilometry, calibrate
+from mrgaze import calibrate, engine
 
 # Define template
 TEMPLATE_FORMAT = """
@@ -91,38 +87,38 @@ td {
 
 # Main function
 def WriteReport(ss_dir, cfg):
-    
+
     # Results subdirectoy
     ss_res_dir = os.path.join(ss_dir, 'results')
-    
+
     # Check that results directory exists
     if not os.path.isdir(ss_res_dir):
         print('* Results directory does not exist - returning')
         return False
-        
+
     # Extract subj/sess name
     subj_sess = os.path.basename(ss_dir)
-    
+
     # Create timeseries plots
     print('  Plot calibration video pupilometry')
     cal_csv = os.path.join(ss_res_dir, 'cal_pupils.csv')
     cal_png = os.path.join(ss_res_dir, 'cal_pupils.png')
     PlotPupilometry(cal_csv, cal_png)
-    
+
     print('  Plot gaze video pupilometry')
     gaze_pupils_csv = os.path.join(ss_res_dir, 'gaze_pupils.csv')
     gaze_pupils_png = os.path.join(ss_res_dir, 'gaze_pupils.png')
     PlotPupilometry(gaze_pupils_csv, gaze_pupils_png)
-    
+
     print('  Plot calibrated gaze results')
     gaze_csv = os.path.join(ss_res_dir, 'gaze_calibrated.csv')
     gaze_png = os.path.join(ss_res_dir, 'gaze_calibrated.png')
     PlotGaze(gaze_csv, gaze_png)
-    
+
     # Estimate time of first artifact
     print('  Locating artifact start time')
     art_t0 = ArtifactStartTime(gaze_pupils_csv)
-    
+
     # Handle disabled calibration
     if cfg.getboolean('CALIBRATION','calibrate'):
         cal_gaze_res = '<img src=gaze_calibrated.png />'
@@ -130,7 +126,7 @@ def WriteReport(ss_dir, cfg):
     else:
         cal_gaze_res = 'Calibration disabled - no calibrated gaze results generated<p>'
         cal_heatmap  = 'Calibration disabled - no calibration heatmap generated<p>'
-        
+
     #
     # HTML report generation
     #
@@ -142,13 +138,13 @@ def WriteReport(ss_dir, cfg):
         ('subj_sess',    "%s"    % (subj_sess)),
         ('art_t0',       "%0.1f" % (art_t0)),
         ('cal_gaze_res', "%s"    % (cal_gaze_res)),
-        ('cal_heatmap', "%s"     % (cal_heatmap))      
+        ('cal_heatmap', "%s"     % (cal_heatmap))
     ])
 
     # Generate HTML report from template (see above)
     TEMPLATE = string.Template(TEMPLATE_FORMAT)
     html_data = TEMPLATE.safe_substitute(qa_dict)
-    
+
     # Write HTML report page
     report_index = os.path.join(ss_res_dir, 'index.html')
     open(report_index, "w").write(html_data)
@@ -158,28 +154,28 @@ def PlotPupilometry(csv_file, plot_png):
     '''
     Read pupilometry CSV and plot timeseries
     '''
-    
+
     if not os.path.isfile(csv_file):
         print('* Pupilometry file not found - returning')
         return False
-    
+
     # Load pupilometry data from CSV file
-    p = pupilometry.ReadPupilometry(csv_file)
-    
+    p = engine.ReadPupilometry(csv_file)
+
     # Extract timeseries
     t        = p[:,0]
     area     = p[:,1]
     px, py   = p[:,2], p[:,3]
     blink    = p[:,4]
     art      = p[:,5]
-    
+
     # Downsample if total samples > 2000
     nt = p.shape[0]
     if nt > 2000:
         dt = int(nt / 2000.0)
         inds = np.arange(0, nt, dt)
         p = p[inds,:]
-        
+
     # Create figure, plot all timeseries in subplots
     fig = plt.figure(figsize = (6,8))
 
@@ -187,29 +183,29 @@ def PlotPupilometry(csv_file, plot_png):
     ax.plot(t, area)
     ax.set_title('Corrected Pupil Area', y=1.1, fontsize=8)
     ax.tick_params(axis='both', labelsize=8)
-    
+
     ax = fig.add_subplot(412)
     ax.plot(t, px, t, py)
     ax.set_title('Pupil Center', y=1.1, fontsize=8)
     ax.tick_params(axis='both', labelsize=8)
-    
+
     ax = fig.add_subplot(413)
     ax.plot(t, blink)
     ax.set_ylim([-0.1, 1.1])
     ax.set_title('Blink', y=1.1, fontsize=8)
     ax.tick_params(axis='both', labelsize=8)
-        
+
     ax = fig.add_subplot(414)
     ax.plot(t, art)
     ax.set_title('Artifact Power', y=1.1, fontsize=8)
     ax.tick_params(axis='both', labelsize=8)
-    
+
     # Pack all subplots and labels tightly
     fig.subplots_adjust(hspace=0.6)
 
     # Save figure to file in same directory as CSV file
-    plt.savefig(plot_png, dpi = 150, bbox_inches = 'tight')    
-    
+    plt.savefig(plot_png, dpi = 150, bbox_inches = 'tight')
+
     # Close figure without showing it
     plt.close(fig)
 
@@ -222,37 +218,37 @@ def ArtifactStartTime(csv_file):
     if not os.path.isfile(csv_file):
         print('* Pupilometry file not found - returning')
         return False
-    
+
     # Load pupilometry data from CSV file
-    p = pupilometry.ReadPupilometry(csv_file)
-    
+    p = engine.ReadPupilometry(csv_file)
+
     # Extract time and artifact power vectors
     t, art   = p[:,0], p[:,5]
-    
+
     # Threshold at median artifact power distribution
     art_on = art > np.median(art)
-    
+
     # Time in seconds corresponding to first detected artifact
     art_t0 = t[np.argmax(art_on)]
-    
+
     return art_t0
-    
-    
+
+
 def PlotGaze(csv_file, plot_png):
     '''
     Plot calibrated gaze results in a single figure
     '''
-    
+
     if not os.path.isfile(csv_file):
         print('* Calibrated gaze file not found - returning')
         return False
-    
+
     # Load calibrated gaze timeseries from CSV file
     t, gaze_x, gaze_y = calibrate.ReadGaze(csv_file)
-    
+
     # Create heatmap of calibrated gaze
     hmap, xedges, yedges = calibrate.HeatMap(gaze_x, gaze_y, (0.0, 1.0), (0.0,1.0), sigma=1.0)
-    
+
     # Create figure, plot timeseries and heatmaps in subplots
     fig = plt.figure(figsize = (6,6))
 
@@ -261,25 +257,25 @@ def PlotGaze(csv_file, plot_png):
     ax.set_title('Calibrated Normalized Gaze Position', fontsize=8)
     ax.tick_params(axis='both', labelsize=8)
     ax.set_ylim((-1.0, 2.0))
-    
+
     ax = fig.add_subplot(223)
     ax.scatter(gaze_x, gaze_y, s=1)
     ax.tick_params(axis='both', labelsize=8)
     ax.set_xlim((-0.1, 1.1))
     ax.set_ylim((-0.1, 1.1))
-        
+
     ax = fig.add_subplot(224)
     ax.imshow(hmap, interpolation='bicubic', aspect='equal', origin='lower',
                    extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]])
     ax.tick_params(axis='both', labelsize=8)
     ax.set_xlim((-0.1, 1.1))
     ax.set_ylim((-0.1, 1.1))
-    
+
     # Pack all subplots and labels tightly
     fig.subplots_adjust(hspace = 0.2)
 
     # Save figure to file in same directory as CSV file
-    plt.savefig(plot_png, dpi = 150, bbox_inches = 'tight')    
-    
+    plt.savefig(plot_png, dpi = 150, bbox_inches = 'tight')
+
     # Close figure without showinging it
     plt.close(fig)
