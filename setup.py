@@ -9,5 +9,5 @@ setup ( name = 'mrgaze',
         license = 'LICENSE.txt',
         packages = find_packages(),
         package_data = {'mrgaze': ['Cascade/*']},
-        scripts = ['mrgaze_single.py','mrgaze_batch.py','mrgaze_tune.py'],
+        scripts = ['mrgaze_single.py','mrgaze_batch.py','mrgaze_live.py'],
       )
