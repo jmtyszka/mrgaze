@@ -35,7 +35,7 @@ import cv2
 from mrgaze import media, utils, config, calibrate, report, engine
 
 
-def LivePupilometry(data_dir):
+def LivePupilometry(data_dir, live_eyetracking=False):
     """
     Perform pupil boundary ellipse fitting on camera feed
 
@@ -52,7 +52,12 @@ def LivePupilometry(data_dir):
         Completion status (True = successful)
     """
 
+    # If user did not provide a root data directory, we use HOME/mrgaze
+    if data_dir == '':
+        data_dir = os.path.join(os.getenv("HOME"), 'mrgaze')
+
     # Load Configuration
+    print "Loading Configuration File"
     cfg = config.LoadConfig(data_dir)
     cfg_ts = time.time()
 
@@ -65,22 +70,23 @@ def LivePupilometry(data_dir):
     vout_ext = cfg.get('VIDEO' ,'outputextension')
     # vin_fps = cfg.getfloat('VIDEO', 'inputfps')
 
+    # Flag for freeze frame
+    freeze_frame = False
+
     # Full video file paths
     hostname = os.uname()[1]
     username = getpass.getuser()
-
-    if os.path.isdir(data_dir):
-        ss_dir = data_dir
-    else:
-        ss_dir = os.path.join(data_dir, "%s_%s_%s" % (hostname, username, int(time.time())))
+        
+    ss_dir = os.path.join(data_dir, "%s_%s_%s" % (hostname, username, int(time.time())))
 
     vid_dir = os.path.join(ss_dir, 'videos')
     res_dir = os.path.join(ss_dir, 'results')
 
-    vout_path = os.path.join(vid_dir, 'gaze_pupils' + vout_ext)
-    cal_vout_path = os.path.join(vid_dir, 'cal_pupils' + vout_ext)
+    vout_path = os.path.join(vid_dir, 'gaze' + vout_ext)
+    cal_vout_path = os.path.join(vid_dir, 'cal' + vout_ext)
 
-    if os.path.isfile(vout_path):
+    # if we do live eye-tracking, we read in what would be the output of the live eye-tracking
+    if not live_eyetracking:
         vin_path = vout_path
         cal_vin_path = cal_vout_path
     else:
@@ -124,20 +130,21 @@ def LivePupilometry(data_dir):
     #
     print('  Opening camera stream')
 
-#    try:
-    if os.path.isfile(str(vin_path)):
-        vin_stream = cv2.VideoCapture(vin_path)
-        cal_vin_stream = cv2.VideoCapture(cal_vin_path)
-    else:
-        vin_stream = cv2.VideoCapture(vin_path)
-        cal_vin_stream = vin_stream
-#except:
-#        print('* Problem opening input video stream - skipping pupilometry')
-#        
-#        return False
+    try:
+        if not live_eyetracking:
+            vin_stream = cv2.VideoCapture(vin_path)
+            cal_vin_stream = cv2.VideoCapture(cal_vin_path)
+        else:
+            vin_stream = cv2.VideoCapture(vin_path)
+            cal_vin_stream = vin_stream
+    except:
+        print('* Problem opening input video stream - skipping pupilometry')
+        return False
 
 
     while not vin_stream.isOpened():
+        print "Waiting for Camera."
+        print vin_path
         key = cv2.waitKey(500)
         if key == 27:
             print("User Abort.")
@@ -169,7 +176,11 @@ def LivePupilometry(data_dir):
     # print('  Video has %d frames at %0.3f fps' % (nf, vin_fps))
 
     # Read first preprocessed video frame from stream
-    keep_going, frame, art_power = media.LoadVideoFrame(vin_stream, cfg)
+    keep_going, frame_orig = media.LoadVideoFrame(vin_stream, cfg)
+    if keep_going:
+        frame, art_power = media.Preproc(frame_orig, cfg)
+    else:
+        art_power = 0.0
 
     # Get size of preprocessed frame for output video setup
     nx, ny = frame.shape[1], frame.shape[0]
@@ -183,7 +194,7 @@ def LivePupilometry(data_dir):
             #
             # Output video
             #
-            if not vout_path == vin_path:
+            if not live_eyetracking:
                 print('  Opening output video stream')
 
                 # Output video codec (MP4V - poor quality compression)
@@ -254,16 +265,17 @@ def LivePupilometry(data_dir):
                     (t, area, px, py, blink, art_power)
                 )
 
-                if not vout_path == vin_path:
+                if not live_eyetracking:
                     # Write output video frame
                     vout_stream.write(cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB))
 
-                # Read next frame (if available)
-                # if verbose:
-                #     b4_frame = time.time()
-                keep_going, frame, art_power = media.LoadVideoFrame(vin_stream, cfg)
-                #if verbose:
-                # print "Time to load frame: %s" % (time.time() - b4_frame)
+                # Read next frame, unless we want to figure out the correct settings for this frame
+                if not freeze_frame:
+                    keep_going, frame_orig = media.LoadVideoFrame(vin_stream, cfg)
+                if keep_going:
+                    frame, art_power = media.Preproc(frame_orig, cfg)
+                else:
+                    art_power = 0.0
 
                 # Increment frame counter
                 fc = fc + 1
@@ -281,23 +293,25 @@ def LivePupilometry(data_dir):
                 key = cv2.waitKey(1)
                 if key == 27 or key == 1048603:
                     # Clean up
-                    if not vout_path == vin_path:
+                    if not live_eyetracking:
                         vout_stream.release()
                     pupils_stream.close()
                     keep_going = False
                 elif key == 99:
                     # Clean up
-                    if not vout_path == vin_path:
+                    if not live_eyetracking:
                         vout_stream.release()
                     pupils_stream.close()
                     do_cal = True
                     print("Starting calibration.")
                     break
+                elif key == 102:
+                    freeze_frame = not freeze_frame
         else: # do calibration
             #
             # Output video
             #
-            if not vin_path == vout_path:
+            if not live_eyetracking:
                 print('  Opening output video stream')
 
                 # Output video codec (MP4V - poor quality compression)
@@ -366,13 +380,18 @@ def LivePupilometry(data_dir):
                 )
 
                 # Write output video frame
-                if not vout_path == vin_path:
+                if not live_eyetracking:
                     cal_vout_stream.write(cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB))
 
                 # Read next frame (if available)
                 # if verbose:
                 #     b4_frame = time.time()
-                keep_going, frame, art_power = media.LoadVideoFrame(cal_vin_stream, cfg)
+                keep_going, frame_orig = media.LoadVideoFrame(vin_stream, cfg)
+                if keep_going:
+                    frame, art_power = media.Preproc(frame_orig, cfg)
+                else:
+                    art_power = 0.0
+
                 #if verbose:
                 # print "Time to load frame: %s" % (time.time() - b4_frame)
 
@@ -393,14 +412,14 @@ def LivePupilometry(data_dir):
                 if key == 27 or key == 1048603:
                     keep_going = False
                     # Clean up
-                    if not vout_path == vin_path:
+                    if not live_eyetracking:
                         cal_vout_stream.release()
                     cal_pupils_stream.close()
-                elif key == 118:
+                elif key == 118 or not keep_going:
                     do_cal = False
                     print("Stopping calibration.")
                     # Clean up
-                    if not vout_path == vin_path:
+                    if not live_eyetracking:
                         cal_vout_stream.release()
                     cal_pupils_stream.close()
                     break
@@ -517,7 +536,11 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, cfg):
     print('  Video has %d frames at %0.3f fps' % (nf, vin_fps))
 
     # Read first preprocessed video frame from stream
-    keep_going, frame, art_power = media.LoadVideoFrame(vin_stream, cfg)
+    keep_going, frame_orig = media.LoadVideoFrame(vin_stream, cfg)
+    if keep_going:
+        frame, art_power = media.Preproc(frame_orig, cfg)
+    else:
+        art_power = 0.0
 
     # Get size of preprocessed frame for output video setup
     nx, ny = frame.shape[1], frame.shape[0]
@@ -586,7 +609,11 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, cfg):
         vout_stream.write(frame_rgb)
 
         # Read next frame (if available)
-        keep_going, frame, art_power = media.LoadVideoFrame(vin_stream, cfg)
+        keep_going, frame_orig = media.LoadVideoFrame(vin_stream, cfg)
+        if keep_going:
+            frame, art_power = media.Preproc(frame_orig, cfg)
+        else:
+            art_power = 0.0
 
         # Increment frame counter
         fc = fc + 1

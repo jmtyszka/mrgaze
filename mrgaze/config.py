@@ -132,7 +132,6 @@ def LoadConfig(data_dir, subjsess=''):
 
         # Load existing root config file
         config.read(root_cfg_file)
-
     else:
 
         # Write a new default root config file

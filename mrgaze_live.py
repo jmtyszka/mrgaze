@@ -52,6 +52,7 @@ def main():
     # Parse command line arguments                                                                                                                            
     parser = argparse.ArgumentParser(description='Do real time Eye Tracking.')
     parser.add_argument('--ss_dir', required=False, help="single session directory. This is either the location of previously recorded data, or the destination directory for live eye-tracking.")
+    parser.add_argument('-p', default=False, help="Do preliminary post-processing of previously recorded data, rather than live eye-tracking.")
  
     # Parse command line arguments                                                                                                                         
     args = parser.parse_args()
@@ -60,11 +61,7 @@ def main():
     if args.ss_dir:
         data_dir = args.ss_dir
     else:
-        data_dir = os.path.join(os.getenv("HOME"), 'mrgaze')
-
-    # Create single session directory if it doesn't already exist.
-    if not os.path.isdir(data_dir):
-        os.mkdir(data_dir)
+        data_dir = ''
        
     # Text splash
     print('')
@@ -76,7 +73,7 @@ def main():
     print('Data dir  : %s' % data_dir)
     
     # Run single-session pipeline
-    pupilometry.LivePupilometry(data_dir)
+    pupilometry.LivePupilometry(data_dir, not args.p)
 
 
 # This is the standard boilerplate that calls the main() function.
