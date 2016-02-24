@@ -22,6 +22,7 @@ Copyright 2014 California Institute of Technology.
 
 import os
 import sys
+import cv2
 import numpy as np
 from scipy.ndimage import generic_filter
 from scipy.stats import nanmedian
@@ -137,3 +138,18 @@ def _touint8(x):
     y = (x - x_min) / (x_max - x_min) * 255.0
 
     return np.uint8(y)
+
+
+def _waitKey(delay=1):
+    '''
+    Wait for key press and recast return code as human readable string
+    '''
+
+    keyChar = chr(cv2.waitKey(delay) & 255)
+
+    # Decode special keys
+    if keyChar == '\x1b':
+        keyChar = 'ESC'
+
+    return keyChar
+

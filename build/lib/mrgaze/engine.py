@@ -122,12 +122,12 @@ def PupilometryEngine(frame, cascade, cfg):
 
     # Extract pupil ROI (note row,col indexing of image array)
     roi = frame[y:y+h, x:x+w]
-    
+
     # Create black standard image, to display in case of a blink
     pupil_labels = np.zeros_like(roi)
     glint_mask = np.zeros_like(roi)
     roi_rescaled = np.zeros_like(roi)
-    
+
     # Define ROI rect
     roi_rect = (x,y), (x+w,y+h)
 
@@ -161,9 +161,8 @@ def PupilometryEngine(frame, cascade, cfg):
         ##################
 
         # Check for unusually high eccentricity
-        if fitellipse.Eccentricity(pupil_ellipse) > 0.5:
+        if fitellipse.Eccentricity(pupil_ellipse) > 0.95:
             blink = True
-
 
     if not blink:
 
@@ -176,31 +175,31 @@ def PupilometryEngine(frame, cascade, cfg):
         # Rescale and cast label images to uint8/ubyte
         pupil_labels = utils._touint8(pupil_labels)
         glint_mask = utils._touint8(glint_mask)
-        
+
         # Create quad montage preprocessing stages in pupil/glint detection
         A = np.hstack( (roi, roi_rescaled) )
         B = np.hstack( (pupil_labels, glint_mask) )
-        
+
         # Apply colormaps
         A_rgb = cv2.applyColorMap(A, cv2.COLORMAP_BONE)
         B_rgb = cv2.applyColorMap(B, cv2.COLORMAP_JET)
-        
+
         quad_rgb = np.vstack( (A_rgb, B_rgb) )
-        
+
         # Resample montage to 256 rows
         ny, nx, nc = quad_rgb.shape
         new_ny, new_nx = 256, int(256.0 / ny * nx)
         quad_up_rgb = cv2.resize(quad_rgb, dsize=(new_nx, new_ny),
                                  interpolation=cv2.INTER_NEAREST)
-        
+
         # Resample overlay image to 256 rows
         ny, nx, nc = frame_rgb.shape
         new_ny, new_nx = 256, int(256.0 / ny * nx)
         frame_up_rgb = cv2.resize(frame_rgb, dsize=(new_nx, new_ny), interpolation=cv2.INTER_NEAREST)
-        
+
         # Montage preprocessing and final overlay into single RGB image
         montage_rgb = np.hstack( (quad_up_rgb, frame_up_rgb) )
-        
+
         cv2.imshow('Pupilometry', montage_rgb)
         cv2.waitKey(5)
 
@@ -285,6 +284,7 @@ def SegmentPupil(roi, cfg):
             C = 4.0 * np.pi * A / (P**2)
         else:
             C = 0.0
+
 
         if A > A_min and A < A_max:
 
