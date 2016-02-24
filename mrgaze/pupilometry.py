@@ -80,9 +80,6 @@ def LivePupilometry(data_dir, live_eyetracking=False):
     # Flag for freeze frame
     freeze_frame = False
 
-        
-
-
     vid_dir = os.path.join(ss_dir, 'videos')
     res_dir = os.path.join(ss_dir, 'results')
 
@@ -149,8 +146,8 @@ def LivePupilometry(data_dir, live_eyetracking=False):
 
     while not vin_stream.isOpened():
         print("Waiting for Camera.")
-        key = cv2.waitKey(500)
-        if key == 27:
+        key = utils._waitKey(500)
+        if key == 'ESC':
             print("User Abort.")
             break
 
@@ -294,14 +291,14 @@ def LivePupilometry(data_dir, live_eyetracking=False):
                         fc = 0
 
                 # wait whether user pressed esc to exit the experiment
-                key = cv2.waitKey(1)
-                if key == 27 or key == 1048603:
+                key = utils._waitKey(1)
+                if key == 'ESC':
                     # Clean up
                     if live_eyetracking:
                         vout_stream.release()
                     pupils_stream.close()
                     keep_going = False
-                elif key == 99:
+                elif key == 'c':
                     # Clean up
                     if live_eyetracking:
                         vout_stream.release()
@@ -309,7 +306,7 @@ def LivePupilometry(data_dir, live_eyetracking=False):
                     do_cal = True
                     print("Starting calibration.")
                     break
-                elif key == 102:
+                elif key == 'f':
                     freeze_frame = not freeze_frame
         else: # do calibration
             #
@@ -412,14 +409,14 @@ def LivePupilometry(data_dir, live_eyetracking=False):
                         fc = 0
 
                 # wait whether user pressed esc to exit the experiment
-                key = cv2.waitKey(1)
-                if key == 27 or key == 1048603:
+                key = utils._waitKey(1)
+                if key == 'ESC':
                     keep_going = False
                     # Clean up
                     if live_eyetracking:
                         cal_vout_stream.release()
                     cal_pupils_stream.close()
-                elif key == 118 or not keep_going:
+                elif key == 'v' or not keep_going:
                     do_cal = False
                     print("Stopping calibration.")
                     # Clean up
