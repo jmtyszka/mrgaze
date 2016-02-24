@@ -38,7 +38,7 @@ def InitConfig(config):
     # Add video defaults
     config.add_section('VIDEO')
     config.set('VIDEO','inputextension','.avi')
-    config.set('VIDEO','outputextension','.mov')
+    config.set('VIDEO','outputextension','.avi')
     config.set('VIDEO','inputfps','29.97')
     config.set('VIDEO','downsampling','1')
     config.set('VIDEO','border','0')
