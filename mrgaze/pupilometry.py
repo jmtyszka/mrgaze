@@ -56,6 +56,14 @@ def LivePupilometry(data_dir, live_eyetracking=False):
     if data_dir == '':
         data_dir = os.path.join(os.getenv("HOME"), 'mrgaze')
 
+        # Full video file paths
+        hostname = os.uname()[1]
+        username = getpass.getuser()
+
+        ss_dir = os.path.join(data_dir, "%s_%s_%s" % (hostname, username, int(time.time())))
+    else:
+        ss_dir = data_dir
+
     # Load Configuration
     cfg = config.LoadConfig(data_dir)
     cfg_ts = time.time()
@@ -72,11 +80,8 @@ def LivePupilometry(data_dir, live_eyetracking=False):
     # Flag for freeze frame
     freeze_frame = False
 
-    # Full video file paths
-    hostname = os.uname()[1]
-    username = getpass.getuser()
         
-    ss_dir = os.path.join(data_dir, "%s_%s_%s" % (hostname, username, int(time.time())))
+
 
     vid_dir = os.path.join(ss_dir, 'videos')
     res_dir = os.path.join(ss_dir, 'results')
@@ -136,6 +141,7 @@ def LivePupilometry(data_dir, live_eyetracking=False):
         else:
             vin_stream = cv2.VideoCapture(vin_path)
             cal_vin_stream = vin_stream
+
     except:
         print('* Problem opening input video stream - skipping pupilometry')
         return False
@@ -192,7 +198,7 @@ def LivePupilometry(data_dir, live_eyetracking=False):
             #
             # Output video
             #
-            if not live_eyetracking:
+            if live_eyetracking:
                 print('  Opening output video stream')
 
                 # Output video codec (MP4V - poor quality compression)
@@ -263,9 +269,9 @@ def LivePupilometry(data_dir, live_eyetracking=False):
                     (t, area, px, py, blink, art_power)
                 )
 
-                if not live_eyetracking:
+                if live_eyetracking:
                     # Write output video frame
-                    vout_stream.write(cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB))
+                    vout_stream.write(frame_orig)
 
                 # Read next frame, unless we want to figure out the correct settings for this frame
                 if not freeze_frame:
@@ -291,13 +297,13 @@ def LivePupilometry(data_dir, live_eyetracking=False):
                 key = cv2.waitKey(1)
                 if key == 27 or key == 1048603:
                     # Clean up
-                    if not live_eyetracking:
+                    if live_eyetracking:
                         vout_stream.release()
                     pupils_stream.close()
                     keep_going = False
                 elif key == 99:
                     # Clean up
-                    if not live_eyetracking:
+                    if live_eyetracking:
                         vout_stream.release()
                     pupils_stream.close()
                     do_cal = True
@@ -309,7 +315,7 @@ def LivePupilometry(data_dir, live_eyetracking=False):
             #
             # Output video
             #
-            if not live_eyetracking:
+            if live_eyetracking:
                 print('  Opening output video stream')
 
                 # Output video codec (MP4V - poor quality compression)
@@ -378,8 +384,8 @@ def LivePupilometry(data_dir, live_eyetracking=False):
                 )
 
                 # Write output video frame
-                if not live_eyetracking:
-                    cal_vout_stream.write(cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB))
+                if live_eyetracking:
+                    cal_vout_stream.write(frame_orig)
 
                 # Read next frame (if available)
                 # if verbose:
@@ -410,14 +416,14 @@ def LivePupilometry(data_dir, live_eyetracking=False):
                 if key == 27 or key == 1048603:
                     keep_going = False
                     # Clean up
-                    if not live_eyetracking:
+                    if live_eyetracking:
                         cal_vout_stream.release()
                     cal_pupils_stream.close()
                 elif key == 118 or not keep_going:
                     do_cal = False
                     print("Stopping calibration.")
                     # Clean up
-                    if not live_eyetracking:
+                    if live_eyetracking:
                         cal_vout_stream.release()
                     cal_pupils_stream.close()
                     break

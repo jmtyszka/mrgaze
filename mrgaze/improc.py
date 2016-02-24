@@ -46,7 +46,7 @@ def EstimateBias(fr):
 
     # Get image dimensions
     ny, nx = fr.shape
-    
+
     # Target maximum dimension is 32
     # Apect ratio preserved approximately
     if nx > ny:
@@ -58,7 +58,7 @@ def EstimateBias(fr):
         
     # Downsample frame
     fr_d = cv2.resize(fr, (nxd, nyd))
-    
+
     # 2D baseline estimation
     # Use large kernel relative to image size
     k = utils._forceodd(nd/2)

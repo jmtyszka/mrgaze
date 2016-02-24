@@ -52,7 +52,7 @@ def main():
     # Parse command line arguments                                                                                                                            
     parser = argparse.ArgumentParser(description='Do real time Eye Tracking.')
     parser.add_argument('--ss_dir', required=False, help="single session directory. This is either the location of previously recorded data, or the destination directory for live eye-tracking.")
-    parser.add_argument('-p', default=False, help="Do preliminary post-processing of previously recorded data, rather than live eye-tracking.")
+    parser.add_argument('-p', default=False, help="Do preliminary post-processing of previously recorded data, rather than live eye-tracking.",  const=True, action='store_const')
  
     # Parse command line arguments                                                                                                                         
     args = parser.parse_args()
@@ -71,7 +71,7 @@ def main():
     print('Version   : %s' % __version__)
     print('Date      : %s' % dt.datetime.now())
     print('Data dir  : %s' % data_dir)
-    
+
     # Run single-session pipeline
     pupilometry.LivePupilometry(data_dir, not args.p)
 
