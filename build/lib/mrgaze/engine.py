@@ -117,16 +117,21 @@ def PupilometryEngine(frame, cascade, cfg):
 
     # Init pupil and glint parameters
     pupil_ellipse = ((np.nan, np.nan), (np.nan, np.nan), np.nan)
-    roi_rect = (np.nan, np.nan), (np.nan, np.nan)
+    # roi_rect = (np.nan, np.nan), (np.nan, np.nan)
     glint_center = (np.nan, np.nan)
 
+    # Extract pupil ROI (note row,col indexing of image array)
+    roi = frame[y:y+h, x:x+w]
+    
+    # Create black standard image, to display in case of a blink
+    pupil_labels = np.zeros_like(roi)
+    glint_mask = np.zeros_like(roi)
+    roi_rescaled = np.zeros_like(roi)
+    
+    # Define ROI rect
+    roi_rect = (x,y), (x+w,y+h)
+
     if not blink:
-
-        # Define ROI rect
-        roi_rect = (x,y), (x+w,y+h)
-
-        # Extract pupil ROI (note row,col indexing of image array)
-        roi = frame[y:y+h, x:x+w]
 
         ###################
         # BEGIN ENGINE CORE
@@ -168,38 +173,36 @@ def PupilometryEngine(frame, cascade, cfg):
 
     if cfg.getboolean('OUTPUT', 'graphics'):
 
-            if not blink:
-
-                # Rescale and cast label images to uint8/ubyte
-                pupil_labels = utils._touint8(pupil_labels)
-                glint_mask = utils._touint8(glint_mask)
-
-                # Create quad montage preprocessing stages in pupil/glint detection
-                A = np.hstack( (roi, roi_rescaled) )
-                B = np.hstack( (pupil_labels, glint_mask) )
-
-                # Apply colormaps
-                A_rgb = cv2.applyColorMap(A, cv2.COLORMAP_BONE)
-                B_rgb = cv2.applyColorMap(B, cv2.COLORMAP_JET)
-
-                quad_rgb = np.vstack( (A_rgb, B_rgb) )
-
-                # Resample montage to 256 rows
-                ny, nx, nc = quad_rgb.shape
-                new_ny, new_nx = 256, int(256.0 / ny * nx)
-                quad_up_rgb = cv2.resize(quad_rgb, dsize=(new_nx, new_ny),
-                                         interpolation=cv2.INTER_NEAREST)
-
-                # Resample overlay image to 256 rows
-                ny, nx, nc = frame_rgb.shape
-                new_ny, new_nx = 256, int(256.0 / ny * nx)
-                frame_up_rgb = cv2.resize(frame_rgb, dsize=(new_nx, new_ny), interpolation=cv2.INTER_NEAREST)
-
-                # Montage preprocessing and final overlay into single RGB image
-                montage_rgb = np.hstack( (quad_up_rgb, frame_up_rgb) )
-
-                cv2.imshow('Pupilometry', montage_rgb)
-                cv2.waitKey(5)
+        # Rescale and cast label images to uint8/ubyte
+        pupil_labels = utils._touint8(pupil_labels)
+        glint_mask = utils._touint8(glint_mask)
+        
+        # Create quad montage preprocessing stages in pupil/glint detection
+        A = np.hstack( (roi, roi_rescaled) )
+        B = np.hstack( (pupil_labels, glint_mask) )
+        
+        # Apply colormaps
+        A_rgb = cv2.applyColorMap(A, cv2.COLORMAP_BONE)
+        B_rgb = cv2.applyColorMap(B, cv2.COLORMAP_JET)
+        
+        quad_rgb = np.vstack( (A_rgb, B_rgb) )
+        
+        # Resample montage to 256 rows
+        ny, nx, nc = quad_rgb.shape
+        new_ny, new_nx = 256, int(256.0 / ny * nx)
+        quad_up_rgb = cv2.resize(quad_rgb, dsize=(new_nx, new_ny),
+                                 interpolation=cv2.INTER_NEAREST)
+        
+        # Resample overlay image to 256 rows
+        ny, nx, nc = frame_rgb.shape
+        new_ny, new_nx = 256, int(256.0 / ny * nx)
+        frame_up_rgb = cv2.resize(frame_rgb, dsize=(new_nx, new_ny), interpolation=cv2.INTER_NEAREST)
+        
+        # Montage preprocessing and final overlay into single RGB image
+        montage_rgb = np.hstack( (quad_up_rgb, frame_up_rgb) )
+        
+        cv2.imshow('Pupilometry', montage_rgb)
+        cv2.waitKey(5)
 
 
     return pupil_ellipse, roi_rect, blink, glint_center, frame_rgb
@@ -221,8 +224,11 @@ def SegmentPupil(roi, cfg):
     ----
     pupil_bw : 2D numpy uint8 array
         Binary thresholded version of ROI image
+    pupil_labels : 2D numpy uint8 array
+        Labeled pupil candidates
     roi_rescaled : 2D numpy uint8 array
         Rescaled version of ROI with bright regions saturated
+
     """
 
     # Get segmentation parameters

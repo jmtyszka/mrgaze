@@ -48,13 +48,13 @@ def LoadVideoFrame(v_in, cfg):
     # Load one frame
     status, fr = v_in.read()
     
-    # If frame loaded successfully, preprocess
-    if status:
-        fr, art_power = Preproc(fr, cfg)
-    else:
-        art_power = 0.0
+#    # If frame loaded successfully, preprocess
+#    if status:
+#        fr, art_power = Preproc(fr, cfg)
+#    else:
+#        art_power = 0.0
 
-    return status, fr, art_power
+    return status, fr
     
 
 def Preproc(fr, cfg):

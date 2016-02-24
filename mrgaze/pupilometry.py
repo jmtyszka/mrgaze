@@ -57,7 +57,6 @@ def LivePupilometry(data_dir, live_eyetracking=False):
         data_dir = os.path.join(os.getenv("HOME"), 'mrgaze')
 
     # Load Configuration
-    print "Loading Configuration File"
     cfg = config.LoadConfig(data_dir)
     cfg_ts = time.time()
 
@@ -143,8 +142,7 @@ def LivePupilometry(data_dir, live_eyetracking=False):
 
 
     while not vin_stream.isOpened():
-        print "Waiting for Camera."
-        print vin_path
+        print("Waiting for Camera.")
         key = cv2.waitKey(500)
         if key == 27:
             print("User Abort.")

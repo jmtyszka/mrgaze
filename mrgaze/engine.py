@@ -130,7 +130,7 @@ def PupilometryEngine(frame, cascade, cfg):
     
     # Define ROI rect
     roi_rect = (x,y), (x+w,y+h)
-
+    
     if not blink:
 
         ###################
@@ -161,9 +161,8 @@ def PupilometryEngine(frame, cascade, cfg):
         ##################
 
         # Check for unusually high eccentricity
-        if fitellipse.Eccentricity(pupil_ellipse) > 0.5:
+        if fitellipse.Eccentricity(pupil_ellipse) > 0.9:
             blink = True
-
 
     if not blink:
 
@@ -274,7 +273,7 @@ def SegmentPupil(roi, cfg):
 
     # Init best pupil label
     pupil_label = -1
-
+    
     for props in pupil_props:
 
         # Extract region properties
@@ -285,6 +284,7 @@ def SegmentPupil(roi, cfg):
             C = 4.0 * np.pi * A / (P**2)
         else:
             C = 0.0
+
 
         if A > A_min and A < A_max:
 
@@ -401,7 +401,7 @@ def FindRemoveGlint(roi, cfg):
 def FitPupil(bw, roi, cfg):
     '''
     Fit ellipse to pupil-iris boundary in segmented ROI
-
+    
     Arguments
     ----
     bw : 2D numpy uint8 array

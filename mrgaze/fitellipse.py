@@ -286,7 +286,7 @@ def FitEllipse_RobustLSQ(pnts, roi, cfg, max_refines=5, max_perc_inliers=95.0):
     '''
     
     # Debug flag
-    DEBUG = False      
+    DEBUG = False
     
     # Suppress invalid values
     np.seterr(invalid='ignore')
@@ -300,6 +300,7 @@ def FitEllipse_RobustLSQ(pnts, roi, cfg, max_refines=5, max_perc_inliers=95.0):
     # Count edge points    
     n_pnts = pnts.shape[0]
 
+
     # Break if too few points to fit ellipse (RARE)
     if n_pnts < 5:
         return best_ellipse
@@ -312,18 +313,18 @@ def FitEllipse_RobustLSQ(pnts, roi, cfg, max_refines=5, max_perc_inliers=95.0):
             
         # Calculate normalized errors for all points
         norm_err = EllipseNormError(pnts, ellipse)
-            
+
         # Identify inliers
         inliers = np.nonzero(norm_err**2 < max_norm_err_sq)[0]
             
         # Update inliers set
         inlier_pnts = pnts[inliers]            
-            
+
         # Protect ellipse fitting from too few points
         if inliers.size < 5:
             if DEBUG: print('Break < 5 Inliers (During Refine)')
             break
-            
+
         # Fit ellipse to refined inlier set
         ellipse = cv2.fitEllipse(inlier_pnts)
             

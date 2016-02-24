@@ -51,7 +51,7 @@ def main():
         ss_dir = sys.argv[1]
     else:
         # ss_dir = os.getcwd()
-        ss_dir = '/Users/jmt/Data/Eye_Tracking/Groups/Soyoung/Test'
+        ss_dir = os.path.join(os.getenv("HOME"), 'mrgaze')
        
     # Split subj/session directory path into data_dir and subj/sess name
     data_dir, subj_sess = os.path.split(os.path.abspath(ss_dir))
