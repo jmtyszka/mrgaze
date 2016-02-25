@@ -64,7 +64,7 @@ def main():
     if args.ss_dir:
         data_dir = args.ss_dir
     else:
-        data_dir = os.path.join(os.getenv("HOME"), 'mrgaze')
+        data_dir = ''
 
     # Text splash
     print('')
