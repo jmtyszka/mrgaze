@@ -1,4 +1,4 @@
-#!/opt/local/bin/python
+#!/usr/bin/env python
 #
 # Gaze tracking report generator
 # - collects info from subject/session results directory

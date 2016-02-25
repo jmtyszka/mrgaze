@@ -1,4 +1,4 @@
-#!/opt/local/bin/python
+#!/usr/bin/env python
 """
 Utility functions, primarily for I/O
 
@@ -27,7 +27,7 @@ from skimage.transform import rotate
 
 
 def LoadVideoFrame(v_in, cfg):
-    """ Load and preprocess a single frame from video stream 
+    """ Load and preprocess a single frame from video stream
 
     Parameters
     ----------
@@ -47,7 +47,7 @@ def LoadVideoFrame(v_in, cfg):
 
     # Load one frame
     status, fr = v_in.read()
-    
+
 #    # If frame loaded successfully, preprocess
 #    if status:
 #        fr, art_power = Preproc(fr, cfg)
@@ -55,18 +55,18 @@ def LoadVideoFrame(v_in, cfg):
 #        art_power = 0.0
 
     return status, fr
-    
+
 
 def Preproc(fr, cfg):
     """
-    Preprocess a single frame 
-    
+    Preprocess a single frame
+
     Parameters
     ----------
     fr : numpy uint8 array
         raw video frame.
     cfg : border/rotate/mrclean/zthresh/downsampling
-        
+
     Returns
     ----
     fr : numpy uint8 array
@@ -74,7 +74,7 @@ def Preproc(fr, cfg):
     art_power : float
         Artifact power in frame.
     """
-    
+
     # Extract video processing parameters
     downsampling = cfg.getfloat('VIDEO', 'downsampling')
     border       = cfg.getint('VIDEO', 'border')
@@ -88,16 +88,16 @@ def Preproc(fr, cfg):
     perc_range = (perclow, perchigh)
     bias_correct = False
     bias_correct = True
-    
+
     # Init returned artifact power
-    art_power = 0.0    
-        
+    art_power = 0.0
+
     # Convert to grayscale
     fr = cv2.cvtColor(fr, cv2.COLOR_RGB2GRAY)
-        
+
     # Trim border first
     fr = TrimBorder(fr, border)
-        
+
     # Apply optional MR artifact suppression
     if do_mrclean:
         fr, art_power = mrclean.MRClean(fr, z_thresh)
@@ -105,7 +105,7 @@ def Preproc(fr, cfg):
     # Downsample
     if downsampling > 1:
         fr = Downsample(fr, downsampling)
-        
+
     # Correct for illumination bias
     if bias_correct:
         bias_field = improc.EstimateBias(fr)
@@ -114,25 +114,25 @@ def Preproc(fr, cfg):
     # Robust rescale to [0,50] percentile
     # Emphasize darker areas such as pupil
     fr = improc.RobustRescale(fr, perc_range)
-        
+
     # Finally rotate frame
     fr = RotateFrame(fr, rotate)
-    
+
     return fr, art_power
 
 
 def Downsample(frame, factor):
     # Get trimmed frame size
     nx, ny = frame.shape[1], frame.shape[0]
-    
+
     # Calculate downsampled matrix
     nxd, nyd = int(nx/factor), int(ny/factor)
-    
+
     # Downsample with area averaging
     frame = cv2.resize(frame, (nxd, nyd), interpolation=cv2.INTER_AREA)
 
     return frame
-    
+
 
 def LoadImage(image_file, cfg):
     """
@@ -142,8 +142,8 @@ def LoadImage(image_file, cfg):
     ----------
     image_file : string
         File name of image
-    cfg : 
-        
+    cfg :
+
 
     Returns
     -------
@@ -161,62 +161,62 @@ def LoadImage(image_file, cfg):
     # load test frame image
     frame = cv2.imread(image_file)
 
-    if frame.size == 0:    
+    if frame.size == 0:
         print('Problem opening %s to read' % image_file)
         return frame
-    
+
     # Preprocess frame
     frame, _ = Preproc(frame, cfg)
-    
+
     return frame
 
 
 def TrimBorder(frame, border = 0):
     """
     Trim video frame border introduced by frame capture
-    
+
     Parameters
     ----------
     frame : numpy uint8 array
         video frame
     border : integer
         border width in pixels to strip [0]
-        
+
     Returns
     -------
     frame : numpy unit8 array
         video frame without border
     """
-    
+
     if border > 0:
-        
+
         # Get image dimension
         nx, ny = frame.shape[1], frame.shape[0]
-        
+
         # Set bounding box
         x0 = border
         y0 = border
         x1 = nx - border
         y1 = ny - border
-        
+
         # Make sure bounds are inside image
         x0 = x0 if x0 > 0 else 0
         x1 = x1 if x1 < nx else nx-1
         y0 = y0 if y0 > 0 else 0
         y1 = y1 if y1 < ny else ny-1
-        
+
         # Crop and return
         return frame[y0:y1, x0:x1]
-        
+
     else:
-        
+
         return frame
 
 
 def RotateFrame(frame, theta_deg):
     """
     Rotate frame in multiples of 90 degrees.
-    
+
     Arguments
     ----
     frame : numpy uint8 array
@@ -225,45 +225,45 @@ def RotateFrame(frame, theta_deg):
         CCW rotation angle in degrees (math convention)
         Integer multiples of 90 degrees are handled quickly.
         Arbitrary rotation angles are slower.
-        
+
     Returns
     ----
     new_frame : numpy uint8 array
         rotated frame
-        
+
     Example
     ----
     >>> frame_rot = RotateFrame(frame, 90)
     """
-    
+
     if theta_deg == 0:
-        
+
         # Do nothing
         new_frame = frame.copy()
-    
+
     elif theta_deg == 90:
-    
+
         # Rotate CCW 90
         new_frame = cv2.transpose(frame)
         new_frame = cv2.flip(new_frame, flipCode = 0)
 
     elif theta_deg == 270:
-    
+
         # Rotate CCW 270 (CW 90)
         new_frame = cv2.transpose(frame)
         new_frame = cv2.flip(new_frame, flipCode = 1)
-        
+
     elif theta_deg == 180:
-    
+
         # Rotate by 180
         new_frame = cv2.flip(frame, flipCode = 0)
         new_frame = cv2.flip(new_frame, flipCode = 1)
-    
+
     else: # Arbitrary rotation
-    
+
         new_frame = rotate(frame, theta_deg, resize=True)
-        
+
         # Scale and recast to uint8
         new_frame = np.uint8(new_frame * 255.0)
-        
+
     return new_frame

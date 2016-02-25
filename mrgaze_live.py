@@ -37,10 +37,8 @@ Copyright
 2014 California Institute of Technology.
 """
 
-__version__ = '0.6.8'
+__version__ = '0.7.2'
 
-import os
-import sys
 import datetime as dt
 import argparse
 
@@ -48,13 +46,13 @@ from mrgaze import pupilometry
 
 
 def main():
-    
-    # Parse command line arguments                                                                                                                            
+
+    # Parse command line arguments
     parser = argparse.ArgumentParser(description='Do real time Eye Tracking.')
     parser.add_argument('--ss_dir', required=False, help="single session directory. This is either the location of previously recorded data, or the destination directory for live eye-tracking.")
     parser.add_argument('-p', default=False, help="Do preliminary post-processing of previously recorded data, rather than live eye-tracking.",  const=True, action='store_const')
- 
-    # Parse command line arguments                                                                                                                         
+
+    # Parse command line arguments
     args = parser.parse_args()
 
     # Get single session directory from command line
@@ -62,7 +60,7 @@ def main():
         data_dir = args.ss_dir
     else:
         data_dir = ''
-       
+
     # Text splash
     print('')
     print('--------------------------------------------------')
