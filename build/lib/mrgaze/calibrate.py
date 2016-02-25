@@ -29,7 +29,7 @@ import cv2
 import json
 import numpy as np
 import pylab as plt
-from skimage import filter, exposure
+from skimage import filters, exposure
 from scipy import ndimage
 from mrgaze import moco, engine
 
@@ -142,7 +142,7 @@ def FindFixations(x, y, plims=(5,95), sigma=2.0):
     hmap = exposure.rescale_intensity(hmap, in_range  = (pA, pB))
 
     # Otsu threshold clamped heatmap
-    th = filter.threshold_otsu(hmap)
+    th = filters.threshold_otsu(hmap)
     blobs = np.array(hmap > th, np.uint8)
 
     # Morphological opening (circle 2 pixels diameter)

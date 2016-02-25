@@ -55,7 +55,7 @@ def main():
     # Parse command line arguments
     parser = argparse.ArgumentParser(description='Do real time Eye Tracking.')
     parser.add_argument('-d', '--ss_dir', required=False, help="Single session directory. This is either the location of previously recorded data, or the destination directory for live eye-tracking.")
-    parser.add_argument('-p', action="store_true", help="Do preliminary post-processing of previously recorded data, rather than live eye-tracking.",  const=True, action='store_const')
+    parser.add_argument('-p', action="store_true", help="Do preliminary post-processing of previously recorded data, rather than live eye-tracking.")
 
     # Parse command line arguments
     args = parser.parse_args()

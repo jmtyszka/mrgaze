@@ -39,18 +39,24 @@ Copyright
 __version__ = '0.7.2'
 
 import os
-import sys
 import datetime as dt
+import argparse
 
 from mrgaze import pipeline
 
 def main():
 
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Analyze single session eye tracking video')
+    parser.add_argument('-d','--ss_dir', required=False, help="Single session directory with videos subdirectory")
+
+    # Parse command line arguments
+    args = parser.parse_args()
+
     # Get single session directory from command line
-    if len(sys.argv) > 1:
-        ss_dir = sys.argv[1]
+    if args.ss_dir:
+        ss_dir = args.ss_dir
     else:
-        # ss_dir = os.getcwd()
         ss_dir = os.path.join(os.getenv("HOME"), 'mrgaze')
 
     # Split subj/session directory path into data_dir and subj/sess name
