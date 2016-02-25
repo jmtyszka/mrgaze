@@ -36,9 +36,6 @@ Copyright
 2015 California Institute of Technology.
 """
 
-<<<<<<< HEAD
-__version__ = '0.7.0'
-=======
 __version__ = '0.6.8'
 
 import wx
@@ -103,20 +100,20 @@ class ExamplePanel(wx.Panel):
 
     def EvtRadioBox(self, event):
         self.logger.AppendText('EvtRadioBox: %d\n' % event.GetInt())
-        
+
     def EvtComboBox(self, event):
         self.logger.AppendText('EvtComboBox: %s\n' % event.GetString())
-        
+
     def OnClick(self,event):
         self.logger.AppendText(" Click on object with Id %d\n" %event.GetId())
-        
+
     def EvtText(self, event):
         self.logger.AppendText('EvtText: %s\n' % event.GetString())
-        
+
     def EvtChar(self, event):
         self.logger.AppendText('EvtChar: %d\n' % event.GetKeyCode())
         event.Skip()
-        
+
     def EvtCheckBox(self, event):
         self.logger.AppendText('EvtCheckBox: %d\n' % event.Checked())
 
@@ -126,7 +123,3 @@ frame = wx.Frame(None)
 panel = ExamplePanel(frame)
 frame.Show()
 app.MainLoop()
-<<<<<<< HEAD
->>>>>>> master
-=======
->>>>>>> master

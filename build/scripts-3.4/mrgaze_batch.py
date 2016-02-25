@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/opt/local/bin/python3
 """
 Run gaze tracking pipeline on all sessions within a data directory
 

@@ -1,10 +1,10 @@
-#!/usr/bin/env python
+#!/opt/local/bin/python3
 """
-Run gaze tracking pipeline on all sessions within a data directory
+Run gaze tracking pipeline on a single subject/session
 
 Example
 ----
->>> gt_batch /Data
+>>> gt_single /Data/Subject_0001
 
 Author
 ----
@@ -39,38 +39,41 @@ Copyright
 __version__ = '0.7.2'
 
 import os
-import sys
 import datetime as dt
-from mrgaze import pipeline
+import argparse
 
+from mrgaze import pipeline
 
 def main():
 
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Analyze single session eye tracking video')
+    parser.add_argument('-d','--ss_dir', required=False, help="Single session directory with videos subdirectory")
+
+    # Parse command line arguments
+    args = parser.parse_args()
+
     # Get single session directory from command line
-    if len(sys.argv) > 1:
-        data_dir = sys.argv[1]
+    if args.ss_dir:
+        ss_dir = args.ss_dir
     else:
-        data_dir = os.getcwd()
+        ss_dir = os.path.join(os.getenv("HOME"), 'mrgaze')
+
+    # Split subj/session directory path into data_dir and subj/sess name
+    data_dir, subj_sess = os.path.split(os.path.abspath(ss_dir))
 
     # Text splash
     print('')
     print('--------------------------------------------------')
-    print('mrgaze Batch Gaze Tracking Video Analysis')
+    print('mrgaze Single Session Gaze Tracking Video Analysis')
     print('--------------------------------------------------')
     print('Version   : %s' % __version__)
     print('Date      : %s' % dt.datetime.now())
     print('Data dir  : %s' % data_dir)
+    print('Subj/Sess : %s' % subj_sess)
 
-    print('')
-    print('Starting batch analysis')
-
-    pipeline.RunBatch(data_dir)
-
-    print('')
-    print('Completed batch analysis')
-
-    # Clean exit
-    sys.exit(0)
+    # Run single-session pipeline
+    pipeline.RunSingle(data_dir, subj_sess)
 
 
 # This is the standard boilerplate that calls the main() function.

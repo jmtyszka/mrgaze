@@ -36,23 +36,29 @@ Copyright
 2014 California Institute of Technology.
 """
 
-__version__ = '0.7.0'
+__version__ = '0.7.2'
 
 import os
-import sys
 import datetime as dt
+import argparse
 
 from mrgaze import pipeline
 
 def main():
-    
+
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Analyze single session eye tracking video')
+    parser.add_argument('-d','--ss_dir', required=False, help="Single session directory with videos subdirectory")
+
+    # Parse command line arguments
+    args = parser.parse_args()
+
     # Get single session directory from command line
-    if len(sys.argv) > 1:
-        ss_dir = sys.argv[1]
+    if args.ss_dir:
+        ss_dir = args.ss_dir
     else:
-        # ss_dir = os.getcwd()
-        ss_dir = '/Users/jmt/Data/Eye_Tracking/Groups/Soyoung/Test'
-       
+        ss_dir = os.path.join(os.getenv("HOME"), 'mrgaze')
+
     # Split subj/session directory path into data_dir and subj/sess name
     data_dir, subj_sess = os.path.split(os.path.abspath(ss_dir))
 
@@ -65,7 +71,7 @@ def main():
     print('Date      : %s' % dt.datetime.now())
     print('Data dir  : %s' % data_dir)
     print('Subj/Sess : %s' % subj_sess)
-    
+
     # Run single-session pipeline
     pipeline.RunSingle(data_dir, subj_sess)
 
@@ -73,4 +79,3 @@ def main():
 # This is the standard boilerplate that calls the main() function.
 if __name__ == '__main__':
     main()
-
