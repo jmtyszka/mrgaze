@@ -312,7 +312,7 @@ def SegmentPupil(roi, cfg):
     return pupil_bw, pupil_labels, roi_rescaled
 
 
-def FindRemoveGlint(roi, cfg):
+def FindRemoveGlint(roi, cfg, pupil_bw):
     '''
     Locate small bright region roughly centered in ROI
     This function should be called before any major preprocessing of the frame.
@@ -325,6 +325,8 @@ def FindRemoveGlint(roi, cfg):
         Pupil/iris ROI image
     cfg : configuration object
         Configuration parameters including fractional glint diameter estimate
+    pupil_bw : 2D numpy unit8 array
+        Black and white pupil segmentation
 
     Returns
     ----
@@ -340,6 +342,8 @@ def FindRemoveGlint(roi, cfg):
     ny, nx = roi.shape
     roi_cx, roi_cy = nx/2.0, ny/2.0
 
+    print ("%s, %s" % (roi_cx, roi_cy))
+
     # Estimated glint diameter in pixels
     glint_d = int(cfg.getfloat('PUPILSEG','glintdiameterperc') * nx / 100.0)
 
@@ -349,10 +353,14 @@ def FindRemoveGlint(roi, cfg):
 
     # Reasonable upper and lower bounds on glint area (x3, /3)
     glint_A = np.pi * (glint_d / 2.0)**2
-    A_min, A_max = glint_A / 3.0, glint_A * 3.0
+    A_min, A_max = glint_A / 3.0, glint_A * 9.0
+    
+    # print
+    # print A_min
+    # print A_max
 
     # Find bright pixels in full scale uint8 image (ie value > 250)
-    bright = np.uint8(roi > 250)
+    bright = np.uint8(roi > 254)
 
     # Label connected regions (blobs)
     bright_labels = measure.label(bright)
@@ -375,7 +383,7 @@ def FindRemoveGlint(roi, cfg):
 
         # Only accept blobs with area in glint range
         if A > A_min and A < A_max:
-
+            #            print A
             # Check distance from ROI center
             cy, cx = props.centroid  # (row, col)
             r = np.sqrt((cx-roi_cx)**2 + (cy-roi_cy)**2)

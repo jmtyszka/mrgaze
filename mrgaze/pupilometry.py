@@ -198,28 +198,28 @@ def LivePupilometry(data_dir, live_eyetracking=False):
             #
             # Output video
             #
+            # Output video codec (MP4V - poor quality compression)
+            # TODO : Find a better multiplatform codec
+            fourcc = cv2.cv.CV_FOURCC('m','p','4','v')
+
+            try:
+                vout_stream = cv2.VideoWriter(vout_path, fourcc, 30, (nx, ny), True)
+            except:
+                print('* Problem creating output video stream - skipping pupilometry')
+                return False
+
+            if not vout_stream.isOpened():
+                print('* Output video not opened - skipping pupilometry')
+                return False
+
+
             if live_eyetracking:
                 print('  Opening output video stream')
-
-                # Output video codec (MP4V - poor quality compression)
-                # TODO : Find a better multiplatform codec
-                fourcc = cv2.cv.CV_FOURCC('m','p','4','v')
-
-
-                try:
-                    vout_stream = cv2.VideoWriter(vout_path, fourcc, 30, (nx, ny), True)
-                except:
-                    print('* Problem creating output video stream - skipping pupilometry')
-                    return False
 
                 try:
                     raw_vout_stream = cv2.VideoWriter(raw_vout_path, fourcc, 30, (nx, ny), True)
                 except:
                     print('* Problem creating raw output video stream - skipping pupilometry')
-                    return False
-
-                if not vout_stream.isOpened():
-                    print('* Output video not opened - skipping pupilometry')
                     return False
 
                 if not raw_vout_stream.isOpened():
@@ -307,7 +307,7 @@ def LivePupilometry(data_dir, live_eyetracking=False):
                         fc = 0
 
                 # wait whether user pressed esc to exit the experiment
-                key = utils._waitKey(1)
+                key = utils._waitKey(5)
                 if key == 'ESC':
                     # Clean up
                     if live_eyetracking:
@@ -330,28 +330,29 @@ def LivePupilometry(data_dir, live_eyetracking=False):
             #
             # Output video
             #
+            print('  Opening output video stream')
+            
+            # Output video codec (MP4V - poor quality compression)
+            # TODO : Find a better multiplatform codec
+            fourcc = cv2.cv.CV_FOURCC('m','p','4','v')
+            
+            try:
+                cal_vout_stream = cv2.VideoWriter(cal_vout_path, fourcc, 30, (nx, ny), True)
+            except:
+                print('* Problem creating output video stream - skipping pupilometry')
+                return False
+
+            if not cal_vout_stream.isOpened():
+                print('* Output video not opened - skipping pupilometry')
+                return False
+
             if live_eyetracking:
-                print('  Opening output video stream')
-
-                # Output video codec (MP4V - poor quality compression)
-                # TODO : Find a better multiplatform codec
-                fourcc = cv2.cv.CV_FOURCC('m','p','4','v')
-
-                try:
-                    cal_vout_stream = cv2.VideoWriter(cal_vout_path, fourcc, 30, (nx, ny), True)
-                except:
-                    print('* Problem creating output video stream - skipping pupilometry')
-                    return False
-
                 try:
                     raw_cal_vout_stream = cv2.VideoWriter(raw_cal_vout_path, fourcc, 30, (nx, ny), True)
                 except:
                     print('* Problem creating output video stream - skipping pupilometry')
                     return False
 
-                if not cal_vout_stream.isOpened():
-                    print('* Output video not opened - skipping pupilometry')
-                    return False
 
                 if not raw_cal_vout_stream.isOpened():
                     print('* Raw output video not opened - skipping pupilometry')
