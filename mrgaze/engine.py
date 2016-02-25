@@ -312,7 +312,7 @@ def SegmentPupil(roi, cfg):
     return pupil_bw, pupil_labels, roi_rescaled
 
 
-def FindRemoveGlint(roi, cfg, pupil_bw):
+def FindRemoveGlint(roi, cfg):
     '''
     Locate small bright region roughly centered in ROI
     This function should be called before any major preprocessing of the frame.
