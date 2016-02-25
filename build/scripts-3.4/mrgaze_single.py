@@ -1,4 +1,4 @@
-#!/opt/local/Library/Frameworks/Python.framework/Versions/2.7/Resources/Python.app/Contents/MacOS/Python
+#!/opt/local/bin/python3
 """
 Run gaze tracking pipeline on a single subject/session
 
@@ -36,7 +36,7 @@ Copyright
 2014 California Institute of Technology.
 """
 
-__version__ = '0.7.0'
+__version__ = '0.7.2'
 
 import os
 import sys
@@ -45,14 +45,14 @@ import datetime as dt
 from mrgaze import pipeline
 
 def main():
-    
+
     # Get single session directory from command line
     if len(sys.argv) > 1:
         ss_dir = sys.argv[1]
     else:
         # ss_dir = os.getcwd()
         ss_dir = os.path.join(os.getenv("HOME"), 'mrgaze')
-       
+
     # Split subj/session directory path into data_dir and subj/sess name
     data_dir, subj_sess = os.path.split(os.path.abspath(ss_dir))
 
@@ -65,7 +65,7 @@ def main():
     print('Date      : %s' % dt.datetime.now())
     print('Data dir  : %s' % data_dir)
     print('Subj/Sess : %s' % subj_sess)
-    
+
     # Run single-session pipeline
     pipeline.RunSingle(data_dir, subj_sess)
 

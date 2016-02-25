@@ -7,13 +7,16 @@ Example
 ----
 >>> python live_eyetracking.py [output_directory]
 
-Author
+Authors
 ----
 Mike Tyszka, Caltech Brain Imaging Center
+Wolfgang Pauli, HSS, Caltech
 
 Dates
 ----
 2014-05-07 JMT From scratch
+2016-01-28 WMP Adpat mrgaze_single.py for live video
+2016-02-24 JMT Update command line args with -d
 
 License
 ----
@@ -34,11 +37,13 @@ along with mrgaze.  If not, see <http://www.gnu.org/licenses/>.
 
 Copyright
 ----
-2014 California Institute of Technology.
+2016 California Institute of Technology.
 """
 
 __version__ = '0.7.2'
 
+
+import os
 import datetime as dt
 import argparse
 
@@ -49,8 +54,8 @@ def main():
 
     # Parse command line arguments
     parser = argparse.ArgumentParser(description='Do real time Eye Tracking.')
-    parser.add_argument('--ss_dir', required=False, help="single session directory. This is either the location of previously recorded data, or the destination directory for live eye-tracking.")
-    parser.add_argument('-p', default=False, help="Do preliminary post-processing of previously recorded data, rather than live eye-tracking.",  const=True, action='store_const')
+    parser.add_argument('-d', '--ss_dir', required=False, help="Single session directory. This is either the location of previously recorded data, or the destination directory for live eye-tracking.")
+    parser.add_argument('-p', action="store_true", help="Do preliminary post-processing of previously recorded data, rather than live eye-tracking.",  const=True, action='store_const')
 
     # Parse command line arguments
     args = parser.parse_args()
@@ -59,7 +64,7 @@ def main():
     if args.ss_dir:
         data_dir = args.ss_dir
     else:
-        data_dir = ''
+        data_dir = os.path.join(os.getenv("HOME"), 'mrgaze')
 
     # Text splash
     print('')

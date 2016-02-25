@@ -1,4 +1,4 @@
-#!/usr/local/bin/python
+#!/usr/bin/env python
 #
 # Gaze tracking calibration
 # - use calibration video heatmap and priors

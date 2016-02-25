@@ -1,4 +1,4 @@
-#!/opt/local/Library/Frameworks/Python.framework/Versions/2.7/Resources/Python.app/Contents/MacOS/Python
+#!/usr/bin/env python
 """
 Main python eyetracking wrapper
 
@@ -49,17 +49,17 @@ def RunBatch(data_dir=[]):
     if not os.path.isdir(data_dir):
         print('* Data directory does not exist - exiting')
         sys.exit(1)
-        
+
     # Loop over all subject subdirectories of the data directory
     for subj_sess in os.walk(data_dir).next()[1]:
-     
+
         # Run single-session pipeline
         RunSingle(data_dir, subj_sess)
-        
+
     # Clean exit
-    return True 
-    
-    
+    return True
+
+
 def RunSingle(data_dir, subj_sess):
     """
     Run the gaze tracking pipeline on a single gaze tracking session
@@ -67,13 +67,13 @@ def RunSingle(data_dir, subj_sess):
 
     print('')
     print('Running single-session pipeline : ' + subj_sess)
-    
+
     if not data_dir or not subj_sess:
         print('* Data or subject/session directory not provided - returning')
         return False
-    
+
     # Subject/session directory name
-    ss_dir = os.path.join(data_dir, subj_sess)     
+    ss_dir = os.path.join(data_dir, subj_sess)
 
     # Video and results directory names for this subject/session
     ss_vid_dir = os.path.join(ss_dir, 'videos')
@@ -82,57 +82,57 @@ def RunSingle(data_dir, subj_sess):
     # Load configuration from root directory or subj/sess video dir
     # If no config file exists, a default root config is created
     cfg = config.LoadConfig(data_dir, subj_sess)
-    
+
     if not cfg:
         print('* Configuration file missing - returning')
         return False
-        
+
     # Extract operational flags from config
     do_cal = cfg.getboolean('CALIBRATION', 'calibrate')
-    
+
     # Run pipeline if video directory present
     if os.path.isdir(ss_vid_dir):
-        
+
         # Create results subj/sess dir
         utils._mkdir(ss_res_dir)
-        
+
         print('')
         print('  Calibration Pupilometry')
         print('  -----------------------')
-     
+
         pupilometry.VideoPupilometry(data_dir, subj_sess, 'cal', cfg)
 
         if do_cal:
-            
+
             print('  Create calibration model')
             C, central_fix = calibrate.AutoCalibrate(ss_res_dir, cfg)
-            
+
             if not C.any():
                 print('* Empty calibration matrix detected - skipping')
                 return False
 
-        print('')            
+        print('')
         print('  Gaze Pupilometry')
         print('  -----------------------')
-        
+
         pupilometry.VideoPupilometry(data_dir, subj_sess, 'gaze', cfg)
-        
-                
+
+
         if do_cal:
 
             print('  Calibrate pupilometry')
             calibrate.ApplyCalibration(ss_dir, C, central_fix, cfg)
-        
+
         print('')
         print('  Generate Report')
         print('  ---------------')
         report.WriteReport(ss_dir, cfg)
 
     else:
-            
+
         print('%s does not exist - skipping' % ss_vid_dir)
-        
+
     print('')
     print('Completed single-session pipeline')
-        
+
     return True

@@ -1,4 +1,4 @@
-#!/usr/local/bin/python
+#!/usr/bin/env python
 #
 # Video pupilometry functions
 # - takes calibration and gaze video filenames as input

@@ -1,4 +1,4 @@
-#!/opt/local/Library/Frameworks/Python.framework/Versions/2.7/Resources/Python.app/Contents/MacOS/Python
+#!/opt/local/bin/python3
 """
 Run gaze tracking pipeline on all sessions within a data directory
 
@@ -36,7 +36,7 @@ Copyright
 2014 California Institute of Technology.
 """
 
-__version__ = '0.7.0'
+__version__ = '0.7.2'
 
 import os
 import sys
@@ -45,13 +45,13 @@ from mrgaze import pipeline
 
 
 def main():
-    
+
     # Get single session directory from command line
     if len(sys.argv) > 1:
         data_dir = sys.argv[1]
     else:
         data_dir = os.getcwd()
-        
+
     # Text splash
     print('')
     print('--------------------------------------------------')
@@ -63,12 +63,12 @@ def main():
 
     print('')
     print('Starting batch analysis')
-    
+
     pipeline.RunBatch(data_dir)
-    
+
     print('')
     print('Completed batch analysis')
-    
+
     # Clean exit
     sys.exit(0)
 

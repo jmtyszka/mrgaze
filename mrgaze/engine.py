@@ -92,7 +92,8 @@ def PupilometryEngine(frame, cascade, cfg):
 
         else:
 
-            x, y, w, h = 0, 0, 0, 0
+            # Dummy ROI during blink
+            x, y, w, h = 0, 0, 1, 1
             blink = True
 
     else:
@@ -118,8 +119,11 @@ def PupilometryEngine(frame, cascade, cfg):
 
     # Init pupil and glint parameters
     pupil_ellipse = ((np.nan, np.nan), (np.nan, np.nan), np.nan)
-    # roi_rect = (np.nan, np.nan), (np.nan, np.nan)
     glint_center = (np.nan, np.nan)
+
+    # Catch zero-sized ROI
+    if w < 1 | h < 1:
+        x, y, w, h = 0, 0, 1, 1
 
     # Extract pupil ROI (note row,col indexing of image array)
     roi = frame[y:y+h, x:x+w]
