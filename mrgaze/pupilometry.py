@@ -109,11 +109,12 @@ def LivePupilometry(data_dir, live_eyetracking=False):
         os.makedirs(vid_dir)
         print('* %s does not exist - creating' % vid_dir)
 
+    camera_device = cfg.get('CAMERA' ,'device')
 
     # Set up the LBP cascade classifier
-    LBP_path = os.path.join(utils._package_root(), 'Cascade/cascade.xml')
+    LBP_path = os.path.join(utils._package_root(), ('Cascade_%s/cascade.xml' % camera_device))
 
-    print('  Loading LBP cascade')
+    print('  Loading LBP cascade for %s camera' % camera_device)
     cascade = cv2.CascadeClassifier(LBP_path)
 
     if cascade.empty():

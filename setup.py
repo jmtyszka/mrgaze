@@ -8,6 +8,6 @@ setup ( name = 'mrgaze',
         url = ['https://github.com/jmtyszka/mrgaze'],
         license = 'LICENSE.txt',
         packages = find_packages(),
-        package_data = {'mrgaze': ['Cascade/*']},
+        package_data = {'mrgaze': ['Cascade_*/*']},
         scripts = ['mrgaze_single.py','mrgaze_batch.py','mrgaze_live.py'],
       )
