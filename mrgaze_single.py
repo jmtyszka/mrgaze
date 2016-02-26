@@ -4,7 +4,7 @@ Run gaze tracking pipeline on a single subject/session
 
 Example
 ----
->>> gt_single /Data/Subject_0001
+% mrgaze_single.py /Users/jmt/Data/Eye_Tracking/iSight_Test/test
 
 Author
 ----
@@ -33,22 +33,23 @@ along with mrgaze.  If not, see <http://www.gnu.org/licenses/>.
 
 Copyright
 ----
-2014 California Institute of Technology.
+2014-2016 California Institute of Technology.
 """
 
 __version__ = '0.7.2'
 
-import os
-import datetime as dt
 import argparse
+import datetime as dt
+import os
 
 from mrgaze import pipeline
+
 
 def main():
 
     # Parse command line arguments
     parser = argparse.ArgumentParser(description='Analyze single session eye tracking video')
-    parser.add_argument('-d','--ss_dir', required=False, help="Single session directory with videos subdirectory")
+    parser.add_argument('-d', '--ss_dir', required=False, help="Single session directory with videos subdirectory")
 
     # Parse command line arguments
     args = parser.parse_args()

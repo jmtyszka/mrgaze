@@ -4,7 +4,7 @@ Run gaze tracking pipeline on all sessions within a data directory
 
 Example
 ----
->>> gt_batch /Data
+% mrgaze_batch.py /Data
 
 Author
 ----
@@ -38,15 +38,15 @@ Copyright
 
 __version__ = '0.7.2'
 
+import datetime as dt
 import os
 import sys
-import datetime as dt
+
 from mrgaze import pipeline
 
 
 def main():
-
-    # Get single session directory from command line
+    # Get root directory containing single subject sessions from command line
     if len(sys.argv) > 1:
         data_dir = sys.argv[1]
     else:
