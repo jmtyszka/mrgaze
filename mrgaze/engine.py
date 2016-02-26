@@ -168,8 +168,8 @@ def PupilometryEngine(frame, cascade, cfg):
         ##################
 
         # Check for unusually high eccentricity
-        if fitellipse.Eccentricity(pupil_ellipse) > 0.95:
-            blink = True
+        # if fitellipse.Eccentricity(pupil_ellipse) > 0.95:
+        #     blink = True
 
     # Overlay ROI, pupil ellipse and pseudo-glint on background RGB frame
     frame_rgb = OverlayPupil(frame_rgb, pupil_ellipse, roi_rect, glint_center)
