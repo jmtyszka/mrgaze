@@ -87,6 +87,7 @@ def InitConfig(config):
 
     config.add_section('CAMERA')
     config.set('CAMERA','fps','30')
+    config.set('CAMERA','device','thorlabs')
 
     return config
 

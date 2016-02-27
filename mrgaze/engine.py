@@ -61,7 +61,7 @@ def PupilometryEngine(frame, cascade, cfg):
     frw, frh = frame.shape[1], frame.shape[0]
 
     # RGB version of preprocessed frame for later use
-    frame_rgb =  cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
+    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
 
     # Init ROI to whole frame
     # Note (row, col) = (y, x) for shape
@@ -118,8 +118,10 @@ def PupilometryEngine(frame, cascade, cfg):
 
 
     # Init pupil and glint parameters
-    pupil_ellipse = ((np.nan, np.nan), (np.nan, np.nan), np.nan)
-    glint_center = (np.nan, np.nan)
+    # pupil_ellipse = ((np.nan, np.nan), (np.nan, np.nan), np.nan)
+    # glint_center = (np.nan, np.nan)
+    pupil_ellipse = ((1, 1), (1, 1), 0)
+    glint_center = (0, 0)
 
     # Catch zero-sized ROI
     if w < 1 | h < 1:
@@ -166,13 +168,11 @@ def PupilometryEngine(frame, cascade, cfg):
         ##################
 
         # Check for unusually high eccentricity
-        if fitellipse.Eccentricity(pupil_ellipse) > 0.95:
-            blink = True
+        # if fitellipse.Eccentricity(pupil_ellipse) > 0.95:
+        #     blink = True
 
-    if not blink:
-
-        # Overlay ROI, pupil ellipse and pseudo-glint on background RGB frame
-        frame_rgb = OverlayPupil(frame_rgb, pupil_ellipse, roi_rect, glint_center)
+    # Overlay ROI, pupil ellipse and pseudo-glint on background RGB frame
+    frame_rgb = OverlayPupil(frame_rgb, pupil_ellipse, roi_rect, glint_center)
 
 
     if cfg.getboolean('OUTPUT', 'graphics'):
@@ -338,11 +338,14 @@ def FindRemoveGlint(roi, cfg):
         Pupil/iris ROI without small bright areas
     '''
 
+    DEBUG = False
+
     # ROI dimensions and center
     ny, nx = roi.shape
     roi_cx, roi_cy = nx/2.0, ny/2.0
 
-    print ("%s, %s" % (roi_cx, roi_cy))
+    if DEBUG:
+        print ("%s, %s" % (roi_cx, roi_cy))
 
     # Estimated glint diameter in pixels
     glint_d = int(cfg.getfloat('PUPILSEG','glintdiameterperc') * nx / 100.0)
@@ -371,7 +374,7 @@ def FindRemoveGlint(roi, cfg):
     # Init glint parameters
     r_min = np.Inf
     glint_label = -1
-    glint = (np.nan, np.nan)
+    glint = (0, 0)
     glint_mask = np.zeros_like(roi, dtype="uint8")
     roi_noglint = roi.copy()
 
