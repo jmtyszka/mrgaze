@@ -1,4 +1,4 @@
-Metadata-Version: 1.0
+Metadata-Version: 1.1
 Name: mrgaze
 Version: 0.7.2
 Summary: Video pupilometry and gaze tracking library
@@ -8,3 +8,4 @@ Author-email: ['jmt@caltech.edu']
 License: LICENSE.txt
 Description: UNKNOWN
 Platform: UNKNOWN
+Requires: PyQt5

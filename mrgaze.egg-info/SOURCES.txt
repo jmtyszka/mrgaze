@@ -11,6 +11,7 @@ mrgaze/calibrate.py
 mrgaze/config.py
 mrgaze/engine.py
 mrgaze/fitellipse.py
+mrgaze/gui.py
 mrgaze/improc.py
 mrgaze/media.py
 mrgaze/moco.py
