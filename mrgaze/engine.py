@@ -61,7 +61,7 @@ def PupilometryEngine(frame, cascade, cfg):
     frw, frh = frame.shape[1], frame.shape[0]
 
     # RGB version of preprocessed frame for later use
-    frame_rgb =  cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
+    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
 
     # Init ROI to whole frame
     # Note (row, col) = (y, x) for shape

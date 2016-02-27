@@ -54,6 +54,10 @@ mrgaze/Cascade_ps-eye/stage11.xml
 mrgaze/Cascade_ps-eye/stage12.xml
 mrgaze/Cascade_ps-eye/stage13.xml
 mrgaze/Cascade_ps-eye/stage14.xml
+mrgaze/Cascade_ps-eye/stage15.xml
+mrgaze/Cascade_ps-eye/stage16.xml
+mrgaze/Cascade_ps-eye/stage17.xml
+mrgaze/Cascade_ps-eye/stage18.xml
 mrgaze/Cascade_ps-eye/stage2.xml
 mrgaze/Cascade_ps-eye/stage3.xml
 mrgaze/Cascade_ps-eye/stage4.xml
