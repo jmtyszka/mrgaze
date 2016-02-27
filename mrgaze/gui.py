@@ -1,0 +1,93 @@
+# -*- coding: utf-8 -*-
+
+# Form implementation generated from reading ui file 'mrgaze_gui/mainwindow.ui'
+#
+# Created by: PyQt5 UI code generator 5.5.1
+#
+# WARNING! All changes made in this file will be lost!
+
+from PyQt5 import QtCore, QtWidgets
+
+
+class Ui_MainWindow(object):
+    def setupUi(self, MainWindow):
+        MainWindow.setObjectName("MainWindow")
+        MainWindow.resize(1080, 711)
+        self.centralWidget = QtWidgets.QWidget(MainWindow)
+        self.centralWidget.setObjectName("centralWidget")
+        self.frame = QtWidgets.QFrame(self.centralWidget)
+        self.frame.setGeometry(QtCore.QRect(20, 20, 512, 384))
+        self.frame.setFrameShape(QtWidgets.QFrame.StyledPanel)
+        self.frame.setFrameShadow(QtWidgets.QFrame.Raised)
+        self.frame.setObjectName("frame")
+        self.frame_2 = QtWidgets.QFrame(self.centralWidget)
+        self.frame_2.setGeometry(QtCore.QRect(550, 20, 512, 384))
+        self.frame_2.setFrameShape(QtWidgets.QFrame.StyledPanel)
+        self.frame_2.setFrameShadow(QtWidgets.QFrame.Raised)
+        self.frame_2.setObjectName("frame_2")
+        self.tabWidget = QtWidgets.QTabWidget(self.centralWidget)
+        self.tabWidget.setGeometry(QtCore.QRect(20, 420, 1041, 221))
+        self.tabWidget.setObjectName("tabWidget")
+        self.AdjustTab = QtWidgets.QWidget()
+        self.AdjustTab.setObjectName("AdjustTab")
+        self.dial = QtWidgets.QDial(self.AdjustTab)
+        self.dial.setGeometry(QtCore.QRect(10, 0, 101, 101))
+        self.dial.setMaximum(100)
+        self.dial.setObjectName("dial")
+        self.dial_2 = QtWidgets.QDial(self.AdjustTab)
+        self.dial_2.setGeometry(QtCore.QRect(110, 0, 101, 101))
+        self.dial_2.setMaximum(100)
+        self.dial_2.setProperty("value", 100)
+        self.dial_2.setObjectName("dial_2")
+        self.lineEdit = QtWidgets.QLineEdit(self.AdjustTab)
+        self.lineEdit.setGeometry(QtCore.QRect(20, 100, 81, 21))
+        self.lineEdit.setAlignment(QtCore.Qt.AlignCenter)
+        self.lineEdit.setObjectName("lineEdit")
+        self.lineEdit_2 = QtWidgets.QLineEdit(self.AdjustTab)
+        self.lineEdit_2.setGeometry(QtCore.QRect(120, 100, 81, 21))
+        self.lineEdit_2.setAlignment(QtCore.Qt.AlignCenter)
+        self.lineEdit_2.setObjectName("lineEdit_2")
+        self.tabWidget.addTab(self.AdjustTab, "")
+        self.Calibration_Tab = QtWidgets.QWidget()
+        self.Calibration_Tab.setObjectName("Calibration_Tab")
+        self.tabWidget.addTab(self.Calibration_Tab, "")
+        self.Tracking_Tab = QtWidgets.QWidget()
+        self.Tracking_Tab.setObjectName("Tracking_Tab")
+        self.tabWidget.addTab(self.Tracking_Tab, "")
+        MainWindow.setCentralWidget(self.centralWidget)
+        self.menuBar = QtWidgets.QMenuBar(MainWindow)
+        self.menuBar.setGeometry(QtCore.QRect(0, 0, 1080, 22))
+        self.menuBar.setObjectName("menuBar")
+        self.menuGaze_Estimation = QtWidgets.QMenu(self.menuBar)
+        self.menuGaze_Estimation.setObjectName("menuGaze_Estimation")
+        MainWindow.setMenuBar(self.menuBar)
+        self.mainToolBar = QtWidgets.QToolBar(MainWindow)
+        self.mainToolBar.setObjectName("mainToolBar")
+        MainWindow.addToolBar(QtCore.Qt.TopToolBarArea, self.mainToolBar)
+        self.statusBar = QtWidgets.QStatusBar(MainWindow)
+        self.statusBar.setObjectName("statusBar")
+        MainWindow.setStatusBar(self.statusBar)
+        self.actionOpen = QtWidgets.QAction(MainWindow)
+        self.actionOpen.setObjectName("actionOpen")
+        self.actionQuit = QtWidgets.QAction(MainWindow)
+        self.actionQuit.setObjectName("actionQuit")
+        self.actionAbout_MrGaze = QtWidgets.QAction(MainWindow)
+        self.actionAbout_MrGaze.setObjectName("actionAbout_MrGaze")
+        self.menuBar.addAction(self.menuGaze_Estimation.menuAction())
+
+        self.retranslateUi(MainWindow)
+        self.tabWidget.setCurrentIndex(0)
+        QtCore.QMetaObject.connectSlotsByName(MainWindow)
+
+    def retranslateUi(self, MainWindow):
+        _translate = QtCore.QCoreApplication.translate
+        MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
+        self.lineEdit.setText(_translate("MainWindow", "0"))
+        self.lineEdit_2.setText(_translate("MainWindow", "100"))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.AdjustTab), _translate("MainWindow", "Adjust"))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.Calibration_Tab), _translate("MainWindow", "Calibration"))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.Tracking_Tab), _translate("MainWindow", "Tracking"))
+        self.menuGaze_Estimation.setTitle(_translate("MainWindow", "File"))
+        self.actionOpen.setText(_translate("MainWindow", "Open"))
+        self.actionQuit.setText(_translate("MainWindow", "Quit"))
+        self.actionAbout_MrGaze.setText(_translate("MainWindow", "About MrGaze"))
