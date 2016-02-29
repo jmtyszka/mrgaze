@@ -100,7 +100,7 @@ def RunSingle(data_dir, subj_sess):
         print('  Calibration Pupilometry')
         print('  -----------------------')
 
-        pupilometry.VideoPupilometry(data_dir, subj_sess, 'cal', cfg)
+        pupilometry.video_pupilometry(data_dir, subj_sess, 'cal', cfg)
 
         if do_cal:
 
@@ -115,7 +115,7 @@ def RunSingle(data_dir, subj_sess):
         print('  Gaze Pupilometry')
         print('  -----------------------')
 
-        pupilometry.VideoPupilometry(data_dir, subj_sess, 'gaze', cfg)
+        pupilometry.video_pupilometry(data_dir, subj_sess, 'gaze', cfg)
 
 
         if do_cal:

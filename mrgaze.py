@@ -39,15 +39,31 @@ Copyright
 import sys
 
 from PyQt5.QtWidgets import QApplication, QMainWindow
+from mrgaze.gui import Ui_MrGaze
+from mrgaze import media
 
-from mrgaze.gui import Ui_MainWindow
 
+class MrGazeApp(QMainWindow, Ui_MrGaze):
 
-class MrGazeApp(QMainWindow):
     def __init__(self):
+
+        # Init GUI
         super().__init__()
-        self.ui = Ui_MainWindow()
+        self.ui = Ui_MrGaze()
         self.ui.setupUi(self)
+
+        self.detect_devices()
+
+    def update_intensity_lb(self):
+        lb = self.ui.Intensity_LB_Dial.value()
+        self.ui.Intensity_LB_Label.setText(str(lb))
+
+    def update_intensity_ub(self):
+        ub = self.ui.Intensity_UB_Dial.value()
+        self.ui.Intensity_UB_Label.setText(str(ub))
+
+    def detect_devices(self):
+        camera_list = media.find_cameras(maxdevno=10)
 
 
 if __name__ == '__main__':

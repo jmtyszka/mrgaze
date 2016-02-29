@@ -118,8 +118,10 @@ def PupilometryEngine(frame, cascade, cfg):
 
 
     # Init pupil and glint parameters
-    pupil_ellipse = ((np.nan, np.nan), (np.nan, np.nan), np.nan)
-    glint_center = (np.nan, np.nan)
+    # pupil_ellipse = ((np.nan, np.nan), (np.nan, np.nan), np.nan)
+    # glint_center = (np.nan, np.nan)
+    pupil_ellipse = ((1, 1), (1, 1), 0)
+    glint_center = (0, 0)
 
     # Catch zero-sized ROI
     if w < 1 | h < 1:
@@ -169,10 +171,8 @@ def PupilometryEngine(frame, cascade, cfg):
         if fitellipse.Eccentricity(pupil_ellipse) > 0.95:
             blink = True
 
-    if not blink:
-
-        # Overlay ROI, pupil ellipse and pseudo-glint on background RGB frame
-        frame_rgb = OverlayPupil(frame_rgb, pupil_ellipse, roi_rect, glint_center)
+    # Overlay ROI, pupil ellipse and pseudo-glint on background RGB frame
+    frame_rgb = OverlayPupil(frame_rgb, pupil_ellipse, roi_rect, glint_center)
 
 
     if cfg.getboolean('OUTPUT', 'graphics'):
@@ -325,6 +325,8 @@ def FindRemoveGlint(roi, cfg):
         Pupil/iris ROI image
     cfg : configuration object
         Configuration parameters including fractional glint diameter estimate
+    pupil_bw : 2D numpy unit8 array
+        Black and white pupil segmentation
 
     Returns
     ----
@@ -336,9 +338,14 @@ def FindRemoveGlint(roi, cfg):
         Pupil/iris ROI without small bright areas
     '''
 
+    DEBUG = False
+
     # ROI dimensions and center
     ny, nx = roi.shape
     roi_cx, roi_cy = nx/2.0, ny/2.0
+
+    if DEBUG:
+        print ("%s, %s" % (roi_cx, roi_cy))
 
     # Estimated glint diameter in pixels
     glint_d = int(cfg.getfloat('PUPILSEG','glintdiameterperc') * nx / 100.0)
@@ -349,10 +356,14 @@ def FindRemoveGlint(roi, cfg):
 
     # Reasonable upper and lower bounds on glint area (x3, /3)
     glint_A = np.pi * (glint_d / 2.0)**2
-    A_min, A_max = glint_A / 3.0, glint_A * 3.0
+    A_min, A_max = glint_A / 3.0, glint_A * 9.0
+    
+    # print
+    # print A_min
+    # print A_max
 
     # Find bright pixels in full scale uint8 image (ie value > 250)
-    bright = np.uint8(roi > 250)
+    bright = np.uint8(roi > 254)
 
     # Label connected regions (blobs)
     bright_labels = measure.label(bright)
@@ -363,7 +374,7 @@ def FindRemoveGlint(roi, cfg):
     # Init glint parameters
     r_min = np.Inf
     glint_label = -1
-    glint = (np.nan, np.nan)
+    glint = (0, 0)
     glint_mask = np.zeros_like(roi, dtype="uint8")
     roi_noglint = roi.copy()
 
@@ -375,7 +386,7 @@ def FindRemoveGlint(roi, cfg):
 
         # Only accept blobs with area in glint range
         if A > A_min and A < A_max:
-
+            #            print A
             # Check distance from ROI center
             cy, cx = props.centroid  # (row, col)
             r = np.sqrt((cx-roi_cx)**2 + (cy-roi_cy)**2)

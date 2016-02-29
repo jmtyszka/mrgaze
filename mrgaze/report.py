@@ -169,7 +169,7 @@ def PlotPupilometry(csv_file, plot_png):
     blink    = p[:,4]
     art      = p[:,5]
 
-    # Downsample if total samples > 2000
+    # downsample if total samples > 2000
     nt = p.shape[0]
     if nt > 2000:
         dt = int(nt / 2000.0)

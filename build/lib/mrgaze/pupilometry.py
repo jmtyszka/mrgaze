@@ -35,7 +35,7 @@ import cv2
 from mrgaze import media, utils, config, calibrate, report, engine
 
 
-def LivePupilometry(data_dir, live_eyetracking=False):
+def live_pupilometry(data_dir, live_eyetracking=False):
     """
     Perform pupil boundary ellipse fitting on camera feed
 
@@ -52,7 +52,7 @@ def LivePupilometry(data_dir, live_eyetracking=False):
         Completion status (True = successful)
     """
 
-    # If user did not provide a root data directory, we use HOME/mrgaze
+    # If user did not provide a root data directory, we use HOME/mrgaze/<hostname>_<username>_<timestamp>
     if data_dir == '':
         data_dir = os.path.join(os.getenv("HOME"), 'mrgaze')
 
@@ -60,7 +60,7 @@ def LivePupilometry(data_dir, live_eyetracking=False):
         hostname = os.uname()[1]
         username = getpass.getuser()
 
-        ss_dir = os.path.join(data_dir, "%s_%s_%s" % (hostname, username, int(time.time())))
+        ss_dir = os.path.join(data_dir, "%s_%s_%s" % (hostname, username, utils.mktimestamp()))
     else:
         ss_dir = data_dir
 
@@ -73,7 +73,7 @@ def LivePupilometry(data_dir, live_eyetracking=False):
     overwrite = cfg.getboolean('OUTPUT', 'overwrite')
 
     # Video information
-    # vin_ext = cfg.get('VIDEO', 'inputextension')
+    vin_ext = cfg.get('VIDEO', 'inputextension')
     vout_ext = cfg.get('VIDEO' ,'outputextension')
     # vin_fps = cfg.getfloat('VIDEO', 'inputfps')
 
@@ -83,13 +83,16 @@ def LivePupilometry(data_dir, live_eyetracking=False):
     vid_dir = os.path.join(ss_dir, 'videos')
     res_dir = os.path.join(ss_dir, 'results')
 
-    vout_path = os.path.join(vid_dir, 'gaze' + vout_ext)
-    cal_vout_path = os.path.join(vid_dir, 'cal' + vout_ext)
+    vout_path = os.path.join(res_dir, 'gaze_pupils' + vout_ext)
+    cal_vout_path = os.path.join(res_dir, 'cal_pupils' + vout_ext)
 
-    # if we do live eye-tracking, we read in what would be the output of the live eye-tracking
+    raw_vout_path = os.path.join(vid_dir, 'gaze' + vout_ext)
+    raw_cal_vout_path = os.path.join(vid_dir, 'cal' + vout_ext)
+
+    # if we do not dolive eye-tracking, read in output of previous live eye-tracking
     if not live_eyetracking:
-        vin_path = vout_path
-        cal_vin_path = cal_vout_path
+        vin_path = raw_vout_path
+        cal_vin_path = raw_cal_vout_path
     else:
         vin_path = 0
 
@@ -106,11 +109,12 @@ def LivePupilometry(data_dir, live_eyetracking=False):
         os.makedirs(vid_dir)
         print('* %s does not exist - creating' % vid_dir)
 
+    camera_device = cfg.get('CAMERA' ,'device')
 
     # Set up the LBP cascade classifier
-    LBP_path = os.path.join(utils._package_root(), 'Cascade/cascade.xml')
+    LBP_path = os.path.join(utils._package_root(), ('Cascade_%s/cascade.xml' % camera_device))
 
-    print('  Loading LBP cascade')
+    print('  Loading LBP cascade for %s camera' % camera_device)
     cascade = cv2.CascadeClassifier(LBP_path)
 
     if cascade.empty():
@@ -177,9 +181,9 @@ def LivePupilometry(data_dir, live_eyetracking=False):
     # print('  Video has %d frames at %0.3f fps' % (nf, vin_fps))
 
     # Read first preprocessed video frame from stream
-    keep_going, frame_orig = media.LoadVideoFrame(vin_stream, cfg)
+    keep_going, frame_orig = media.load_video_frame(vin_stream, cfg)
     if keep_going:
-        frame, art_power = media.Preproc(frame_orig, cfg)
+        frame, art_power = media.preproc(frame_orig, cfg)
     else:
         art_power = 0.0
 
@@ -195,22 +199,32 @@ def LivePupilometry(data_dir, live_eyetracking=False):
             #
             # Output video
             #
+            # Output video codec (MP4V - poor quality compression)
+            # TODO : Find a better multiplatform codec
+            fourcc = cv2.cv.CV_FOURCC('m','p','4','v')
+
+            try:
+                vout_stream = cv2.VideoWriter(vout_path, fourcc, 30, (nx, ny), True)
+            except:
+                print('* Problem creating output video stream - skipping pupilometry')
+                return False
+
+            if not vout_stream.isOpened():
+                print('* Output video not opened - skipping pupilometry')
+                return False
+
+
             if live_eyetracking:
                 print('  Opening output video stream')
 
-                # Output video codec (MP4V - poor quality compression)
-                # TODO : Find a better multiplatform codec
-                fourcc = cv2.cv.CV_FOURCC('m','p','4','v')
-
-
                 try:
-                    vout_stream = cv2.VideoWriter(vout_path, fourcc, 30, (nx, ny), True)
+                    raw_vout_stream = cv2.VideoWriter(raw_vout_path, fourcc, 30, (nx, ny), True)
                 except:
-                    print('* Problem creating output video stream - skipping pupilometry')
+                    print('* Problem creating raw output video stream - skipping pupilometry')
                     return False
 
-                if not vout_stream.isOpened():
-                    print('* Output video not opened - skipping pupilometry')
+                if not raw_vout_stream.isOpened():
+                    print('* Raw output video not opened - skipping pupilometry')
                     return False
 
             # Open pupilometry CSV file to write
@@ -266,15 +280,18 @@ def LivePupilometry(data_dir, live_eyetracking=False):
                     (t, area, px, py, blink, art_power)
                 )
 
+                # Write output video frame
+                vout_stream.write(frame_rgb)
+
+                # Write raw output video frame
                 if live_eyetracking:
-                    # Write output video frame
-                    vout_stream.write(frame_orig)
+                    raw_vout_stream.write(frame_orig)
 
                 # Read next frame, unless we want to figure out the correct settings for this frame
                 if not freeze_frame:
-                    keep_going, frame_orig = media.LoadVideoFrame(vin_stream, cfg)
+                    keep_going, frame_orig = media.load_video_frame(vin_stream, cfg)
                 if keep_going:
-                    frame, art_power = media.Preproc(frame_orig, cfg)
+                    frame, art_power = media.preproc(frame_orig, cfg)
                 else:
                     art_power = 0.0
 
@@ -291,17 +308,19 @@ def LivePupilometry(data_dir, live_eyetracking=False):
                         fc = 0
 
                 # wait whether user pressed esc to exit the experiment
-                key = utils._waitKey(1)
+                key = utils._waitKey(5)
                 if key == 'ESC':
                     # Clean up
                     if live_eyetracking:
-                        vout_stream.release()
+                        raw_vout_stream.release()
+                    vout_stream.release()
                     pupils_stream.close()
                     keep_going = False
                 elif key == 'c':
                     # Clean up
                     if live_eyetracking:
-                        vout_stream.release()
+                        raw_vout_stream.release()
+                    vout_stream.release()
                     pupils_stream.close()
                     do_cal = True
                     print("Starting calibration.")
@@ -312,21 +331,32 @@ def LivePupilometry(data_dir, live_eyetracking=False):
             #
             # Output video
             #
+            print('  Opening output video stream')
+            
+            # Output video codec (MP4V - poor quality compression)
+            # TODO : Find a better multiplatform codec
+            fourcc = cv2.cv.CV_FOURCC('m','p','4','v')
+            
+            try:
+                cal_vout_stream = cv2.VideoWriter(cal_vout_path, fourcc, 30, (nx, ny), True)
+            except:
+                print('* Problem creating output video stream - skipping pupilometry')
+                return False
+
+            if not cal_vout_stream.isOpened():
+                print('* Output video not opened - skipping pupilometry')
+                return False
+
             if live_eyetracking:
-                print('  Opening output video stream')
-
-                # Output video codec (MP4V - poor quality compression)
-                # TODO : Find a better multiplatform codec
-                fourcc = cv2.cv.CV_FOURCC('m','p','4','v')
-
                 try:
-                    cal_vout_stream = cv2.VideoWriter(cal_vout_path, fourcc, 30, (nx, ny), True)
+                    raw_cal_vout_stream = cv2.VideoWriter(raw_cal_vout_path, fourcc, 30, (nx, ny), True)
                 except:
                     print('* Problem creating output video stream - skipping pupilometry')
                     return False
 
-                if not cal_vout_stream.isOpened():
-                    print('* Output video not opened - skipping pupilometry')
+
+                if not raw_cal_vout_stream.isOpened():
+                    print('* Raw output video not opened - skipping pupilometry')
                     return False
 
             # Open pupilometry CSV file to write
@@ -381,15 +411,18 @@ def LivePupilometry(data_dir, live_eyetracking=False):
                 )
 
                 # Write output video frame
+                cal_vout_stream.write(frame_rgb)
+
+                # Write output video frame
                 if live_eyetracking:
-                    cal_vout_stream.write(frame_orig)
+                    raw_cal_vout_stream.write(frame_orig)
 
                 # Read next frame (if available)
                 # if verbose:
                 #     b4_frame = time.time()
-                keep_going, frame_orig = media.LoadVideoFrame(vin_stream, cfg)
+                keep_going, frame_orig = media.load_video_frame(vin_stream, cfg)
                 if keep_going:
-                    frame, art_power = media.Preproc(frame_orig, cfg)
+                    frame, art_power = media.preproc(frame_orig, cfg)
                 else:
                     art_power = 0.0
 
@@ -414,14 +447,16 @@ def LivePupilometry(data_dir, live_eyetracking=False):
                     keep_going = False
                     # Clean up
                     if live_eyetracking:
-                        cal_vout_stream.release()
+                        raw_cal_vout_stream.release()
+                    cal_vout_stream.release()
                     cal_pupils_stream.close()
                 elif key == 'v' or not keep_going:
                     do_cal = False
                     print("Stopping calibration.")
                     # Clean up
                     if live_eyetracking:
-                        cal_vout_stream.release()
+                        raw_cal_vout_stream.release()
+                    cal_vout_stream.release()
                     cal_pupils_stream.close()
                     break
 
@@ -448,7 +483,7 @@ def LivePupilometry(data_dir, live_eyetracking=False):
     return t, px, py, area, blink, art_power
 
 
-def VideoPupilometry(data_dir, subj_sess, v_stub, cfg):
+def video_pupilometry(data_dir, subj_sess, v_stub, cfg):
     """
     Perform pupil boundary ellipse fitting on entire video
 
@@ -537,9 +572,9 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, cfg):
     print('  Video has %d frames at %0.3f fps' % (nf, vin_fps))
 
     # Read first preprocessed video frame from stream
-    keep_going, frame_orig = media.LoadVideoFrame(vin_stream, cfg)
+    keep_going, frame_orig = media.load_video_frame(vin_stream, cfg)
     if keep_going:
-        frame, art_power = media.Preproc(frame_orig, cfg)
+        frame, art_power = media.preproc(frame_orig, cfg)
     else:
         art_power = 0.0
 
@@ -610,9 +645,9 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, cfg):
         vout_stream.write(frame_rgb)
 
         # Read next frame (if available)
-        keep_going, frame_orig = media.LoadVideoFrame(vin_stream, cfg)
+        keep_going, frame_orig = media.load_video_frame(vin_stream, cfg)
         if keep_going:
-            frame, art_power = media.Preproc(frame_orig, cfg)
+            frame, art_power = media.preproc(frame_orig, cfg)
         else:
             art_power = 0.0
 

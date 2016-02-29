@@ -76,7 +76,7 @@ def main():
     print('Data dir  : %s' % data_dir)
 
     # Run single-session pipeline
-    pupilometry.LivePupilometry(data_dir, not args.p)
+    pupilometry.live_pupilometry(data_dir, not args.p)
 
 
 # This is the standard boilerplate that calls the main() function.
