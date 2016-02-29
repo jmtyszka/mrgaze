@@ -72,7 +72,6 @@ def PupilometryEngine(frame, cascade, cfg):
 
         min_neighbors = cfg.getint('PUPILDETECT', 'specificity')
         scale_factor  = cfg.getfloat('PUPILDETECT', 'scalefactor')
-        min_size  = cfg.getfloat('PUPILDETECT', 'min_size')
 
         # Find pupils in frame
         pupils, num_detections = cascade.detectMultiScale2(image=frame,
