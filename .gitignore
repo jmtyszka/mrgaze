@@ -3,3 +3,4 @@ mrgaze/*.pyc
 *~
 dist/**
 build/**
+.idea/*
