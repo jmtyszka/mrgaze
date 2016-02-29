@@ -206,7 +206,7 @@ def PupilometryEngine(frame, cascade, cfg):
         montage_rgb = np.hstack( (quad_up_rgb, frame_up_rgb) )
 
         cv2.imshow('Pupilometry', montage_rgb)
-        cv2.waitKey(5)
+        # cv2.waitKey(5)
 
 
     return pupil_ellipse, roi_rect, blink, glint_center, frame_rgb
@@ -268,7 +268,7 @@ def SegmentPupil(roi, cfg):
     # blobs = cv2.morphologyEx(blobs, cv2.MORPH_OPEN, kernel)
 
     # Label connected regions
-    pupil_labels = measure.label(blobs, background=0)
+    pupil_labels = measure.label(blobs, background=0) + 1
 
     # Region properties
     pupil_props = measure.regionprops(pupil_labels)
