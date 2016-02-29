@@ -1,6 +1,6 @@
 Metadata-Version: 1.1
 Name: mrgaze
-Version: 0.7.2
+Version: 0.8.0
 Summary: Video pupilometry and gaze tracking library
 Home-page: ['https://github.com/jmtyszka/mrgaze']
 Author: ['Mike Tyszka & Wolfgang Pauli']
@@ -9,3 +9,6 @@ License: LICENSE.txt
 Description: UNKNOWN
 Platform: UNKNOWN
 Requires: PyQt5
+Requires: cv2
+Requires: skimage
+Requires: numpy

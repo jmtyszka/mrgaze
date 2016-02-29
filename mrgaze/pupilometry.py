@@ -35,7 +35,7 @@ import cv2
 from mrgaze import media, utils, config, calibrate, report, engine
 
 
-def LivePupilometry(data_dir, live_eyetracking=False):
+def live_pupilometry(data_dir, live_eyetracking=False):
     """
     Perform pupil boundary ellipse fitting on camera feed
 
@@ -181,9 +181,9 @@ def LivePupilometry(data_dir, live_eyetracking=False):
     # print('  Video has %d frames at %0.3f fps' % (nf, vin_fps))
 
     # Read first preprocessed video frame from stream
-    keep_going, frame_orig = media.LoadVideoFrame(vin_stream, cfg)
+    keep_going, frame_orig = media.load_video_frame(vin_stream, cfg)
     if keep_going:
-        frame, art_power = media.Preproc(frame_orig, cfg)
+        frame, art_power = media.preproc(frame_orig, cfg)
     else:
         art_power = 0.0
 
@@ -293,9 +293,9 @@ def LivePupilometry(data_dir, live_eyetracking=False):
 
                 # Read next frame, unless we want to figure out the correct settings for this frame
                 if not freeze_frame:
-                    keep_going, frame_orig = media.LoadVideoFrame(vin_stream, cfg)
+                    keep_going, frame_orig = media.load_video_frame(vin_stream, cfg)
                 if keep_going:
-                    frame, art_power = media.Preproc(frame_orig, cfg)
+                    frame, art_power = media.preproc(frame_orig, cfg)
                 else:
                     art_power = 0.0
 
@@ -424,9 +424,9 @@ def LivePupilometry(data_dir, live_eyetracking=False):
                 # Read next frame (if available)
                 # if verbose:
                 #     b4_frame = time.time()
-                keep_going, frame_orig = media.LoadVideoFrame(vin_stream, cfg)
+                keep_going, frame_orig = media.load_video_frame(vin_stream, cfg)
                 if keep_going:
-                    frame, art_power = media.Preproc(frame_orig, cfg)
+                    frame, art_power = media.preproc(frame_orig, cfg)
                 else:
                     art_power = 0.0
 
@@ -487,7 +487,7 @@ def LivePupilometry(data_dir, live_eyetracking=False):
     return t, px, py, area, blink, art_power
 
 
-def VideoPupilometry(data_dir, subj_sess, v_stub, cfg):
+def video_pupilometry(data_dir, subj_sess, v_stub, cfg):
     """
     Perform pupil boundary ellipse fitting on entire video
 
@@ -576,9 +576,9 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, cfg):
     print('  Video has %d frames at %0.3f fps' % (nf, vin_fps))
 
     # Read first preprocessed video frame from stream
-    keep_going, frame_orig = media.LoadVideoFrame(vin_stream, cfg)
+    keep_going, frame_orig = media.load_video_frame(vin_stream, cfg)
     if keep_going:
-        frame, art_power = media.Preproc(frame_orig, cfg)
+        frame, art_power = media.preproc(frame_orig, cfg)
     else:
         art_power = 0.0
 
@@ -649,9 +649,9 @@ def VideoPupilometry(data_dir, subj_sess, v_stub, cfg):
         vout_stream.write(frame_rgb)
 
         # Read next frame (if available)
-        keep_going, frame_orig = media.LoadVideoFrame(vin_stream, cfg)
+        keep_going, frame_orig = media.load_video_frame(vin_stream, cfg)
         if keep_going:
-            frame, art_power = media.Preproc(frame_orig, cfg)
+            frame, art_power = media.preproc(frame_orig, cfg)
         else:
             art_power = 0.0
 

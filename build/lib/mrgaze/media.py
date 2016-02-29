@@ -26,7 +26,27 @@ from mrgaze import improc, mrclean
 from skimage.transform import rotate
 
 
-def LoadVideoFrame(v_in, cfg):
+def find_cameras(maxdevno):
+
+    cameraList = []
+
+    for devno in range(0,maxdevno):
+
+        print('Device %d ... ' % devno, end='')
+        vin = cv2.VideoCapture(devno)
+
+        print('checking ... ', end='')
+        if vin.isOpened():
+            print('good')
+        else:
+            print('bad')
+
+        vin.release()
+
+    return cameraList
+
+
+def load_video_frame(v_in, cfg):
     """ Load and preprocess a single frame from video stream
 
     Parameters
@@ -50,7 +70,7 @@ def LoadVideoFrame(v_in, cfg):
 
 #    # If frame loaded successfully, preprocess
 #    if status:
-#        fr, art_power = Preproc(fr, cfg)
+#        fr, art_power = preproc(fr, cfg)
 #    else:
 #        art_power = 0.0
 
@@ -102,7 +122,7 @@ def Preproc(fr, cfg):
     if do_mrclean:
         fr, art_power = mrclean.MRClean(fr, z_thresh)
 
-    # Downsample
+    # downsample
     if downsampling > 1:
         fr = Downsample(fr, downsampling)
 
@@ -128,7 +148,7 @@ def Downsample(frame, factor):
     # Calculate downsampled matrix
     nxd, nyd = int(nx/factor), int(ny/factor)
 
-    # Downsample with area averaging
+    # downsample with area averaging
     frame = cv2.resize(frame, (nxd, nyd), interpolation=cv2.INTER_AREA)
 
     return frame
@@ -152,7 +172,7 @@ def LoadImage(image_file, cfg):
 
     Examples
     --------
-    >>> img = LoadImage('test.png', 5)
+    >>> img = load_image('test.png', 5)
     """
 
     # Initialize frame
@@ -233,7 +253,7 @@ def RotateFrame(frame, theta_deg):
 
     Example
     ----
-    >>> frame_rot = RotateFrame(frame, 90)
+    >>> frame_rot = rotate_frame(frame, 90)
     """
 
     if theta_deg == 0:

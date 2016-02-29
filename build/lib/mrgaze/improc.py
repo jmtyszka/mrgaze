@@ -56,7 +56,7 @@ def EstimateBias(fr):
         nxd = int(ny/32.0 * nx)
         nyd = nd
 
-    # Downsample frame
+    # downsample frame
     fr_d = cv2.resize(fr, (nxd, nyd))
 
     # 2D baseline estimation

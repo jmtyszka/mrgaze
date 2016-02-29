@@ -24,9 +24,17 @@ import os
 import sys
 import cv2
 import numpy as np
+import time
 from scipy.ndimage import generic_filter
 from scipy.stats import nanmedian
 
+def mktimestamp():
+    """
+    Make a nice human-readable timestamp
+    """
+    t = time.localtime()
+    ts = "%s%02d%02d_%02d%02d%02d" % (t[0],t[1],t[2],t[3],t[4],t[5])
+    return ts
 
 def _mkdir(newdir):
     """
