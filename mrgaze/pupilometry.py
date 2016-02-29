@@ -28,10 +28,12 @@
 #
 # Copyright 2014 California Institute of Technology.
 
+import getpass
 import os
 import time
-import getpass
+
 import cv2
+
 from mrgaze import media, utils, config, calibrate, report, engine
 
 
@@ -43,8 +45,8 @@ def live_pupilometry(data_dir, live_eyetracking=False):
     ----
     data_dir : string
         Root data directory path.
-    cfg :
-        Analysis configuration parameters
+    live_eyetracking : boolean
+        Flag for live video (vs recorded video file) analysis
 
     Returns
     ----
@@ -532,10 +534,13 @@ def video_pupilometry(data_dir, subj_sess, v_stub, cfg):
         print('* %s does not exist - returning' % vin_path)
         return False
 
-    # Set up the LBP cascade classifier
-    LBP_path = os.path.join(utils._package_root(), 'Cascade/cascade.xml')
+    # Get camera device name from config
+    camera_device = cfg.get('CAMERA', 'device')
 
-    print('  Loading LBP cascade')
+    # Set up the LBP cascade classifier
+    LBP_path = os.path.join(utils._package_root(), ('Cascade_%s/cascade.xml' % camera_device))
+
+    print('  Loading LBP cascade for %s' % camera_device)
     cascade = cv2.CascadeClassifier(LBP_path)
 
     if cascade.empty():
