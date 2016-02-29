@@ -339,7 +339,7 @@ def LivePupilometry(data_dir, live_eyetracking=False):
             
             # Output video codec (MP4V - poor quality compression)
             # TODO : Find a better multiplatform codec
-            fourcc = cv2.cv.CV_FOURCC('m','p','4','v')
+            fourcc = cv2.VideoWriter_fourcc('m','p','4','v')
             
             try:
                 cal_vout_stream = cv2.VideoWriter(cal_vout_path, fourcc, 30, (nx, ny), True)
