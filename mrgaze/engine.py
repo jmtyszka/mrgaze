@@ -70,22 +70,23 @@ def PupilometryEngine(frame, cascade, cfg):
     # Shall we use the classifier at all, or whole frame?
     if cfg.getboolean('PUPILDETECT', 'enabled'):
 
-        min_neighbors = cfg.getint('PUPILDETECT','specificity')
-        scale_factor  = cfg.getfloat('PUPILDETECT','scalefactor')
+        min_neighbors = cfg.getint('PUPILDETECT', 'specificity')
+        scale_factor  = cfg.getfloat('PUPILDETECT', 'scalefactor')
+        min_size  = cfg.getfloat('PUPILDETECT', 'min_size')
 
         # Find pupils in frame
-        pupils = cascade.detectMultiScale(image=frame,
-                                      scaleFactor=scale_factor,
-                                      minNeighbors=min_neighbors)
+        pupils, num_detections = cascade.detectMultiScale2(image=frame,
+                                            scaleFactor=scale_factor,
+                                            minNeighbors=min_neighbors)
 
         # Count detected pupil candidates
         n_pupils = len(pupils)
 
         if n_pupils > 0:
 
-            # Use largest pupil candidate (works most of the time)
-            sizes = np.sqrt(pupils[:,2] * pupils[:,3])
-            best_pupil = sizes.argmax()
+            # Use pupil with number of detections is the number of neighboring positively classified rectangles that were
+            # joined together to form the object
+            best_pupil = num_detections.argmax()
 
             # Get ROI info for largest pupil
             x, y, w, h = pupils[best_pupil,:]
