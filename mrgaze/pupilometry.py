@@ -171,9 +171,9 @@ def LivePupilometry(data_dir, live_eyetracking=False):
     # Desired time between frames in milliseconds
     # time_bw_frames = 1000.0 / fps
 
-    vin_stream.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH, 320)
-    vin_stream.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, 240)
-    vin_stream.set(cv2.cv.CV_CAP_PROP_FPS, 30)
+    vin_stream.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
+    vin_stream.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
+    vin_stream.set(cv2.CAP_PROP_FPS, 30)
 
     # Total number of frames in video file
     # nf = vin_stream.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT)
@@ -201,7 +201,7 @@ def LivePupilometry(data_dir, live_eyetracking=False):
             #
             # Output video codec (MP4V - poor quality compression)
             # TODO : Find a better multiplatform codec
-            fourcc = cv2.cv.CV_FOURCC('m','p','4','v')
+            fourcc = cv2.VideoWriter_fourcc('m','p','4','v')
 
             try:
                 vout_stream = cv2.VideoWriter(vout_path, fourcc, 30, (nx, ny), True)
@@ -233,6 +233,10 @@ def LivePupilometry(data_dir, live_eyetracking=False):
             except:
                 print('* Problem opening pupilometry CSV file - skipping pupilometry')
                 return False
+
+            if cfg.getboolean('PUPILDETECT', 'enabled'):
+                cv2.startWindowThread()
+                cv2.namedWindow('Pupilometry')
 
             #
             # Main Video Frame Loop
