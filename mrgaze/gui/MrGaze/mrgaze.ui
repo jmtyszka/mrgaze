@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>589</width>
-    <height>433</height>
+    <width>800</width>
+    <height>640</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -18,9 +18,9 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>230</y>
-      <width>571</width>
-      <height>141</height>
+      <y>300</y>
+      <width>781</width>
+      <height>271</height>
      </rect>
     </property>
     <property name="currentIndex">
@@ -30,84 +30,11 @@
      <attribute name="title">
       <string>Setup</string>
      </attribute>
-     <widget class="QDial" name="Intensity_LB_Dial">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>10</y>
-        <width>71</width>
-        <height>71</height>
-       </rect>
-      </property>
-      <property name="maximum">
-       <number>100</number>
-      </property>
-      <property name="notchTarget">
-       <double>5.000000000000000</double>
-      </property>
-      <property name="notchesVisible">
-       <bool>true</bool>
-      </property>
-     </widget>
-     <widget class="QDial" name="Intensity_UB_Dial">
-      <property name="geometry">
-       <rect>
-        <x>90</x>
-        <y>10</y>
-        <width>71</width>
-        <height>71</height>
-       </rect>
-      </property>
-      <property name="maximum">
-       <number>100</number>
-      </property>
-      <property name="value">
-       <number>100</number>
-      </property>
-      <property name="notchTarget">
-       <double>5.000000000000000</double>
-      </property>
-      <property name="notchesVisible">
-       <bool>true</bool>
-      </property>
-     </widget>
-     <widget class="QLabel" name="Intensity_LB_Label">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>80</y>
-        <width>71</width>
-        <height>20</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>0</string>
-      </property>
-      <property name="alignment">
-       <set>Qt::AlignCenter</set>
-      </property>
-     </widget>
-     <widget class="QLabel" name="Intensity_UB_Label">
-      <property name="geometry">
-       <rect>
-        <x>90</x>
-        <y>80</y>
-        <width>71</width>
-        <height>20</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>100</string>
-      </property>
-      <property name="alignment">
-       <set>Qt::AlignCenter</set>
-      </property>
-     </widget>
      <widget class="QComboBox" name="comboBox">
       <property name="geometry">
        <rect>
-        <x>282</x>
-        <y>5</y>
+        <x>490</x>
+        <y>200</y>
         <width>151</width>
         <height>31</height>
        </rect>
@@ -136,8 +63,8 @@
      <widget class="QPushButton" name="pushButton">
       <property name="geometry">
        <rect>
-        <x>450</x>
-        <y>70</y>
+        <x>650</x>
+        <y>200</y>
         <width>111</width>
         <height>32</height>
        </rect>
@@ -149,30 +76,14 @@
      <widget class="QLabel" name="label">
       <property name="geometry">
        <rect>
-        <x>180</x>
-        <y>10</y>
+        <x>388</x>
+        <y>205</y>
         <width>91</width>
         <height>21</height>
        </rect>
       </property>
       <property name="text">
-       <string>Video Source</string>
-      </property>
-      <property name="alignment">
-       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_2">
-      <property name="geometry">
-       <rect>
-        <x>180</x>
-        <y>40</y>
-        <width>91</width>
-        <height>21</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Video File</string>
+       <string>Pupil Classifier</string>
       </property>
       <property name="alignment">
        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -181,8 +92,8 @@
      <widget class="QPushButton" name="pushButton_2">
       <property name="geometry">
        <rect>
-        <x>180</x>
-        <y>70</y>
+        <x>10</x>
+        <y>200</y>
         <width>113</width>
         <height>32</height>
        </rect>
@@ -194,18 +105,214 @@
        <bool>false</bool>
       </property>
      </widget>
-     <widget class="QToolButton" name="toolButton">
+     <widget class="QGroupBox" name="groupBox">
       <property name="geometry">
        <rect>
-        <x>280</x>
-        <y>40</y>
-        <width>26</width>
-        <height>22</height>
+        <x>10</x>
+        <y>0</y>
+        <width>91</width>
+        <height>131</height>
        </rect>
       </property>
-      <property name="text">
-       <string>...</string>
+      <property name="title">
+       <string>Pupil Threshold</string>
       </property>
+      <widget class="QDial" name="Intensity_LB_Dial">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>30</y>
+         <width>71</width>
+         <height>71</height>
+        </rect>
+       </property>
+       <property name="maximum">
+        <number>100</number>
+       </property>
+       <property name="notchTarget">
+        <double>5.000000000000000</double>
+       </property>
+       <property name="notchesVisible">
+        <bool>true</bool>
+       </property>
+      </widget>
+      <widget class="QLabel" name="Intensity_LB_Label">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>100</y>
+         <width>71</width>
+         <height>20</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>0</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </widget>
+     <widget class="QGroupBox" name="groupBox_2">
+      <property name="geometry">
+       <rect>
+        <x>110</x>
+        <y>0</y>
+        <width>91</width>
+        <height>131</height>
+       </rect>
+      </property>
+      <property name="title">
+       <string>Glint Threshold</string>
+      </property>
+      <widget class="QLabel" name="Intensity_UB_Label">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>100</y>
+         <width>71</width>
+         <height>20</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>100</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+      <widget class="QDial" name="Intensity_UB_Dial">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>30</y>
+         <width>71</width>
+         <height>71</height>
+        </rect>
+       </property>
+       <property name="maximum">
+        <number>100</number>
+       </property>
+       <property name="value">
+        <number>100</number>
+       </property>
+       <property name="notchTarget">
+        <double>5.000000000000000</double>
+       </property>
+       <property name="notchesVisible">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </widget>
+     <widget class="QGroupBox" name="groupBox_3">
+      <property name="geometry">
+       <rect>
+        <x>210</x>
+        <y>0</y>
+        <width>551</width>
+        <height>131</height>
+       </rect>
+      </property>
+      <property name="title">
+       <string>Video Source</string>
+      </property>
+      <widget class="QLabel" name="label_2">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="geometry">
+        <rect>
+         <x>20</x>
+         <y>60</y>
+         <width>41</width>
+         <height>21</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>File</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+      <widget class="QToolButton" name="toolButton">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="geometry">
+        <rect>
+         <x>480</x>
+         <y>60</y>
+         <width>26</width>
+         <height>22</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>...</string>
+       </property>
+      </widget>
+      <widget class="QComboBox" name="comboBox_4">
+       <property name="geometry">
+        <rect>
+         <x>70</x>
+         <y>30</y>
+         <width>141</width>
+         <height>26</height>
+        </rect>
+       </property>
+       <property name="currentText">
+        <string>USB Camera 0</string>
+       </property>
+       <item>
+        <property name="text">
+         <string>USB Camera 0</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>USB Camera 1</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>USB Camera 2</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Video File</string>
+        </property>
+       </item>
+      </widget>
+      <widget class="QLabel" name="label_7">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>30</y>
+         <width>51</width>
+         <height>21</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Source</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+      <widget class="QLineEdit" name="lineEdit">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="geometry">
+        <rect>
+         <x>70</x>
+         <y>60</y>
+         <width>401</width>
+         <height>21</height>
+        </rect>
+       </property>
+      </widget>
      </widget>
     </widget>
     <widget class="QWidget" name="Calibrate_Tab">
@@ -224,8 +331,8 @@
      <rect>
       <x>10</x>
       <y>10</y>
-      <width>281</width>
-      <height>211</height>
+      <width>381</width>
+      <height>281</height>
      </rect>
     </property>
     <property name="frameShape">
@@ -247,10 +354,10 @@
    <widget class="QLabel" name="Gaze">
     <property name="geometry">
      <rect>
-      <x>300</x>
+      <x>410</x>
       <y>10</y>
-      <width>281</width>
-      <height>211</height>
+      <width>381</width>
+      <height>281</height>
      </rect>
     </property>
     <property name="autoFillBackground">
@@ -275,7 +382,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>589</width>
+     <width>800</width>
      <height>22</height>
     </rect>
    </property>
