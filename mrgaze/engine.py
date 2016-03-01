@@ -356,7 +356,7 @@ def FindRemoveGlint(roi, cfg):
 
     # Reasonable upper and lower bounds on glint area (x3, /3)
     glint_A = np.pi * (glint_d / 2.0)**2
-    A_min, A_max = glint_A / 3.0, glint_A * 9.0
+    A_min, A_max = glint_A / 3.0, glint_A * 3.0
     
     # print
     # print A_min
@@ -386,8 +386,8 @@ def FindRemoveGlint(roi, cfg):
 
         # Only accept blobs with area in glint range
         if A > A_min and A < A_max:
-            #            print A
             # Check distance from ROI center
+
             cy, cx = props.centroid  # (row, col)
             r = np.sqrt((cx-roi_cx)**2 + (cy-roi_cy)**2)
 
@@ -395,7 +395,7 @@ def FindRemoveGlint(roi, cfg):
                 r_min = r
                 glint_label = props.label
                 glint = (cx, cy)
-
+                
 
     if glint_label > 0:
 
