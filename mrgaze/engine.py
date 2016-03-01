@@ -356,7 +356,7 @@ def FindRemoveGlint(roi, cfg):
 
     # Reasonable upper and lower bounds on glint area (x3, /3)
     glint_A = np.pi * (glint_d / 2.0)**2
-    A_min, A_max = glint_A / 3.0, glint_A * 3.0
+    A_min, A_max = glint_A / 3.0, glint_A * 9.0
     
     # print
     # print A_min
@@ -366,7 +366,7 @@ def FindRemoveGlint(roi, cfg):
     bright = np.uint8(roi > 254)
 
     # Label connected regions (blobs)
-    bright_labels = measure.label(bright)
+    bright_labels = measure.label(bright, background=0) + 1
 
     # Get region properties for all bright blobs in mask
     bright_props = measure.regionprops(bright_labels)
@@ -403,7 +403,7 @@ def FindRemoveGlint(roi, cfg):
         glint_mask = np.uint8(bright_labels == glint_label)
 
         # Dilate glint mask
-        k = glint_d * 3;
+        k = glint_d;
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k,k))
         glint_mask = cv2.morphologyEx(glint_mask, cv2.MORPH_DILATE, kernel)
 
