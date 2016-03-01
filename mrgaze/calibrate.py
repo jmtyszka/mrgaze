@@ -104,6 +104,7 @@ def AutoCalibrate(ss_res_dir, cfg):
         C = np.array([])
         central_fix = 0.0, 0.0
 
+    
     return C, central_fix
 
 

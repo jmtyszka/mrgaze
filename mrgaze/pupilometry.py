@@ -33,7 +33,7 @@ import time
 import getpass
 import cv2
 from mrgaze import media, utils, config, calibrate, report, engine
-
+import matplotlib as plt
 
 def LivePupilometry(data_dir, live_eyetracking=False):
     """
@@ -66,8 +66,9 @@ def LivePupilometry(data_dir, live_eyetracking=False):
 
     # Load Configuration
     cfg = config.LoadConfig(data_dir)
+    cfg.live_eyetracking = live_eyetracking
     cfg_ts = time.time()
-
+    
     # Output flags
     verbose   = cfg.getboolean('OUTPUT', 'verbose')
     overwrite = cfg.getboolean('OUTPUT', 'overwrite')
@@ -194,6 +195,9 @@ def LivePupilometry(data_dir, live_eyetracking=False):
     # switch between gaze/cal modes by pressing key "c"
     do_cal = False
 
+    if cfg.getboolean('OUTPUT', 'graphics'):
+        cv2.namedWindow('Pupilometry')
+
     while keep_going:
         if do_cal == False:
             #
@@ -234,9 +238,6 @@ def LivePupilometry(data_dir, live_eyetracking=False):
                 print('* Problem opening pupilometry CSV file - skipping pupilometry')
                 return False
 
-            if cfg.getboolean('PUPILDETECT', 'enabled'):
-                cv2.startWindowThread()
-                cv2.namedWindow('Pupilometry')
 
             #
             # Main Video Frame Loop
@@ -424,7 +425,7 @@ def LivePupilometry(data_dir, live_eyetracking=False):
                 # Read next frame (if available)
                 # if verbose:
                 #     b4_frame = time.time()
-                keep_going, frame_orig = media.LoadVideoFrame(vin_stream, cfg)
+                keep_going, frame_orig = media.LoadVideoFrame(cal_vin_stream, cfg)
                 if keep_going:
                     frame, art_power = media.Preproc(frame_orig, cfg)
                 else:
@@ -477,6 +478,8 @@ def LivePupilometry(data_dir, live_eyetracking=False):
 
     cv2.destroyAllWindows()
     vin_stream.release()
+    if not live_eyetracking:
+        cal_vin_stream.release()
 
     print('')
     print('  Generate Report')
