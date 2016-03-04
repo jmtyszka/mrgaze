@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Open MrGaze GUI
+Start MrGaze application with Qt5 GUI
 
 Example
 ----
@@ -39,11 +39,14 @@ Copyright
 import sys
 
 from PyQt5.QtWidgets import QApplication, QMainWindow
+
 from mrgaze.gui import Ui_MrGaze
-from mrgaze import media
 
 
 class MrGazeApp(QMainWindow, Ui_MrGaze):
+    """
+    Main application GUI class for MrGaze
+    """
 
     def __init__(self):
 
@@ -52,24 +55,25 @@ class MrGazeApp(QMainWindow, Ui_MrGaze):
         self.ui = Ui_MrGaze()
         self.ui.setupUi(self)
 
-        self.detect_devices()
-
     def update_intensity_lb(self):
+        # Show the lower bound dial value as a label
         lb = self.ui.Intensity_LB_Dial.value()
         self.ui.Intensity_LB_Label.setText(str(lb))
 
     def update_intensity_ub(self):
+        # Show the upper bound dial value as a label
         ub = self.ui.Intensity_UB_Dial.value()
         self.ui.Intensity_UB_Label.setText(str(ub))
 
-    def detect_devices(self):
-        camera_list = media.find_cameras(maxdevno=10)
-
 
 if __name__ == '__main__':
+    # Create an application object
     app = QApplication(sys.argv)
 
+    # Create the MrGaze application GUI
     myapp = MrGazeApp()
+
+    # Reveal the GUI
     myapp.show()
 
     sys.exit(app.exec_())

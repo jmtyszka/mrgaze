@@ -12,6 +12,7 @@ mrgaze/config.py
 mrgaze/engine.py
 mrgaze/fitellipse.py
 mrgaze/gui.py
+mrgaze/icons_rc.py
 mrgaze/improc.py
 mrgaze/media.py
 mrgaze/moco.py
@@ -59,6 +60,7 @@ mrgaze/Cascade_ps-eye/stage15.xml
 mrgaze/Cascade_ps-eye/stage16.xml
 mrgaze/Cascade_ps-eye/stage17.xml
 mrgaze/Cascade_ps-eye/stage18.xml
+mrgaze/Cascade_ps-eye/stage19.xml
 mrgaze/Cascade_ps-eye/stage2.xml
 mrgaze/Cascade_ps-eye/stage3.xml
 mrgaze/Cascade_ps-eye/stage4.xml

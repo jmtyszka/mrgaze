@@ -18,3 +18,6 @@ SOURCES += main.cpp\
 HEADERS  += mrgaze.h
 
 FORMS    += mrgaze.ui
+
+RESOURCES += \
+    icons.qrc

@@ -61,7 +61,7 @@ def PupilometryEngine(frame, cascade, cfg):
     frw, frh = frame.shape[1], frame.shape[0]
 
     # RGB version of preprocessed frame for later use
-    frame_rgb =  cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
+    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
 
     # Init ROI to whole frame
     # Note (row, col) = (y, x) for shape
@@ -70,22 +70,22 @@ def PupilometryEngine(frame, cascade, cfg):
     # Shall we use the classifier at all, or whole frame?
     if cfg.getboolean('PUPILDETECT', 'enabled'):
 
-        min_neighbors = cfg.getint('PUPILDETECT','specificity')
-        scale_factor  = cfg.getfloat('PUPILDETECT','scalefactor')
+        min_neighbors = cfg.getint('PUPILDETECT', 'specificity')
+        scale_factor  = cfg.getfloat('PUPILDETECT', 'scalefactor')
 
         # Find pupils in frame
-        pupils = cascade.detectMultiScale(image=frame,
-                                      scaleFactor=scale_factor,
-                                      minNeighbors=min_neighbors)
+        pupils, num_detections = cascade.detectMultiScale2(image=frame,
+                                            scaleFactor=scale_factor,
+                                            minNeighbors=min_neighbors)
 
         # Count detected pupil candidates
         n_pupils = len(pupils)
 
         if n_pupils > 0:
 
-            # Use largest pupil candidate (works most of the time)
-            sizes = np.sqrt(pupils[:,2] * pupils[:,3])
-            best_pupil = sizes.argmax()
+            # Use pupil with number of detections is the number of neighboring positively classified rectangles that were
+            # joined together to form the object
+            best_pupil = num_detections.argmax()
 
             # Get ROI info for largest pupil
             x, y, w, h = pupils[best_pupil,:]
@@ -168,8 +168,8 @@ def PupilometryEngine(frame, cascade, cfg):
         ##################
 
         # Check for unusually high eccentricity
-        if fitellipse.Eccentricity(pupil_ellipse) > 0.95:
-            blink = True
+        # if fitellipse.Eccentricity(pupil_ellipse) > 0.95:
+        #     blink = True
 
     # Overlay ROI, pupil ellipse and pseudo-glint on background RGB frame
     frame_rgb = OverlayPupil(frame_rgb, pupil_ellipse, roi_rect, glint_center)
@@ -206,7 +206,7 @@ def PupilometryEngine(frame, cascade, cfg):
         montage_rgb = np.hstack( (quad_up_rgb, frame_up_rgb) )
 
         cv2.imshow('Pupilometry', montage_rgb)
-        cv2.waitKey(5)
+        # cv2.waitKey(5)
 
 
     return pupil_ellipse, roi_rect, blink, glint_center, frame_rgb
@@ -268,7 +268,7 @@ def SegmentPupil(roi, cfg):
     # blobs = cv2.morphologyEx(blobs, cv2.MORPH_OPEN, kernel)
 
     # Label connected regions
-    pupil_labels = measure.label(blobs, background=0)
+    pupil_labels = measure.label(blobs, background=0) + 1
 
     # Region properties
     pupil_props = measure.regionprops(pupil_labels)

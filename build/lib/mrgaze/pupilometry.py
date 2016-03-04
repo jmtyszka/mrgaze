@@ -28,10 +28,12 @@
 #
 # Copyright 2014 California Institute of Technology.
 
+import getpass
 import os
 import time
-import getpass
+
 import cv2
+
 from mrgaze import media, utils, config, calibrate, report, engine
 
 
@@ -43,8 +45,8 @@ def live_pupilometry(data_dir, live_eyetracking=False):
     ----
     data_dir : string
         Root data directory path.
-    cfg :
-        Analysis configuration parameters
+    live_eyetracking : boolean
+        Flag for live video (vs recorded video file) analysis
 
     Returns
     ----
@@ -171,9 +173,9 @@ def live_pupilometry(data_dir, live_eyetracking=False):
     # Desired time between frames in milliseconds
     # time_bw_frames = 1000.0 / fps
 
-    vin_stream.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH, 320)
-    vin_stream.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, 240)
-    vin_stream.set(cv2.cv.CV_CAP_PROP_FPS, 30)
+    vin_stream.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
+    vin_stream.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
+    vin_stream.set(cv2.CAP_PROP_FPS, 30)
 
     # Total number of frames in video file
     # nf = vin_stream.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT)
@@ -201,7 +203,7 @@ def live_pupilometry(data_dir, live_eyetracking=False):
             #
             # Output video codec (MP4V - poor quality compression)
             # TODO : Find a better multiplatform codec
-            fourcc = cv2.cv.CV_FOURCC('m','p','4','v')
+            fourcc = cv2.VideoWriter_fourcc('m','p','4','v')
 
             try:
                 vout_stream = cv2.VideoWriter(vout_path, fourcc, 30, (nx, ny), True)
@@ -233,6 +235,10 @@ def live_pupilometry(data_dir, live_eyetracking=False):
             except:
                 print('* Problem opening pupilometry CSV file - skipping pupilometry')
                 return False
+
+            if cfg.getboolean('PUPILDETECT', 'enabled'):
+                cv2.startWindowThread()
+                cv2.namedWindow('Pupilometry')
 
             #
             # Main Video Frame Loop
@@ -335,7 +341,7 @@ def live_pupilometry(data_dir, live_eyetracking=False):
             
             # Output video codec (MP4V - poor quality compression)
             # TODO : Find a better multiplatform codec
-            fourcc = cv2.cv.CV_FOURCC('m','p','4','v')
+            fourcc = cv2.VideoWriter_fourcc('m','p','4','v')
             
             try:
                 cal_vout_stream = cv2.VideoWriter(cal_vout_path, fourcc, 30, (nx, ny), True)
@@ -528,10 +534,13 @@ def video_pupilometry(data_dir, subj_sess, v_stub, cfg):
         print('* %s does not exist - returning' % vin_path)
         return False
 
-    # Set up the LBP cascade classifier
-    LBP_path = os.path.join(utils._package_root(), 'Cascade/cascade.xml')
+    # Get camera device name from config
+    camera_device = cfg.get('CAMERA', 'device')
 
-    print('  Loading LBP cascade')
+    # Set up the LBP cascade classifier
+    LBP_path = os.path.join(utils._package_root(), ('Cascade_%s/cascade.xml' % camera_device))
+
+    print('  Loading LBP cascade for %s' % camera_device)
     cascade = cv2.CascadeClassifier(LBP_path)
 
     if cascade.empty():
