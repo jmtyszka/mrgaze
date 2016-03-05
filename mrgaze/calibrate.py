@@ -24,13 +24,15 @@
 #
 # Copyright 2014 California Institute of Technology.
 
-import os
-import cv2
 import json
+import os
+
+import cv2
 import numpy as np
 import pylab as plt
-from skimage import filters, exposure
 from scipy import ndimage
+from skimage import filters, exposure
+
 from mrgaze import moco, engine
 
 
@@ -402,9 +404,16 @@ def ApplyCalibration(ss_dir, C, central_fix, cfg):
 
         x, y, bx, by = moco.HighPassFilter(t, x, y, mocokernel, central_fix)
 
+    elif motioncorr == 'glint':
+
+        # Glint correction already applied by engine - nothing extra needed here
+
+        # Return dummy x and y baseline estimates
+        bx, by = np.zeros_like(x), np.zeros_like(y)
+
     else:
 
-        print('* Unknown motion correction requested (%s) - skipping' % (motioncorr))
+        print('* Unknown retrospective motion correction requested (%s) - skipping' % (motioncorr))
 
         # Return dummy x and y baseline estimates
         bx, by = np.zeros_like(x), np.zeros_like(y)

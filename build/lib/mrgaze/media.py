@@ -26,7 +26,7 @@ from mrgaze import improc, mrclean
 from skimage.transform import rotate
 
 
-def find_cameras(maxdevno):
+def find_cameras(maxdevno=10):
 
     cameraList = []
 
@@ -77,7 +77,7 @@ def load_video_frame(v_in, cfg):
     return status, fr
 
 
-def Preproc(fr, cfg):
+def preproc(fr, cfg):
     """
     Preprocess a single frame
 
@@ -97,12 +97,12 @@ def Preproc(fr, cfg):
 
     # Extract video processing parameters
     downsampling = cfg.getfloat('VIDEO', 'downsampling')
-    border       = cfg.getint('VIDEO', 'border')
-    rotate       = cfg.getint('VIDEO', 'rotate')
-    do_mrclean   = cfg.getboolean('ARTIFACTS', 'mrclean')
-    z_thresh     = cfg.getfloat('ARTIFACTS', 'zthresh')
-    perclow      = cfg.getfloat('PREPROC', 'perclow')
-    perchigh     = cfg.getfloat('PREPROC', 'perchigh')
+    border = cfg.getint('VIDEO', 'border')
+    rotate = cfg.getint('VIDEO', 'rotate')
+    do_mrclean = cfg.getboolean('ARTIFACTS', 'mrclean')
+    z_thresh = cfg.getfloat('ARTIFACTS', 'zthresh')
+    perclow = cfg.getfloat('PREPROC', 'perclow')
+    perchigh = cfg.getfloat('PREPROC', 'perchigh')
 
     # Preprocessing flags
     perc_range = (perclow, perchigh)
@@ -116,7 +116,7 @@ def Preproc(fr, cfg):
     fr = cv2.cvtColor(fr, cv2.COLOR_RGB2GRAY)
 
     # Trim border first
-    fr = TrimBorder(fr, border)
+    fr = trim_border(fr, border)
 
     # Apply optional MR artifact suppression
     if do_mrclean:
@@ -124,7 +124,7 @@ def Preproc(fr, cfg):
 
     # downsample
     if downsampling > 1:
-        fr = Downsample(fr, downsampling)
+        fr = downsample(fr, downsampling)
 
     # Correct for illumination bias
     if bias_correct:
@@ -136,12 +136,12 @@ def Preproc(fr, cfg):
     fr = improc.RobustRescale(fr, perc_range)
 
     # Finally rotate frame
-    fr = RotateFrame(fr, rotate)
+    fr = rotate_frame(fr, rotate)
 
     return fr, art_power
 
 
-def Downsample(frame, factor):
+def downsample(frame, factor):
     # Get trimmed frame size
     nx, ny = frame.shape[1], frame.shape[0]
 
@@ -154,7 +154,7 @@ def Downsample(frame, factor):
     return frame
 
 
-def LoadImage(image_file, cfg):
+def load_image(image_file, cfg):
     """
     Load an image from a file and strip the border.
 
@@ -186,12 +186,12 @@ def LoadImage(image_file, cfg):
         return frame
 
     # Preprocess frame
-    frame, _ = Preproc(frame, cfg)
+    frame, _ = preproc(frame, cfg)
 
     return frame
 
 
-def TrimBorder(frame, border = 0):
+def trim_border(frame, border = 0):
     """
     Trim video frame border introduced by frame capture
 
@@ -233,7 +233,7 @@ def TrimBorder(frame, border = 0):
         return frame
 
 
-def RotateFrame(frame, theta_deg):
+def rotate_frame(frame, theta_deg):
     """
     Rotate frame in multiples of 90 degrees.
 

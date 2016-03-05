@@ -402,9 +402,16 @@ def ApplyCalibration(ss_dir, C, central_fix, cfg):
 
         x, y, bx, by = moco.HighPassFilter(t, x, y, mocokernel, central_fix)
 
+    elif motioncorr == 'glint':
+
+        # Glint correction already applied by engine - nothing extra needed here
+        
+        # Return dummy x and y baseline estimates
+        bx, by = np.zeros_like(x), np.zeros_like(y)
+
     else:
 
-        print('* Unknown motion correction requested (%s) - skipping' % (motioncorr))
+        print('* Unknown retrospective motion correction requested (%s) - skipping' % (motioncorr))
 
         # Return dummy x and y baseline estimates
         bx, by = np.zeros_like(x), np.zeros_like(y)

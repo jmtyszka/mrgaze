@@ -36,7 +36,7 @@ Copyright
 2014-2016 California Institute of Technology.
 """
 
-__version__ = '0.7.2'
+__version__ = '0.8.0'
 
 import argparse
 import datetime as dt
