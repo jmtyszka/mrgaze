@@ -1,7 +1,7 @@
 QTDIR=mrgaze/gui/MrGaze
 QTUI=$(QTDIR)/mrgaze.ui
 QTRC=$(QTDIR)/icons.qrc
-PYUI=mrgaze/gui.py
+PYUI=mrgaze/qtui.py
 PYRC=mrgaze/icons_rc.py
 
 all: $(PYUI) $(PYRC) $(PYICONS)
