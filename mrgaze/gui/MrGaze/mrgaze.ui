@@ -42,7 +42,7 @@
       <property name="title">
        <string>Pupil Threshold</string>
       </property>
-      <widget class="QDial" name="Intensity_LB_Dial">
+      <widget class="QDial" name="Pupil_Thresh_Dial">
        <property name="geometry">
         <rect>
          <x>10</x>
@@ -61,7 +61,7 @@
         <bool>true</bool>
        </property>
       </widget>
-      <widget class="QLabel" name="Intensity_LB_Label">
+      <widget class="QLabel" name="Pupil_Thresh_Label">
        <property name="geometry">
         <rect>
          <x>10</x>
@@ -90,7 +90,7 @@
       <property name="title">
        <string>Glint Threshold</string>
       </property>
-      <widget class="QLabel" name="Intensity_UB_Label">
+      <widget class="QLabel" name="Glint_Thresh_Label">
        <property name="geometry">
         <rect>
          <x>10</x>
@@ -106,7 +106,7 @@
         <set>Qt::AlignCenter</set>
        </property>
       </widget>
-      <widget class="QDial" name="Intensity_UB_Dial">
+      <widget class="QDial" name="Glint_Thresh_Dial">
        <property name="geometry">
         <rect>
          <x>10</x>
@@ -186,26 +186,26 @@
         </rect>
        </property>
        <property name="currentText">
-        <string>USB Camera 0</string>
+        <string>Default</string>
        </property>
        <item>
         <property name="text">
-         <string>USB Camera 0</string>
+         <string>Default</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>USB Camera 1</string>
+         <string>Ximea USB</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>USB Camera 2</string>
+         <string>Thorlabs USB</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>Video File</string>
+         <string>iSight USB</string>
         </property>
        </item>
       </widget>
@@ -474,27 +474,41 @@
      </attribute>
     </widget>
    </widget>
-   <widget class="QWidget" name="horizontalLayoutWidget">
+   <widget class="QStackedWidget" name="stackedWidget">
     <property name="geometry">
      <rect>
-      <x>10</x>
-      <y>10</y>
-      <width>381</width>
-      <height>281</height>
+      <x>20</x>
+      <y>20</y>
+      <width>321</width>
+      <height>271</height>
      </rect>
     </property>
-    <layout class="QHBoxLayout" name="videoLayout"/>
+    <property name="currentIndex">
+     <number>1</number>
+    </property>
+    <widget class="QWidget" name="EyePage"/>
+    <widget class="QWidget" name="AnalyzePage"/>
+    <widget class="QWidget" name="CapturePage"/>
    </widget>
-   <widget class="QWidget" name="horizontalLayoutWidget_2">
+   <widget class="EyeWidget" name="eyeViewer" native="true">
     <property name="geometry">
      <rect>
-      <x>410</x>
-      <y>10</y>
-      <width>381</width>
-      <height>281</height>
+      <x>370</x>
+      <y>20</y>
+      <width>121</width>
+      <height>111</height>
      </rect>
     </property>
-    <layout class="QHBoxLayout" name="gazeLayout"/>
+   </widget>
+   <widget class="GazeWidget" name="widget" native="true">
+    <property name="geometry">
+     <rect>
+      <x>370</x>
+      <y>140</y>
+      <width>121</width>
+      <height>111</height>
+     </rect>
+    </property>
    </widget>
   </widget>
   <widget class="QMenuBar" name="menuBar">
@@ -518,12 +532,26 @@
   <widget class="QStatusBar" name="statusBar"/>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
+ <customwidgets>
+  <customwidget>
+   <class>EyeWidget</class>
+   <extends>QWidget</extends>
+   <header>eyewidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>GazeWidget</class>
+   <extends>QWidget</extends>
+   <header>gazewidget.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources>
   <include location="icons.qrc"/>
  </resources>
  <connections>
   <connection>
-   <sender>Intensity_LB_Dial</sender>
+   <sender>Pupil_Thresh_Dial</sender>
    <signal>valueChanged(int)</signal>
    <receiver>MrGaze</receiver>
    <slot>update_intensity_lb()</slot>
@@ -539,7 +567,7 @@
    </hints>
   </connection>
   <connection>
-   <sender>Intensity_UB_Dial</sender>
+   <sender>Glint_Thresh_Dial</sender>
    <signal>valueChanged(int)</signal>
    <receiver>MrGaze</receiver>
    <slot>update_intensity_ub()</slot>

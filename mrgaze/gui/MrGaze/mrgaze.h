@@ -15,6 +15,9 @@ public:
     explicit MrGaze(QWidget *parent = 0);
     ~MrGaze();
 
+private slots:
+    void on_Glint_Thresh_Dial_valueChanged(int value);
+
 private:
     Ui::MrGaze *ui;
 };

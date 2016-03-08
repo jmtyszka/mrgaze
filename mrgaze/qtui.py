@@ -52,7 +52,7 @@ class Ui_MrGaze(object):
         self.videoFileLabel = QtWidgets.QLabel(self.videoSourceGroup)
         self.videoFileLabel.setEnabled(False)
         self.videoFileLabel.setGeometry(QtCore.QRect(20, 60, 41, 21))
-        self.videoFileLabel.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignTrailing | QtCore.Qt.AlignVCenter)
+        self.videoFileLabel.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
         self.videoFileLabel.setObjectName("videoFileLabel")
         self.videoFileTool = QtWidgets.QToolButton(self.videoSourceGroup)
         self.videoFileTool.setEnabled(False)
@@ -67,7 +67,7 @@ class Ui_MrGaze(object):
         self.videoSourceCombo.addItem("")
         self.videoSourceLabel = QtWidgets.QLabel(self.videoSourceGroup)
         self.videoSourceLabel.setGeometry(QtCore.QRect(10, 30, 51, 21))
-        self.videoSourceLabel.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignTrailing | QtCore.Qt.AlignVCenter)
+        self.videoSourceLabel.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
         self.videoSourceLabel.setObjectName("videoSourceLabel")
         self.videoFileEdit = QtWidgets.QLineEdit(self.videoSourceGroup)
         self.videoFileEdit.setEnabled(False)
@@ -142,7 +142,7 @@ class Ui_MrGaze(object):
         self.comboBox.addItem("")
         self.pupilClassifierLabel = QtWidgets.QLabel(self.groupBox)
         self.pupilClassifierLabel.setGeometry(QtCore.QRect(10, 20, 91, 51))
-        self.pupilClassifierLabel.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignTrailing | QtCore.Qt.AlignVCenter)
+        self.pupilClassifierLabel.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
         self.pupilClassifierLabel.setObjectName("pupilClassifierLabel")
         self.tabWidget.addTab(self.Setup_Tab, "")
         self.Calibrate_Tab = QtWidgets.QWidget()
@@ -211,3 +211,4 @@ class Ui_MrGaze(object):
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.Calibrate_Tab), _translate("MrGaze", "Calibrate"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.Gaze_Tab), _translate("MrGaze", "Gaze"))
 
+from mrgaze import icons_rc
