@@ -11,7 +11,6 @@ mrgaze/calibrate.py
 mrgaze/config.py
 mrgaze/engine.py
 mrgaze/fitellipse.py
-mrgaze/gui.py
 mrgaze/icons_rc.py
 mrgaze/improc.py
 mrgaze/media.py
@@ -19,6 +18,8 @@ mrgaze/moco.py
 mrgaze/mrclean.py
 mrgaze/pipeline.py
 mrgaze/pupilometry.py
+mrgaze/qtclasses.py
+mrgaze/qtui.py
 mrgaze/report.py
 mrgaze/utils.py
 mrgaze.egg-info/PKG-INFO

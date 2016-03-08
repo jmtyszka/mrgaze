@@ -25,8 +25,8 @@ This file is part of mrgaze.
 Copyright 2014-2016 California Institute of Technology.
 """
 
-import os
 import configparser
+import os
 
 
 def InitConfig(config):
@@ -49,7 +49,7 @@ def InitConfig(config):
     config.set('PREPROC','perchigh','50.0')
 
     config.add_section('PUPILDETECT')
-    config.set('PUPILDETECT','enabled','True')
+    config.set('PUPILDETECT', 'enabled', 'False')
     config.set('PUPILDETECT','specificity','10')
     config.set('PUPILDETECT','scalefactor','1.05')
     config.set('PUPILDETECT','manualroi','[0.5, 0.5, 0.5]')
@@ -67,7 +67,7 @@ def InitConfig(config):
     config.set('PUPILFIT','maxinlierperc','95.0')
 
     config.add_section('ARTIFACTS')
-    config.set('ARTIFACTS','mrclean','True')
+    config.set('ARTIFACTS', 'mrclean', 'False')
     config.set('ARTIFACTS','zthresh','8.0')
     config.set('ARTIFACTS','motioncorr','none')
     config.set('ARTIFACTS','mocokernel','151')
@@ -81,8 +81,8 @@ def InitConfig(config):
     config.set('CALIBRATION','heatsigma','2.0')
 
     config.add_section('OUTPUT')
-    config.set('OUTPUT','verbose','True')
-    config.set('OUTPUT','graphics','True')
+    config.set('OUTPUT', 'verbose', 'False')
+    config.set('OUTPUT', 'graphics', 'False')
     config.set('OUTPUT','overwrite','True')
 
     config.add_section('CAMERA')

@@ -5,6 +5,7 @@
     <orderEntry type="jdk" jdkName="Python 3.4.4 (/opt/local/bin/python3)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="camview" />
+    <orderEntry type="module" module-name="camview" />
   </component>
   <component name="PyDocumentationSettings">
     <option name="myDocStringFormat" value="NumPy" />

@@ -38,42 +38,44 @@ Copyright
 
 import sys
 
-from PyQt5.QtWidgets import QApplication, QMainWindow
+from PyQt5 import QtWidgets, QtCore
 
-from mrgaze.gui import Ui_MrGaze
+from mrgaze.qtclasses import MrGazeApp, CaptureVideo, AnalyseFrame, ShowVideoFrame
 
-
-class MrGazeApp(QMainWindow, Ui_MrGaze):
-    """
-    Main application GUI class for MrGaze
-    """
-
-    def __init__(self):
-
-        # Init GUI
-        super().__init__()
-        self.ui = Ui_MrGaze()
-        self.ui.setupUi(self)
-
-    def update_intensity_lb(self):
-        # Show the lower bound dial value as a label
-        lb = self.ui.Intensity_LB_Dial.value()
-        self.ui.Intensity_LB_Label.setText(str(lb))
-
-    def update_intensity_ub(self):
-        # Show the upper bound dial value as a label
-        ub = self.ui.Intensity_UB_Dial.value()
-        self.ui.Intensity_UB_Label.setText(str(ub))
-
+__version__ = '0.8.0'
 
 if __name__ == '__main__':
     # Create an application object
-    app = QApplication(sys.argv)
+    app = QtWidgets.QApplication(sys.argv)
 
-    # Create the MrGaze application GUI
+    # Create a video capture thread
+    thread = QtCore.QThread()
+    thread.start()
+
+    # Create a video capture object and add it to the thread
+    vidcap = CaptureVideo()
+    vidcap.moveToThread(thread)
+
+    # Create an image analysis object
+    analyse = AnalyseFrame()
+
+    # Create an image viewer object
+    showvid = ShowVideoFrame()
+
+    # Connect the output from the video capture to the analysis slot
+    vidcap.VideoSignal.connect(analyse.receive_image)
+    analyse.AnalysisSignal.connect(showvid.set_image)
+
+    # Create the MrGaze application UI
     myapp = MrGazeApp()
 
-    # Reveal the GUI
+    # Connect the play button to the video capture start method
+    myapp.ui.playButton.clicked.connect(vidcap.start_video)
+
+    # Add the image viewer to the UI
+    myapp.ui.videoLayout.addWidget(showvid)
+
+    # Reveal the UI
     myapp.show()
 
     sys.exit(app.exec_())

@@ -4,7 +4,7 @@ QTRC=$(QTDIR)/icons.qrc
 PYUI=mrgaze/qtui.py
 PYRC=mrgaze/icons_rc.py
 
-all: $(PYUI) $(PYRC) $(PYICONS)
+all: $(PYUI) $(PYRC)
 
 install:
 	sudo python setup.py install
@@ -18,4 +18,4 @@ $(PYRC): $(QTRC)
 	pyrcc5 $(QTRC) -o $(PYRC)
 
 clean:
-	rm -rf $(PYUI)
+	rm -rf $(PYUI) $(PYRC)
