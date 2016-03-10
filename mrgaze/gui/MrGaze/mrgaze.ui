@@ -42,7 +42,7 @@
       <property name="title">
        <string>Pupil Threshold</string>
       </property>
-      <widget class="QDial" name="Intensity_LB_Dial">
+      <widget class="QDial" name="pupilThresholdDial">
        <property name="geometry">
         <rect>
          <x>10</x>
@@ -61,7 +61,7 @@
         <bool>true</bool>
        </property>
       </widget>
-      <widget class="QLabel" name="Intensity_LB_Label">
+      <widget class="QLabel" name="pupilThresholdLabel">
        <property name="geometry">
         <rect>
          <x>10</x>
@@ -90,7 +90,7 @@
       <property name="title">
        <string>Glint Threshold</string>
       </property>
-      <widget class="QLabel" name="Intensity_UB_Label">
+      <widget class="QLabel" name="glintThresholdLabel">
        <property name="geometry">
         <rect>
          <x>10</x>
@@ -106,7 +106,7 @@
         <set>Qt::AlignCenter</set>
        </property>
       </widget>
-      <widget class="QDial" name="Intensity_UB_Dial">
+      <widget class="QDial" name="glintThresholdDial">
        <property name="geometry">
         <rect>
          <x>10</x>
@@ -186,21 +186,26 @@
         </rect>
        </property>
        <property name="currentText">
-        <string>USB Camera 0</string>
+        <string>Default</string>
        </property>
        <item>
         <property name="text">
-         <string>USB Camera 0</string>
+         <string>Default</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>USB Camera 1</string>
+         <string>USB xiQ</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>USB Camera 2</string>
+         <string>USB iSight</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>USB Thorlabs</string>
         </property>
        </item>
        <item>
@@ -426,22 +431,22 @@
        </property>
        <item>
         <property name="text">
-         <string>USB iSight</string>
+         <string>Manual</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>USB xiQ</string>
+         <string>xiQ</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>USB Thorlabs</string>
+         <string>iSight</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>File</string>
+         <string>Thorlabs</string>
         </property>
        </item>
       </widget>
@@ -463,38 +468,39 @@
       </widget>
      </widget>
     </widget>
-    <widget class="QWidget" name="Calibrate_Tab">
+    <widget class="QWidget" name="calibrateTab">
      <attribute name="title">
       <string>Calibrate</string>
      </attribute>
     </widget>
-    <widget class="QWidget" name="Gaze_Tab">
+    <widget class="QWidget" name="gazeTab">
      <attribute name="title">
       <string>Gaze</string>
      </attribute>
     </widget>
    </widget>
-   <widget class="QWidget" name="horizontalLayoutWidget">
+   <widget class="QWidget" name="gridLayoutWidget">
     <property name="geometry">
      <rect>
       <x>10</x>
       <y>10</y>
-      <width>381</width>
+      <width>781</width>
       <height>281</height>
      </rect>
     </property>
-    <layout class="QHBoxLayout" name="videoLayout"/>
-   </widget>
-   <widget class="QWidget" name="horizontalLayoutWidget_2">
-    <property name="geometry">
-     <rect>
-      <x>410</x>
-      <y>10</y>
-      <width>381</width>
-      <height>281</height>
-     </rect>
-    </property>
-    <layout class="QHBoxLayout" name="gazeLayout"/>
+    <layout class="QGridLayout" name="gridLayout">
+     <item row="0" column="0">
+      <widget class="PupilometryWidget" name="pupilometryView" native="true">
+       <property name="cursor">
+        <cursorShape>CrossCursor</cursorShape>
+       </property>
+       <zorder>gazeView</zorder>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="GazeWidget" name="gazeView" native="true"/>
+     </item>
+    </layout>
    </widget>
   </widget>
   <widget class="QMenuBar" name="menuBar">
@@ -518,45 +524,112 @@
   <widget class="QStatusBar" name="statusBar"/>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
+ <customwidgets>
+  <customwidget>
+   <class>PupilometryWidget</class>
+   <extends>QWidget</extends>
+   <header>pupilometrywidget.h</header>
+   <container>1</container>
+   <slots>
+    <slot>change_pupil_thresh()</slot>
+    <slot>change_glint_thresh()</slot>
+    <slot>change_classifier()</slot>
+    <slot>toggle_pause()</slot>
+   </slots>
+  </customwidget>
+  <customwidget>
+   <class>GazeWidget</class>
+   <extends>QWidget</extends>
+   <header>gazewidget.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources>
   <include location="icons.qrc"/>
  </resources>
  <connections>
   <connection>
-   <sender>Intensity_LB_Dial</sender>
+   <sender>glintThresholdDial</sender>
    <signal>valueChanged(int)</signal>
-   <receiver>MrGaze</receiver>
-   <slot>update_intensity_lb()</slot>
+   <receiver>glintThresholdLabel</receiver>
+   <slot>setNum(int)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>58</x>
-     <y>336</y>
+     <x>190</x>
+     <y>447</y>
     </hint>
     <hint type="destinationlabel">
-     <x>294</x>
-     <y>216</y>
+     <x>173</x>
+     <y>469</y>
     </hint>
    </hints>
   </connection>
   <connection>
-   <sender>Intensity_UB_Dial</sender>
+   <sender>pupilThresholdDial</sender>
    <signal>valueChanged(int)</signal>
-   <receiver>MrGaze</receiver>
-   <slot>update_intensity_ub()</slot>
+   <receiver>pupilThresholdLabel</receiver>
+   <slot>setNum(int)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>138</x>
-     <y>336</y>
+     <x>86</x>
+     <y>446</y>
     </hint>
     <hint type="destinationlabel">
-     <x>294</x>
-     <y>216</y>
+     <x>84</x>
+     <y>474</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>glintThresholdDial</sender>
+   <signal>valueChanged(int)</signal>
+   <receiver>pupilometryView</receiver>
+   <slot>change_glint_thresh()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>152</x>
+     <y>435</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>157</x>
+     <y>259</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>pupilThresholdDial</sender>
+   <signal>valueChanged(int)</signal>
+   <receiver>pupilometryView</receiver>
+   <slot>change_pupil_thresh()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>58</x>
+     <y>435</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>53</x>
+     <y>240</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>playButton</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>pupilometryView</receiver>
+   <slot>toggle_pause()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>146</x>
+     <y>537</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>118</x>
+     <y>312</y>
     </hint>
    </hints>
   </connection>
  </connections>
  <slots>
-  <slot>update_intensity_lb()</slot>
-  <slot>update_intensity_ub()</slot>
+  <slot>saveConfig()</slot>
  </slots>
 </ui>

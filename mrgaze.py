@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Start MrGaze application with Qt5 GUI
 
@@ -40,11 +40,13 @@ import sys
 
 from PyQt5 import QtWidgets, QtCore
 
-from mrgaze.qtclasses import MrGazeApp, CaptureVideo, AnalyseFrame, ShowVideoFrame
+from mrgaze.capture import CaptureVideo
+from mrgaze.mainwindow import MainWindow
 
 __version__ = '0.8.0'
 
 if __name__ == '__main__':
+
     # Create an application object
     app = QtWidgets.QApplication(sys.argv)
 
@@ -56,26 +58,13 @@ if __name__ == '__main__':
     vidcap = CaptureVideo()
     vidcap.moveToThread(thread)
 
-    # Create an image analysis object
-    analyse = AnalyseFrame()
-
-    # Create an image viewer object
-    showvid = ShowVideoFrame()
-
-    # Connect the output from the video capture to the analysis slot
-    vidcap.VideoSignal.connect(analyse.receive_image)
-    analyse.AnalysisSignal.connect(showvid.set_image)
-
     # Create the MrGaze application UI
-    myapp = MrGazeApp()
+    mainwin = MainWindow()
 
-    # Connect the play button to the video capture start method
-    myapp.ui.playButton.clicked.connect(vidcap.start_video)
-
-    # Add the image viewer to the UI
-    myapp.ui.videoLayout.addWidget(showvid)
+    # Connect video capture object to pupilometry widget
+    vidcap.VideoSignal.connect(mainwin.ui.pupilometryView.receive_image)
 
     # Reveal the UI
-    myapp.show()
+    mainwin.show()
 
     sys.exit(app.exec_())
