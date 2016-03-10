@@ -12,3 +12,8 @@ MrGaze::~MrGaze()
 {
     delete ui;
 }
+
+void MrGaze::on_Glint_Thresh_Dial_valueChanged(int value)
+{
+
+}
