@@ -64,6 +64,9 @@ if __name__ == '__main__':
     # Connect video capture object to pupilometry widget
     vidcap.VideoSignal.connect(mainwin.ui.pupilometryView.receive_image)
 
+    # Connect play button to capture start method
+    mainwin.ui.playButton.clicked.connect(vidcap.start_capture)
+
     # Reveal the UI
     mainwin.show()
 

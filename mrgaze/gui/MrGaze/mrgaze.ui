@@ -6,9 +6,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
-    <height>606</height>
+    <width>830</width>
+    <height>647</height>
    </rect>
+  </property>
+  <property name="mouseTracking">
+   <bool>true</bool>
+  </property>
+  <property name="focusPolicy">
+   <enum>Qt::StrongFocus</enum>
   </property>
   <property name="windowTitle">
    <string>MrGaze</string>
@@ -18,8 +24,8 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>300</y>
-      <width>781</width>
+      <y>340</y>
+      <width>811</width>
       <height>241</height>
      </rect>
     </property>
@@ -243,13 +249,19 @@
         </rect>
        </property>
       </widget>
+      <zorder>videoFileLabel</zorder>
+      <zorder>videoFileTool</zorder>
+      <zorder>videoSourceCombo</zorder>
+      <zorder>videoSourceLabel</zorder>
+      <zorder>videoFileEdit</zorder>
+      <zorder>gazeView</zorder>
      </widget>
      <widget class="QGroupBox" name="videoControlsBox">
       <property name="geometry">
        <rect>
         <x>10</x>
         <y>130</y>
-        <width>251</width>
+        <width>191</width>
         <height>71</height>
        </rect>
       </property>
@@ -257,33 +269,6 @@
        <string>Video Control</string>
       </property>
       <widget class="QPushButton" name="playButton">
-       <property name="geometry">
-        <rect>
-         <x>100</x>
-         <y>20</y>
-         <width>51</width>
-         <height>51</height>
-        </rect>
-       </property>
-       <property name="text">
-        <string/>
-       </property>
-       <property name="icon">
-        <iconset resource="icons.qrc">
-         <normaloff>:/icons/Pause.png</normaloff>
-         <normalon>:/icons/Play.png</normalon>:/icons/Pause.png</iconset>
-       </property>
-       <property name="iconSize">
-        <size>
-         <width>32</width>
-         <height>32</height>
-        </size>
-       </property>
-       <property name="checkable">
-        <bool>true</bool>
-       </property>
-      </widget>
-      <widget class="QPushButton" name="restartButton">
        <property name="geometry">
         <rect>
          <x>0</x>
@@ -297,35 +282,8 @@
        </property>
        <property name="icon">
         <iconset resource="icons.qrc">
-         <normaloff>:/icons/Restart.png</normaloff>
-         <normalon>:/icons/Restart.png</normalon>:/icons/Restart.png</iconset>
-       </property>
-       <property name="iconSize">
-        <size>
-         <width>32</width>
-         <height>32</height>
-        </size>
-       </property>
-       <property name="checkable">
-        <bool>false</bool>
-       </property>
-      </widget>
-      <widget class="QPushButton" name="rewindButton">
-       <property name="geometry">
-        <rect>
-         <x>50</x>
-         <y>20</y>
-         <width>51</width>
-         <height>51</height>
-        </rect>
-       </property>
-       <property name="text">
-        <string/>
-       </property>
-       <property name="icon">
-        <iconset resource="icons.qrc">
-         <normaloff>:/icons/Rewind.png</normaloff>
-         <normalon>:/icons/Rewind.png</normalon>:/icons/Rewind.png</iconset>
+         <normaloff>:/icons/Play.png</normaloff>
+         <normalon>:/icons/Play.png</normalon>:/icons/Play.png</iconset>
        </property>
        <property name="iconSize">
         <size>
@@ -335,72 +293,15 @@
        </property>
        <property name="checkable">
         <bool>true</bool>
-       </property>
-       <property name="autoRepeat">
-        <bool>false</bool>
-       </property>
-      </widget>
-      <widget class="QPushButton" name="fastforwardButton">
-       <property name="geometry">
-        <rect>
-         <x>150</x>
-         <y>20</y>
-         <width>51</width>
-         <height>51</height>
-        </rect>
-       </property>
-       <property name="text">
-        <string/>
-       </property>
-       <property name="icon">
-        <iconset resource="icons.qrc">
-         <normaloff>:/icons/FastForward.png</normaloff>
-         <normalon>:/icons/FastForward.png</normalon>:/icons/FastForward.png</iconset>
-       </property>
-       <property name="iconSize">
-        <size>
-         <width>32</width>
-         <height>32</height>
-        </size>
-       </property>
-       <property name="checkable">
-        <bool>true</bool>
-       </property>
-      </widget>
-      <widget class="QPushButton" name="toEndButton">
-       <property name="geometry">
-        <rect>
-         <x>200</x>
-         <y>20</y>
-         <width>51</width>
-         <height>51</height>
-        </rect>
-       </property>
-       <property name="text">
-        <string/>
-       </property>
-       <property name="icon">
-        <iconset resource="icons.qrc">
-         <normaloff>:/icons/ToEnd.png</normaloff>
-         <normalon>:/icons/ToEnd.png</normalon>:/icons/ToEnd.png</iconset>
-       </property>
-       <property name="iconSize">
-        <size>
-         <width>32</width>
-         <height>32</height>
-        </size>
-       </property>
-       <property name="checkable">
-        <bool>false</bool>
        </property>
       </widget>
      </widget>
      <widget class="QGroupBox" name="groupBox">
       <property name="geometry">
        <rect>
-        <x>280</x>
+        <x>210</x>
         <y>130</y>
-        <width>481</width>
+        <width>551</width>
         <height>71</height>
        </rect>
       </property>
@@ -410,7 +311,7 @@
       <widget class="QPushButton" name="saveSetupButton">
        <property name="geometry">
         <rect>
-         <x>360</x>
+         <x>300</x>
          <y>20</y>
          <width>121</width>
          <height>51</height>
@@ -466,6 +367,19 @@
         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
        </property>
       </widget>
+      <widget class="QPushButton" name="quitButton">
+       <property name="geometry">
+        <rect>
+         <x>420</x>
+         <y>20</y>
+         <width>121</width>
+         <height>51</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Quit</string>
+       </property>
+      </widget>
      </widget>
     </widget>
     <widget class="QWidget" name="calibrateTab">
@@ -479,36 +393,41 @@
      </attribute>
     </widget>
    </widget>
-   <widget class="QWidget" name="gridLayoutWidget">
+   <widget class="GazeWidget" name="gazeView" native="true">
+    <property name="geometry">
+     <rect>
+      <x>420</x>
+      <y>10</y>
+      <width>400</width>
+      <height>320</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="PupilometryWidget" name="pupilometryView" native="true">
     <property name="geometry">
      <rect>
       <x>10</x>
       <y>10</y>
-      <width>781</width>
-      <height>281</height>
+      <width>400</width>
+      <height>320</height>
      </rect>
     </property>
-    <layout class="QGridLayout" name="gridLayout">
-     <item row="0" column="0">
-      <widget class="PupilometryWidget" name="pupilometryView" native="true">
-       <property name="cursor">
-        <cursorShape>CrossCursor</cursorShape>
-       </property>
-       <zorder>gazeView</zorder>
-      </widget>
-     </item>
-     <item row="0" column="1">
-      <widget class="GazeWidget" name="gazeView" native="true"/>
-     </item>
-    </layout>
+    <property name="cursor">
+     <cursorShape>CrossCursor</cursorShape>
+    </property>
+    <zorder>gazeView</zorder>
    </widget>
+   <zorder>tabWidget</zorder>
+   <zorder>pupilometryView</zorder>
+   <zorder>gazeView</zorder>
+   <zorder>pupilometryView</zorder>
   </widget>
   <widget class="QMenuBar" name="menuBar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>800</width>
+     <width>830</width>
      <height>22</height>
     </rect>
    </property>
@@ -534,7 +453,7 @@
     <slot>change_pupil_thresh()</slot>
     <slot>change_glint_thresh()</slot>
     <slot>change_classifier()</slot>
-    <slot>toggle_pause()</slot>
+    <slot>start_capture()</slot>
    </slots>
   </customwidget>
   <customwidget>
@@ -613,18 +532,18 @@
    </hints>
   </connection>
   <connection>
-   <sender>playButton</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>pupilometryView</receiver>
-   <slot>toggle_pause()</slot>
+   <sender>quitButton</sender>
+   <signal>clicked()</signal>
+   <receiver>MrGaze</receiver>
+   <slot>close()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>146</x>
-     <y>537</y>
+     <x>710</x>
+     <y>532</y>
     </hint>
     <hint type="destinationlabel">
-     <x>118</x>
-     <y>312</y>
+     <x>770</x>
+     <y>580</y>
     </hint>
    </hints>
   </connection>

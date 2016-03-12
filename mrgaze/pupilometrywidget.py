@@ -28,12 +28,16 @@ import configparser
 import os
 
 import cv2
+import numpy as np
 from PyQt5 import QtCore, QtWidgets, QtGui
+from skimage import exposure
 
+from mrgaze import engine
 from mrgaze import utils, config
 
 
 class PupilometryWidget(QtWidgets.QWidget):
+
     def __init__(self, parent=None):
 
         super(PupilometryWidget, self).__init__(parent)
@@ -41,19 +45,60 @@ class PupilometryWidget(QtWidgets.QWidget):
         self.setAttribute(QtCore.Qt.WA_OpaquePaintEvent)
 
         # Set up the LBP cascade classifier
-        LBP_path = os.path.join(utils._package_root(), ('Cascade_%s/cascade.xml' % 'thorlabs'))
-        self.cascade = cv2.CascadeClassifier(LBP_path)
+        cascade_path = os.path.join(utils._package_root(), ('Cascade_%s/cascade.xml' % 'thorlabs'))
+        self.cascade = cv2.CascadeClassifier(cascade_path)
 
         # Init configuration
         self.cfg = config.InitConfig(configparser.ConfigParser())
 
-        # Other inits
-        self.paused = True
-        self.last_image = []
+        # Initial thresholds
+        self.pupil_thresh = 0.0
+        self.glint_thresh = 100.0
+
+        # Rubber band ROI selection inits
+        self.roi = QtCore.QRect()
+        self.rubberband = QtWidgets.QRubberBand(QtWidgets.QRubberBand.Rectangle, self)
+
+    def receive_image(self, cv_image):
+        """
+
+        Parameters
+        ----------
+        cv_image_in : 2D numpy array
+
+        Returns
+        -------
+
+        """
+
+        # Immediately resample to 400 x 320
+        cv_image = cv2.resize(cv_image, (400, 320))
+
+        # Robust range normalization
+        plow, phigh = np.uint8(np.percentile(cv_image, (1, 99)))
+        cv_image = exposure.rescale_intensity(cv_image, in_range=(plow, phigh), out_range=(0, 255))
+
+        # Pass incoming frame to MrGaze pupilometry engine
+        pupil_ellipse, blink, glint, frame_rgb = engine.pupilometry_engine(cv_image,
+                                                                           self.pupil_thresh,
+                                                                           self.glint_thresh,
+                                                                           self.roi)
+
+        # Convert from OpenCV color image array to QImage object
+        self.qt_image = QtGui.QImage(frame_rgb.data,
+                                     frame_rgb.shape[1],
+                                     frame_rgb.shape[0],
+                                     frame_rgb.strides[0],
+                                     QtGui.QImage.Format_RGB888)
+
+        if self.qt_image.isNull():
+            print("*** Dropped Frame ***")
+
+        # Update widget (calls paintEvent)
+        self.update()
 
     def paintEvent(self, event):
         """
-        Paint image data set by set_image method
         Override inherited method paintEvent
 
         Parameters
@@ -65,59 +110,68 @@ class PupilometryWidget(QtWidgets.QWidget):
 
         """
 
-        painter = QtGui.QPainter(self)
-        painter.drawImage(0, 0, self.qt_image)
-
-        # Reset image data
-        self.qt_image = QtGui.QImage()
-
-    def analyze_image(self, cv_image):
-
-        # Pass incoming video frame to MrGaze engine
-        # pupil_ellipse, roi_rect, blink, glint, frame_rgb = engine.PupilometryEngine(cv_image, self.cascade, self.cfg)
-
-        frame_rgb = cv2.cvtColor(cv_image, cv2.COLOR_GRAY2RGB)
-
-        return frame_rgb
-
-    def set_image(self, qimg):
-        """
-        Display image in widget
-
-        Parameters
-        ----------
-        qimg
-
-        Returns
-        -------
-
-        """
-
-        if qimg.isNull():
-
-            print("*** Dropped Frame ***")
-
-        else:
+        if not self.qt_image.isNull():
+            painter = QtGui.QPainter(self)
 
             # Get widget dimensions
-            w, h = self.geometry().width(), self.geometry().height()
+            w, h = self.width(), self.height()
 
-            print(qimg.size())
+            # Isotropic enlarge qt_image and center
+            my_img = self.qt_image.scaled(w, h, QtCore.Qt.KeepAspectRatio)
 
-            # Resize incoming qimg to match widget width
-            qimg = qimg.scaled(w, h, QtCore.Qt.KeepAspectRatio)
+            # Center image within widget
+            my_rect = my_img.rect()
+            my_rect.moveCenter(self.rect().center())
 
-            # Set qt_image data for paintEvent method
-            self.qt_image = qimg
+            painter.drawImage(my_rect.topLeft(), my_img)
 
-            self.update()
+            # Reset image data
+            # self.qt_image = QtGui.QImage()
+
+    #
+    # Mouse event handlers
+    #
+
+    def mousePressEvent(self, event):
+
+        # Protect existing ROI
+        if self.roi.isNull():
+            self.origin = event.pos()
+            self.rubberband.setGeometry(
+                QtCore.QRect(self.origin, QtCore.QSize()))
+            self.rubberband.show()
+
+        QtWidgets.QWidget.mousePressEvent(self, event)
+
+    def mouseMoveEvent(self, event):
+
+        if self.rubberband.isVisible():
+            self.rubberband.setGeometry(
+                QtCore.QRect(self.origin, event.pos()).normalized())
+        QtWidgets.QWidget.mouseMoveEvent(self, event)
+
+    def mouseReleaseEvent(self, event):
+
+        if self.rubberband.isVisible():
+            self.rubberband.hide()
+            self.roi = self.rubberband.geometry()
+        QtWidgets.QWidget.mouseReleaseEvent(self, event)
+
+    def mouseDoubleClickEvent(self, event):
+
+        # Clear ROI
+        self.roi = QtCore.QRect()
+
+    #
+    # Threshold handlers
+    #
 
     def change_pupil_thresh(self, thr):
-        print('New pupil threshold : %d' % thr)
+        self.pupil_thresh = thr
         pass
 
     def change_glint_thresh(self, thr):
-        print('New glint threshold : %d' % thr)
+        self.glint_thresh = thr
         pass
 
     def toggle_pause(self):
@@ -126,25 +180,3 @@ class PupilometryWidget(QtWidgets.QWidget):
             print('Paused')
         else:
             print('Running')
-
-    def receive_image(self, cv_image_in):
-
-        print('Received Frame')
-
-        # if self.paused:
-        #    cv_image_in = self.last_image
-        # else:
-        #    self.last_image = cv_image_in
-
-        # Run engine on video frame
-        results_rgb = self.analyze_image(cv_image_in)
-
-        # Convert from opencv color image array to QImage object
-        qt_image = QtGui.QImage(results_rgb.data,
-                                results_rgb.shape[1],
-                                results_rgb.shape[0],
-                                results_rgb.strides[0],
-                                QtGui.QImage.Format_RGB888)
-
-        # Pass the final RGB QImage to the eye widget
-        self.set_image(qt_image)

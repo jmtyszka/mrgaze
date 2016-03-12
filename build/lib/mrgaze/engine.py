@@ -24,12 +24,15 @@
  Copyright 2014-2016 California Institute of Technology.
 '''
 
-import os
-import cv2
 import json
+import os
+
+import cv2
 import numpy as np
 from skimage import measure, morphology
+
 from mrgaze import utils, fitellipse, improc
+
 
 def PupilometryEngine(frame, cascade, cfg):
     """
@@ -421,7 +424,7 @@ def FitPupil(bw, roi, cfg):
     Arguments
     ----
     bw : 2D numpy uint8 array
-        Binary thresholded version of pupil ROI (from SegmentPupil)
+        Binary thresholded version of pupil ROI (from FindPupil)
     roi : 2D scalar array
         Grayscale image of pupil-iris region
     cfg : configuration object

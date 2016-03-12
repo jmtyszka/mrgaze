@@ -30,13 +30,16 @@ from PyQt5 import QtCore
 
 
 class CaptureVideo(QtCore.QObject):
-    '''
+    """
     Video capture class with OpenCV 3 and Qt5 support
-    '''
+    Runs in a QThread, emitting video frames to pupilometry widget
+    """
 
     # Open the xIQ camera (Ximea API)
     camera_port = cv2.CAP_XIAPI
     camera = cv2.VideoCapture(camera_port)
+
+    # Define a video frame emit signal
     VideoSignal = QtCore.pyqtSignal(np.ndarray)
 
     def __init__(self, parent=None):
@@ -44,21 +47,24 @@ class CaptureVideo(QtCore.QObject):
         self.do_capture = False
 
     @QtCore.pyqtSlot()
-    def start_video(self):
+    def start_capture(self):
 
-        # Start eternal capture loop
+        # Start eternal frame capture loop
         while True:
 
             # Grab image from camera stream
             ret, cv_image = self.camera.read()
 
-            # Detect camera channels
-            ch = cv_image.ndim
+            if not cv_image is None:
 
-            # Convert from BGR or BGRA to grayscale if necessary
-            if ch == 3:
-                cv_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
-            elif ch == 4:
-                cv_image = cv2.cvtColor(cv_image, cv2.COLOR_BGRA2GRAY)
+                # Detect camera channels
+                ch = cv_image.ndim
 
-            self.VideoSignal.emit(cv_image)
+                # Convert from BGR or BGRA to grayscale if necessary
+                if ch == 3:
+                    cv_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
+                elif ch == 4:
+                    cv_image = cv2.cvtColor(cv_image, cv2.COLOR_BGRA2GRAY)
+
+                # Emit the CV grayscale image (2D numpy array)
+                self.VideoSignal.emit(cv_image)
