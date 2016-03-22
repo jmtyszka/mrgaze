@@ -193,7 +193,13 @@ def LivePupilometry(data_dir, live_eyetracking=False):
 
     # By default we start in non-calibration mode
     # switch between gaze/cal modes by pressing key "c"
-    do_cal = False
+    if live_eyetracking:
+    	do_cal = False
+    else:
+    	do_cal = True
+    cal_keep_going = True
+
+
 
     if cfg.getboolean('OUTPUT', 'graphics'):
         cv2.namedWindow('Pupilometry')
@@ -327,9 +333,9 @@ def LivePupilometry(data_dir, live_eyetracking=False):
                     vout_stream.release()
                     pupils_stream.close()
                     do_cal = True
-                    cal_keep_going = True
                     print("Starting calibration.")
                     break
+
                 elif key == 'f':
                     freeze_frame = not freeze_frame
         else: # do calibration
@@ -468,7 +474,7 @@ def LivePupilometry(data_dir, live_eyetracking=False):
 
             print('  Create calibration model')
             C, central_fix = calibrate.AutoCalibrate(res_dir, cfg)
-
+	
 
     if not C.any():
         print('* Empty calibration matrix detected - skipping')
