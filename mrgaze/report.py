@@ -185,9 +185,11 @@ def PlotPupilometry(csv_file, plot_png):
     ax.tick_params(axis='both', labelsize=8)
 
     ax = fig.add_subplot(412)
-    ax.plot(t, px, t, py)
+    ax.plot(t, px, 'g', label='X')
+    ax.plot(t, py, 'b', label='Y')
     ax.set_title('Pupil Center', y=1.1, fontsize=8)
     ax.tick_params(axis='both', labelsize=8)
+    ax.legend(shadow=False, prop={'size':6}, labelspacing=0.25)
 
     ax = fig.add_subplot(413)
     ax.plot(t, blink)
@@ -253,10 +255,12 @@ def PlotGaze(csv_file, plot_png):
     fig = plt.figure(figsize = (6,6))
 
     ax = fig.add_subplot(211)
-    ax.plot(t, gaze_x, t, gaze_y)
+    ax.plot(t, gaze_x, 'b', label='X')
+    ax.plot(t, gaze_y, 'g', label='Y')
     ax.set_title('Calibrated Normalized Gaze Position', fontsize=8)
     ax.tick_params(axis='both', labelsize=8)
     ax.set_ylim((-1.0, 2.0))
+    ax.legend(shadow=False, prop={'size':6}, labelspacing=0.25)
 
     ax = fig.add_subplot(223)
     ax.scatter(gaze_x, gaze_y, s=1)

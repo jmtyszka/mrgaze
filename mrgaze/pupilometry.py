@@ -33,7 +33,7 @@ import time
 import getpass
 import cv2
 from mrgaze import media, utils, config, calibrate, report, engine
-
+import matplotlib as plt
 
 def LivePupilometry(data_dir, live_eyetracking=False):
     """
@@ -66,8 +66,9 @@ def LivePupilometry(data_dir, live_eyetracking=False):
 
     # Load Configuration
     cfg = config.LoadConfig(data_dir)
+    cfg.live_eyetracking = live_eyetracking
     cfg_ts = time.time()
-
+    
     # Output flags
     verbose   = cfg.getboolean('OUTPUT', 'verbose')
     overwrite = cfg.getboolean('OUTPUT', 'overwrite')
@@ -171,9 +172,9 @@ def LivePupilometry(data_dir, live_eyetracking=False):
     # Desired time between frames in milliseconds
     # time_bw_frames = 1000.0 / fps
 
-    vin_stream.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH, 320)
-    vin_stream.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, 240)
-    vin_stream.set(cv2.cv.CV_CAP_PROP_FPS, 30)
+    vin_stream.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
+    vin_stream.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
+    vin_stream.set(cv2.CAP_PROP_FPS, 30)
 
     # Total number of frames in video file
     # nf = vin_stream.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT)
@@ -192,16 +193,25 @@ def LivePupilometry(data_dir, live_eyetracking=False):
 
     # By default we start in non-calibration mode
     # switch between gaze/cal modes by pressing key "c"
-    do_cal = False
+    if live_eyetracking:
+    	do_cal = False
+    else:
+    	do_cal = True
+    cal_keep_going = True
 
-    while keep_going:
+
+
+    if cfg.getboolean('OUTPUT', 'graphics'):
+        cv2.namedWindow('Pupilometry')
+
+    while keep_going or cal_keep_going:
         if do_cal == False:
             #
             # Output video
             #
             # Output video codec (MP4V - poor quality compression)
             # TODO : Find a better multiplatform codec
-            fourcc = cv2.cv.CV_FOURCC('m','p','4','v')
+            fourcc = cv2.VideoWriter_fourcc('m','p','4','v')
 
             try:
                 vout_stream = cv2.VideoWriter(vout_path, fourcc, 30, (nx, ny), True)
@@ -233,6 +243,7 @@ def LivePupilometry(data_dir, live_eyetracking=False):
             except:
                 print('* Problem opening pupilometry CSV file - skipping pupilometry')
                 return False
+
 
             #
             # Main Video Frame Loop
@@ -309,15 +320,14 @@ def LivePupilometry(data_dir, live_eyetracking=False):
 
                 # wait whether user pressed esc to exit the experiment
                 key = utils._waitKey(5)
-                if key == 'ESC':
-                    # Clean up
+                if key == 'ESC' or not keep_going:
+                    keep_going = False
+                    cal_keep_going = False
                     if live_eyetracking:
                         raw_vout_stream.release()
                     vout_stream.release()
                     pupils_stream.close()
-                    keep_going = False
                 elif key == 'c':
-                    # Clean up
                     if live_eyetracking:
                         raw_vout_stream.release()
                     vout_stream.release()
@@ -325,6 +335,7 @@ def LivePupilometry(data_dir, live_eyetracking=False):
                     do_cal = True
                     print("Starting calibration.")
                     break
+
                 elif key == 'f':
                     freeze_frame = not freeze_frame
         else: # do calibration
@@ -335,7 +346,7 @@ def LivePupilometry(data_dir, live_eyetracking=False):
             
             # Output video codec (MP4V - poor quality compression)
             # TODO : Find a better multiplatform codec
-            fourcc = cv2.cv.CV_FOURCC('m','p','4','v')
+            fourcc = cv2.VideoWriter_fourcc('m','p','4','v')
             
             try:
                 cal_vout_stream = cv2.VideoWriter(cal_vout_path, fourcc, 30, (nx, ny), True)
@@ -382,7 +393,7 @@ def LivePupilometry(data_dir, live_eyetracking=False):
             # Init processing timer
             t0 = time.time()
             t = t0
-            while keep_going:
+            while cal_keep_going:
                 # check whether config file has been updated, reload of that is the case
                 if fc % 30 == 0:
                     cfg_mtime = os.path.getmtime(os.path.join(data_dir, 'mrgaze.cfg'))
@@ -420,8 +431,8 @@ def LivePupilometry(data_dir, live_eyetracking=False):
                 # Read next frame (if available)
                 # if verbose:
                 #     b4_frame = time.time()
-                keep_going, frame_orig = media.LoadVideoFrame(vin_stream, cfg)
-                if keep_going:
+                cal_keep_going, frame_orig = media.LoadVideoFrame(cal_vin_stream, cfg)
+                if cal_keep_going:
                     frame, art_power = media.Preproc(frame_orig, cfg)
                 else:
                     art_power = 0.0
@@ -445,12 +456,13 @@ def LivePupilometry(data_dir, live_eyetracking=False):
                 key = utils._waitKey(1)
                 if key == 'ESC':
                     keep_going = False
+                    cal_keep_going = False
                     # Clean up
                     if live_eyetracking:
                         raw_cal_vout_stream.release()
                     cal_vout_stream.release()
                     cal_pupils_stream.close()
-                elif key == 'v' or not keep_going:
+                elif key == 'v' or not cal_keep_going:
                     do_cal = False
                     print("Stopping calibration.")
                     # Clean up
@@ -462,17 +474,25 @@ def LivePupilometry(data_dir, live_eyetracking=False):
 
             print('  Create calibration model')
             C, central_fix = calibrate.AutoCalibrate(res_dir, cfg)
+	
 
-            if not C.any():
-                print('* Empty calibration matrix detected - skipping')
-    try:
+    if not C.any():
+        print('* Empty calibration matrix detected - skipping')
+    else:
         print('  Calibrate pupilometry')
         calibrate.ApplyCalibration(ss_dir, C, central_fix, cfg)
-    except UnboundLocalError:
-        print('  No calibration data found')
+    # except UnboundLocalError:
+    #     print('  No calibration data found')
 
     cv2.destroyAllWindows()
     vin_stream.release()
+    # Clean up
+    if live_eyetracking:
+        raw_vout_stream.release()
+    vout_stream.release()
+    pupils_stream.close()
+    if not live_eyetracking:
+        cal_vin_stream.release()
 
     print('')
     print('  Generate Report')

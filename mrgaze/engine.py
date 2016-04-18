@@ -70,22 +70,22 @@ def PupilometryEngine(frame, cascade, cfg):
     # Shall we use the classifier at all, or whole frame?
     if cfg.getboolean('PUPILDETECT', 'enabled'):
 
-        min_neighbors = cfg.getint('PUPILDETECT','specificity')
-        scale_factor  = cfg.getfloat('PUPILDETECT','scalefactor')
+        min_neighbors = cfg.getint('PUPILDETECT', 'specificity')
+        scale_factor  = cfg.getfloat('PUPILDETECT', 'scalefactor')
 
         # Find pupils in frame
-        pupils = cascade.detectMultiScale(image=frame,
-                                      scaleFactor=scale_factor,
-                                      minNeighbors=min_neighbors)
+        pupils, num_detections = cascade.detectMultiScale2(image=frame,
+                                            scaleFactor=scale_factor,
+                                            minNeighbors=min_neighbors)
 
         # Count detected pupil candidates
         n_pupils = len(pupils)
 
         if n_pupils > 0:
 
-            # Use largest pupil candidate (works most of the time)
-            sizes = np.sqrt(pupils[:,2] * pupils[:,3])
-            best_pupil = sizes.argmax()
+            # Use pupil with number of detections is the number of neighboring positively classified rectangles that were
+            # joined together to form the object
+            best_pupil = num_detections.argmax()
 
             # Get ROI info for largest pupil
             x, y, w, h = pupils[best_pupil,:]
@@ -206,7 +206,7 @@ def PupilometryEngine(frame, cascade, cfg):
         montage_rgb = np.hstack( (quad_up_rgb, frame_up_rgb) )
 
         cv2.imshow('Pupilometry', montage_rgb)
-        cv2.waitKey(5)
+        # cv2.waitKey(1)
 
 
     return pupil_ellipse, roi_rect, blink, glint_center, frame_rgb
@@ -268,7 +268,7 @@ def SegmentPupil(roi, cfg):
     # blobs = cv2.morphologyEx(blobs, cv2.MORPH_OPEN, kernel)
 
     # Label connected regions
-    pupil_labels = measure.label(blobs, background=0)
+    pupil_labels = measure.label(blobs, background=0) + 1
 
     # Region properties
     pupil_props = measure.regionprops(pupil_labels)
@@ -366,7 +366,7 @@ def FindRemoveGlint(roi, cfg):
     bright = np.uint8(roi > 254)
 
     # Label connected regions (blobs)
-    bright_labels = measure.label(bright)
+    bright_labels = measure.label(bright, background=0) + 1
 
     # Get region properties for all bright blobs in mask
     bright_props = measure.regionprops(bright_labels)
@@ -386,8 +386,8 @@ def FindRemoveGlint(roi, cfg):
 
         # Only accept blobs with area in glint range
         if A > A_min and A < A_max:
-            #            print A
             # Check distance from ROI center
+
             cy, cx = props.centroid  # (row, col)
             r = np.sqrt((cx-roi_cx)**2 + (cy-roi_cy)**2)
 
@@ -395,7 +395,7 @@ def FindRemoveGlint(roi, cfg):
                 r_min = r
                 glint_label = props.label
                 glint = (cx, cy)
-
+                
 
     if glint_label > 0:
 
@@ -403,7 +403,7 @@ def FindRemoveGlint(roi, cfg):
         glint_mask = np.uint8(bright_labels == glint_label)
 
         # Dilate glint mask
-        k = glint_d * 3;
+        k = glint_d;
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k,k))
         glint_mask = cv2.morphologyEx(glint_mask, cv2.MORPH_DILATE, kernel)
 

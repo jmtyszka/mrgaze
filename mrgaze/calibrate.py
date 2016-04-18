@@ -66,9 +66,10 @@ def AutoCalibrate(ss_res_dir, cfg):
     t  = p[:,0] # Video soft timestamp
     px = p[:,2] # Video pupil center, x
     py = p[:,3] # Video pupil center, y
+    blink = p[:,4] # Video blink
 
     # Remove NaNs (blinks, etc) from t, x and y
-    ok = np.isfinite(px)
+    ok = np.where(blink == 0)
     t, x, y = t[ok], px[ok], py[ok]
 
     # Find spatial fixations and sort temporally
@@ -104,6 +105,7 @@ def AutoCalibrate(ss_res_dir, cfg):
         C = np.array([])
         central_fix = 0.0, 0.0
 
+    
     return C, central_fix
 
 
@@ -402,6 +404,12 @@ def ApplyCalibration(ss_dir, C, central_fix, cfg):
 
         x, y, bx, by = moco.HighPassFilter(t, x, y, mocokernel, central_fix)
 
+    elif motioncorr == 'glint':
+        print('  Using glint for motion correction. Skipping here, in calibrate.py (for now)')
+
+        # Return dummy x and y baseline estimates
+        bx, by = np.zeros_like(x), np.zeros_like(y)
+
     else:
 
         print('* Unknown motion correction requested (%s) - skipping' % (motioncorr))
@@ -412,7 +420,7 @@ def ApplyCalibration(ss_dir, C, central_fix, cfg):
     # Additional binomial coordinates
     xx = x * x
     yy = y * y
-    xy = x * y;
+    xy = x * y
 
     # Construct R
     R = np.array((xx, xy, yy, x, y, np.ones_like(x)))
