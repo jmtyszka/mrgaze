@@ -301,6 +301,7 @@ def LivePupilometry(data_dir, live_eyetracking=False):
                 # Read next frame, unless we want to figure out the correct settings for this frame
                 if not freeze_frame:
                     keep_going, frame_orig = media.LoadVideoFrame(vin_stream, cfg)
+
                 if keep_going:
                     frame, art_power = media.Preproc(frame_orig, cfg)
                 else:
@@ -428,10 +429,13 @@ def LivePupilometry(data_dir, live_eyetracking=False):
                 if live_eyetracking:
                     raw_cal_vout_stream.write(frame_orig)
 
+                # Read next frame, unless we want to figure out the correct settings for this frame
+                if not freeze_frame:
+                    cal_keep_going, frame_orig = media.LoadVideoFrame(cal_vin_stream, cfg)
+                
                 # Read next frame (if available)
                 # if verbose:
                 #     b4_frame = time.time()
-                cal_keep_going, frame_orig = media.LoadVideoFrame(cal_vin_stream, cfg)
                 if cal_keep_going:
                     frame, art_power = media.Preproc(frame_orig, cfg)
                 else:
@@ -471,7 +475,8 @@ def LivePupilometry(data_dir, live_eyetracking=False):
                     cal_vout_stream.release()
                     cal_pupils_stream.close()
                     break
-
+                elif key == 'f':
+                    freeze_frame = not freeze_frame
             print('  Create calibration model')
             C, central_fix = calibrate.AutoCalibrate(res_dir, cfg)
 	
