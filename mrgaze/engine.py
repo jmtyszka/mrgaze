@@ -30,6 +30,7 @@ import json
 import numpy as np
 from skimage import measure, morphology
 from mrgaze import utils, fitellipse, improc
+import socket
 
 def PupilometryEngine(frame, cascade, cfg):
     """
@@ -75,8 +76,8 @@ def PupilometryEngine(frame, cascade, cfg):
 
         # Find pupils in frame
         pupils, num_detections = cascade.detectMultiScale2(image=frame,
-                                            scaleFactor=scale_factor,
-                                            minNeighbors=min_neighbors)
+                                                           scaleFactor=scale_factor,
+                                                           minNeighbors=min_neighbors)
 
         # Count detected pupil candidates
         n_pupils = len(pupils)
@@ -174,9 +175,7 @@ def PupilometryEngine(frame, cascade, cfg):
     # Overlay ROI, pupil ellipse and pseudo-glint on background RGB frame
     frame_rgb = OverlayPupil(frame_rgb, pupil_ellipse, roi_rect, glint_center)
 
-
     if cfg.getboolean('OUTPUT', 'graphics'):
-
         # Rescale and cast label images to uint8/ubyte
         pupil_labels = utils._touint8(pupil_labels)
         glint_mask = utils._touint8(glint_mask)
@@ -206,7 +205,7 @@ def PupilometryEngine(frame, cascade, cfg):
         montage_rgb = np.hstack( (quad_up_rgb, frame_up_rgb) )
 
         cv2.imshow('Pupilometry', montage_rgb)
-        # cv2.waitKey(1)
+        cv2.waitKey(1)
 
 
     return pupil_ellipse, roi_rect, blink, glint_center, frame_rgb
